@@ -2,18 +2,12 @@ import type { Insertable, RawBuilder, Selectable, Updateable } from '@stacksjs/d
 import type { Operator } from '@stacksjs/orm'
 import type { Stripe } from '@stacksjs/payments'
 import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
-import type { DeploymentModel } from './Deployment'
 import type { PaymentMethodModel } from './PaymentMethod'
-import type { PostModel } from './Post'
-import type { SubscriberModel } from './Subscriber'
 import type { SubscriptionModel } from './Subscription'
 import type { TransactionModel } from './Transaction'
 import { randomUUIDv7 } from 'bun'
-
 import { cache } from '@stacksjs/cache'
-
 import { sql } from '@stacksjs/database'
-
 import { HttpError, ModelNotFoundException } from '@stacksjs/error-handling'
 
 import { dispatch } from '@stacksjs/events'
@@ -25,10 +19,8 @@ import Team from './Team'
 
 export interface UsersTable {
   id?: number
-  deployments?: DeploymentModel[] | undefined
   subscriptions?: SubscriptionModel[] | undefined
   payment_methods?: PaymentMethodModel[] | undefined
-  posts?: PostModel[] | undefined
   transactions?: TransactionModel[] | undefined
   name?: string
   email?: string
@@ -162,24 +154,12 @@ export class UserModel {
     }
   }
 
-  get subscriber(): SubscriberModel | undefined {
-    return this.attributes.subscriber
-  }
-
-  get deployments(): DeploymentModel[] | undefined {
-    return this.attributes.deployments
-  }
-
   get subscriptions(): SubscriptionModel[] | undefined {
     return this.attributes.subscriptions
   }
 
   get payment_methods(): PaymentMethodModel[] | undefined {
     return this.attributes.payment_methods
-  }
-
-  get posts(): PostModel[] | undefined {
-    return this.attributes.posts
   }
 
   get transactions(): TransactionModel[] | undefined {
@@ -2024,10 +2004,8 @@ export class UserModel {
 
       updated_at: this.updated_at,
 
-      deployments: this.deployments,
       subscriptions: this.subscriptions,
       payment_methods: this.payment_methods,
-      posts: this.posts,
       transactions: this.transactions,
       ...this.customColumns,
     }

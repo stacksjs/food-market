@@ -1,5 +1,5 @@
 import type { Ok } from '@stacksjs/error-handling'
-import type { Attribute, Attributes, AttributesElements, Model } from '@stacksjs/types'
+import type { Attribute, AttributesElements, Model } from '@stacksjs/types'
 import { italic, log } from '@stacksjs/cli'
 import { db } from '@stacksjs/database'
 import { ok } from '@stacksjs/error-handling'

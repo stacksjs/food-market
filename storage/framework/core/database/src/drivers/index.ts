@@ -1,4 +1,4 @@
-import type { Attribute, Attributes, AttributesElements, Model, VineType } from '@stacksjs/types'
+import type { Attribute, AttributesElements, Model, VineType } from '@stacksjs/types'
 import { log } from '@stacksjs/cli'
 import { db } from '@stacksjs/database'
 import { handleError } from '@stacksjs/error-handling'
@@ -197,7 +197,8 @@ export function mapFieldTypeToColumnType(rule: VineType, driver = 'mysql'): stri
 // Use existing prepareTextColumnType function
 export function prepareTextColumnType(rule: VineType, driver = 'mysql'): string {
   // For SQLite, all text fields are just 'text'
-  if (driver === 'sqlite') return `'text'`
+  if (driver === 'sqlite')
+    return `'text'`
 
   let columnType = 'varchar(255)' // Default
 
@@ -211,23 +212,30 @@ export function prepareTextColumnType(rule: VineType, driver = 'mysql'): string 
     // Choose appropriate MySQL type based on length
     if (maxLength <= 255) {
       columnType = `varchar(${maxLength})`
-    } else if (maxLength <= 65535) {
+    }
+    else if (maxLength <= 65535) {
       columnType = 'text'
-    } else if (maxLength <= 16777215) {
+    }
+    else if (maxLength <= 16777215) {
       columnType = 'mediumtext'
-    } else {
+    }
+    else {
       columnType = 'longtext'
     }
-  } else {
+  }
+  else {
     // Check for specific string formats if they exist in validations
     for (const validation of rule.validations || []) {
       if (validation.rule === 'email') {
         return `'varchar(255)'`
-      } else if (validation.rule === 'url') {
+      }
+      else if (validation.rule === 'url') {
         return `'varchar(2048)'`
-      } else if (validation.rule === 'uuid') {
+      }
+      else if (validation.rule === 'uuid') {
         return `'char(36)'`
-      } else if (validation.rule === 'ip') {
+      }
+      else if (validation.rule === 'ip') {
         return `'varchar(45)'` // IPv6 can be up to 45 chars
       }
     }
@@ -238,7 +246,8 @@ export function prepareTextColumnType(rule: VineType, driver = 'mysql'): string 
 
 // Add new function for numeric column types
 export function prepareNumberColumnType(rule: VineType, driver = 'mysql'): string {
-  if (driver === 'sqlite') return `'numeric'`
+  if (driver === 'sqlite')
+    return `'numeric'`
 
   // Check precision and scale
   let precision = 10
@@ -270,25 +279,31 @@ export function prepareNumberColumnType(rule: VineType, driver = 'mysql'): strin
     let max: number | undefined
 
     for (const validation of rule.validations || []) {
-      if (validation.options?.min !== undefined) min = validation.options.min
-      if (validation.options?.max !== undefined) max = validation.options.max
+      if (validation.options?.min !== undefined)
+        min = validation.options.min
+      if (validation.options?.max !== undefined)
+        max = validation.options.max
     }
 
     // If we have both bounds, choose an appropriate type
     if (min !== undefined && max !== undefined) {
       if (min >= -128 && max <= 127) {
         return `'tinyint'`
-      } else if (min >= -32768 && max <= 32767) {
+      }
+      else if (min >= -32768 && max <= 32767) {
         return `'smallint'`
-      } else if (min >= -8388608 && max <= 8388607) {
+      }
+      else if (min >= -8388608 && max <= 8388607) {
         return `'mediumint'`
-      } else if (min >= -2147483648 && max <= 2147483647) {
+      }
+      else if (min >= -2147483648 && max <= 2147483647) {
         return `'int'`
-      } else {
+      }
+      else {
         return `'bigint'`
       }
     }
-    
+
     // Default int type
     return `'int'`
   }
@@ -299,14 +314,19 @@ export function prepareNumberColumnType(rule: VineType, driver = 'mysql'): strin
 
 // Add new function for date/time column types
 export function prepareDateTimeColumnType(rule: VineType, driver = 'mysql'): string {
-  if (driver === 'sqlite') return `'text'` // SQLite uses TEXT for dates
+  if (driver === 'sqlite')
+    return `'text'` // SQLite uses TEXT for dates
 
   // Try to determine specific date type
   for (const validation of rule.validations || []) {
-    if (validation.rule === 'date') return `'date'`
-    if (validation.rule === 'datetime') return `'datetime'`
-    if (validation.rule === 'time') return `'time'`
-    if (validation.rule === 'timestamp') return `'timestamp'`
+    if (validation.rule === 'date')
+      return `'date'`
+    if (validation.rule === 'datetime')
+      return `'datetime'`
+    if (validation.rule === 'time')
+      return `'time'`
+    if (validation.rule === 'timestamp')
+      return `'timestamp'`
   }
 
   // Default to datetime

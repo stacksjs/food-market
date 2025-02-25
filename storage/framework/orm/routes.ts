@@ -10,15 +10,29 @@ route.patch('requests/{id}', 'storage/framework/actions/src/RequestUpdateOrmActi
 
 route.delete('requests/{id}', 'storage/framework/actions/src/RequestDestroyOrmAction.ts')
 
-route.get('activities', 'storage/framework/actions/src/ActivityIndexOrmAction.ts')
+route.get('transactions', 'TransactionIndexOrmAction')
 
-route.get('activities/{id}', 'storage/framework/actions/src/ActivityShowOrmAction.ts')
+route.post('transactions', 'TransactionStoreOrmAction')
 
-route.post('activities', 'storage/framework/actions/src/ActivityStoreOrmAction.ts')
+route.get('transactions/{id}', 'TransactionShowOrmAction')
 
-route.patch('activities/{id}', 'storage/framework/actions/src/ActivityUpdateOrmAction.ts')
+route.get('loyalty-points', 'LoyaltyPointIndexOrmAction')
 
-route.delete('activities/{id}', 'storage/framework/actions/src/ActivityDestroyOrmAction.ts')
+route.post('loyalty-points', 'LoyaltyPointStoreOrmAction')
+
+route.get('loyalty-points/{id}', 'LoyaltyPointShowOrmAction')
+
+route.get('loyalty-rewards', 'LoyaltyRewardIndexOrmAction')
+
+route.post('loyalty-rewards', 'LoyaltyRewardStoreOrmAction')
+
+route.get('loyalty-rewards/{id}', 'LoyaltyRewardShowOrmAction')
+
+route.get('product-categories', 'ProductCategoryIndexOrmAction')
+
+route.post('product-categories', 'ProductCategoryStoreOrmAction')
+
+route.get('product-categories/{id}', 'ProductCategoryShowOrmAction')
 
 route.get('users', 'UserIndexOrmAction')
 

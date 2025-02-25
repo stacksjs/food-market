@@ -11,17 +11,40 @@ import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} fr
       import { cache } from '@stacksjs/cache'
       import { randomUUIDv7 } from 'bun'
       
-      
+      import Order from './Order'
+
+import type {OrderModel} from './Order'
+
+import User from './User'
+
+import type {UserModel} from './User'
+
+import Coupon from './Coupon'
+
+import type {CouponModel} from './Coupon'
+
+
   
-      export interface ProductsTable {
+      export interface OrdersTable {
         id?: number
-        name?: string
-      description?: number
-      key?: number
-      unit_price?: number
+       orders?: OrderModel[] | undefined
+ user_id?: number 
+user?: UserModel
+ coupon_id?: number 
+coupon?: CouponModel
+ customer_id?: string
       status?: string
-      image?: string
-      provider_id?: string
+      total_amount?: number
+      tax_amount?: number
+      discount_amount?: number
+      delivery_fee?: number
+      tip_amount?: number
+      order_type?: string
+      delivery_address?: string
+      special_instructions?: string
+      estimated_delivery_time?: string // Store as ISO date string
+      applied_coupon_id?: string
+      order_items?: string // Store as JSON string
      uuid?: string 
 
         created_at?: Date
@@ -30,8 +53,8 @@ import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} fr
       
       }
   
-      interface ProductResponse {
-        data: ProductJsonResponse[]
+      interface OrderResponse {
+        data: OrderJsonResponse[]
         paging: {
           total_records: number
           page: number
@@ -40,16 +63,16 @@ import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} fr
         next_cursor: number | null
       }
 
-      export interface ProductJsonResponse extends Omit<ProductsTable, 'password'> {
+      export interface OrderJsonResponse extends Omit<OrdersTable, 'password'> {
         [key: string]: any
       }
         
-      export type ProductType = Selectable<ProductsTable>
-      export type NewProduct = Partial<Insertable<ProductsTable>>
-      export type ProductUpdate = Updateable<ProductsTable>
+      export type OrderType = Selectable<OrdersTable>
+      export type NewOrder = Partial<Insertable<OrdersTable>>
+      export type OrderUpdate = Updateable<OrdersTable>
   
       type SortDirection = 'asc' | 'desc'
-      interface SortOptions { column: ProductType, order: SortDirection }
+      interface SortOptions { column: OrderType, order: SortDirection }
       // Define a type for the options parameter
       interface QueryOptions {
         sort?: SortOptions
@@ -58,12 +81,12 @@ import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} fr
         page?: number
       }
   
-      export class ProductModel {
-        private readonly hidden: Array<keyof ProductJsonResponse> = []
-        private readonly fillable: Array<keyof ProductJsonResponse> = ["name","description","key","unit_price","status","image","provider_id","uuid","product_category_id"]
-        private readonly guarded: Array<keyof ProductJsonResponse> = []
-        protected attributes: Partial<ProductJsonResponse> = {}
-        protected originalAttributes: Partial<ProductJsonResponse> = {}
+      export class OrderModel {
+        private readonly hidden: Array<keyof OrderJsonResponse> = []
+        private readonly fillable: Array<keyof OrderJsonResponse> = ["customer_id","status","total_amount","tax_amount","discount_amount","delivery_fee","tip_amount","order_type","delivery_address","special_instructions","estimated_delivery_time","applied_coupon_id","order_items","uuid","coupon_id"]
+        private readonly guarded: Array<keyof OrderJsonResponse> = []
+        protected attributes: Partial<OrderJsonResponse> = {}
+        protected originalAttributes: Partial<OrderJsonResponse> = {}
         
         protected selectFromQuery: any
         protected withRelations: string[]
@@ -73,32 +96,32 @@ import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} fr
         private hasSaved: boolean
         private customColumns: Record<string, unknown> = {}
        
-        constructor(product: Partial<ProductType> | null) {
-          if (product) {
+        constructor(order: Partial<OrderType> | null) {
+          if (order) {
 
-            this.attributes = { ...product }
-            this.originalAttributes = { ...product }
+            this.attributes = { ...order }
+            this.originalAttributes = { ...order }
             
-            Object.keys(product).forEach(key => {
+            Object.keys(order).forEach(key => {
               if (!(key in this)) {
-                 this.customColumns[key] = (product as ProductJsonResponse)[key]
+                 this.customColumns[key] = (order as OrderJsonResponse)[key]
               }
             })
           }
   
           this.withRelations = []
-          this.selectFromQuery = DB.instance.selectFrom('products')
-          this.updateFromQuery = DB.instance.updateTable('products')
-          this.deleteFromQuery = DB.instance.deleteFrom('products')
+          this.selectFromQuery = DB.instance.selectFrom('orders')
+          this.updateFromQuery = DB.instance.updateTable('orders')
+          this.deleteFromQuery = DB.instance.deleteFrom('orders')
           this.hasSelect = false
           this.hasSaved = false
         }
 
-        mapCustomGetters(models: ProductJsonResponse | ProductJsonResponse[]): void {
+        mapCustomGetters(models: OrderJsonResponse | OrderJsonResponse[]): void {
           const data = models
               
           if (Array.isArray(data)) {
-            data.map((model: ProductJsonResponse) => {
+            data.map((model: OrderJsonResponse) => {
                
               const customGetter = {
                 default: () => {
@@ -129,7 +152,7 @@ import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} fr
           }
         }
 
-        async mapCustomSetters(model: ProductJsonResponse): Promise<void> {
+        async mapCustomSetters(model: OrderJsonResponse): Promise<void> {
           const customSetter = {
             default: () => {
             },
@@ -142,7 +165,27 @@ import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} fr
           }
         }
 
-        get id(): number | undefined {
+        get orders():OrderModel[] | undefined {
+        return this.attributes.orders
+      }
+
+get user_id(): number | undefined {
+        return this.attributes.user_id
+      }
+
+get user(): UserModel | undefined {
+        return this.attributes.user
+      }
+
+get coupon_id(): number | undefined {
+        return this.attributes.coupon_id
+      }
+
+get coupon(): CouponModel | undefined {
+        return this.attributes.coupon
+      }
+
+get id(): number | undefined {
     return this.attributes.id
   }
 
@@ -150,32 +193,56 @@ get uuid(): string | undefined {
       return this.attributes.uuid
     }
 
-get name(): string | undefined {
-      return this.attributes.name
-    }
-
-get description(): number | undefined {
-      return this.attributes.description
-    }
-
-get key(): number | undefined {
-      return this.attributes.key
-    }
-
-get unit_price(): number | undefined {
-      return this.attributes.unit_price
+get customer_id(): string | undefined {
+      return this.attributes.customer_id
     }
 
 get status(): string | undefined {
       return this.attributes.status
     }
 
-get image(): string | undefined {
-      return this.attributes.image
+get total_amount(): number | undefined {
+      return this.attributes.total_amount
     }
 
-get provider_id(): string | undefined {
-      return this.attributes.provider_id
+get tax_amount(): number | undefined {
+      return this.attributes.tax_amount
+    }
+
+get discount_amount(): number | undefined {
+      return this.attributes.discount_amount
+    }
+
+get delivery_fee(): number | undefined {
+      return this.attributes.delivery_fee
+    }
+
+get tip_amount(): number | undefined {
+      return this.attributes.tip_amount
+    }
+
+get order_type(): string | undefined {
+      return this.attributes.order_type
+    }
+
+get delivery_address(): string | undefined {
+      return this.attributes.delivery_address
+    }
+
+get special_instructions(): string | undefined {
+      return this.attributes.special_instructions
+    }
+
+get estimated_delivery_time(): string // Store as ISO date string | undefined {
+      return this.attributes.estimated_delivery_time
+    }
+
+get applied_coupon_id(): string | undefined {
+      return this.attributes.applied_coupon_id
+    }
+
+get order_items(): string // Store as JSON string | undefined {
+      return this.attributes.order_items
     }
 
 get created_at(): Date | undefined {
@@ -191,32 +258,56 @@ get created_at(): Date | undefined {
       this.attributes.uuid = value
     }
 
-set name(value: string) {
-      this.attributes.name = value
-    }
-
-set description(value: number) {
-      this.attributes.description = value
-    }
-
-set key(value: number) {
-      this.attributes.key = value
-    }
-
-set unit_price(value: number) {
-      this.attributes.unit_price = value
+set customer_id(value: string) {
+      this.attributes.customer_id = value
     }
 
 set status(value: string) {
       this.attributes.status = value
     }
 
-set image(value: string) {
-      this.attributes.image = value
+set total_amount(value: number) {
+      this.attributes.total_amount = value
     }
 
-set provider_id(value: string) {
-      this.attributes.provider_id = value
+set tax_amount(value: number) {
+      this.attributes.tax_amount = value
+    }
+
+set discount_amount(value: number) {
+      this.attributes.discount_amount = value
+    }
+
+set delivery_fee(value: number) {
+      this.attributes.delivery_fee = value
+    }
+
+set tip_amount(value: number) {
+      this.attributes.tip_amount = value
+    }
+
+set order_type(value: string) {
+      this.attributes.order_type = value
+    }
+
+set delivery_address(value: string) {
+      this.attributes.delivery_address = value
+    }
+
+set special_instructions(value: string) {
+      this.attributes.special_instructions = value
+    }
+
+set estimated_delivery_time(value: string // Store as ISO date string) {
+      this.attributes.estimated_delivery_time = value
+    }
+
+set applied_coupon_id(value: string) {
+      this.attributes.applied_coupon_id = value
+    }
+
+set order_items(value: string // Store as JSON string) {
+      this.attributes.order_items = value
     }
 
 set updated_at(value: Date) {
@@ -225,7 +316,7 @@ set updated_at(value: Date) {
 
 
         
-        getOriginal(column?: keyof ProductJsonResponse): Partial<ProductJsonResponse> {
+        getOriginal(column?: keyof OrderJsonResponse): Partial<OrderJsonResponse> {
           if (column) {
             return this.originalAttributes[column]
           }
@@ -233,10 +324,10 @@ set updated_at(value: Date) {
           return this.originalAttributes
         }
 
-        getChanges(): Partial<ProductJsonResponse> {
-          return this.fillable.reduce<Partial<ProductJsonResponse>>((changes, key) => {
-            const currentValue = this.attributes[key as keyof ProductsTable]
-            const originalValue = this.originalAttributes[key as keyof ProductsTable]
+        getChanges(): Partial<OrderJsonResponse> {
+          return this.fillable.reduce<Partial<OrderJsonResponse>>((changes, key) => {
+            const currentValue = this.attributes[key as keyof OrdersTable]
+            const originalValue = this.originalAttributes[key as keyof OrdersTable]
 
             if (currentValue !== originalValue) {
               changes[key] = currentValue
@@ -246,7 +337,7 @@ set updated_at(value: Date) {
           }, {})
         }
 
-        isDirty(column?: keyof ProductType): boolean {
+        isDirty(column?: keyof OrderType): boolean {
           if (column) {
             return this.attributes[column] !== this.originalAttributes[column]
           }
@@ -258,15 +349,15 @@ set updated_at(value: Date) {
           })
         }
 
-        isClean(column?: keyof ProductType): boolean {
+        isClean(column?: keyof OrderType): boolean {
           return !this.isDirty(column)
         }
 
-        wasChanged(column?: keyof ProductType): boolean {
+        wasChanged(column?: keyof OrderType): boolean {
           return this.hasSaved && this.isDirty(column)
         }
   
-        select(params: (keyof ProductType)[] | RawBuilder<string> | string): ProductModel {
+        select(params: (keyof OrderType)[] | RawBuilder<string> | string): OrderModel {
           this.selectFromQuery = this.selectFromQuery.select(params)
 
           this.hasSelect = true
@@ -274,8 +365,8 @@ set updated_at(value: Date) {
           return this
         }
 
-        static select(params: (keyof ProductType)[] | RawBuilder<string> | string): ProductModel {
-          const instance = new ProductModel(null)
+        static select(params: (keyof OrderType)[] | RawBuilder<string> | string): OrderModel {
+          const instance = new OrderModel(null)
   
           // Initialize a query with the table name and selected fields
           instance.selectFromQuery = instance.selectFromQuery.select(params)
@@ -285,8 +376,8 @@ set updated_at(value: Date) {
           return instance
         }
         
-        async applyFind(id: number): Promise<ProductModel | undefined> {
-          const model = await DB.instance.selectFrom('products').where('id', '=', id).selectAll().executeTakeFirst()
+        async applyFind(id: number): Promise<OrderModel | undefined> {
+          const model = await DB.instance.selectFrom('orders').where('id', '=', id).selectAll().executeTakeFirst()
   
           if (!model)
             return undefined
@@ -294,26 +385,26 @@ set updated_at(value: Date) {
           this.mapCustomGetters(model)
           await this.loadRelations(model)
           
-          const data = new ProductModel(model as ProductType)
+          const data = new OrderModel(model as OrderType)
   
-          cache.getOrSet(`product:${id}`, JSON.stringify(model))
+          cache.getOrSet(`order:${id}`, JSON.stringify(model))
   
           return data
         } 
   
-        async find(id: number): Promise<ProductModel | undefined> {
+        async find(id: number): Promise<OrderModel | undefined> {
           return await this.applyFind(id)
         }
 
-        // Method to find a Product by ID
-        static async find(id: number): Promise<ProductModel | undefined> {
-          const instance = new ProductModel(null)
+        // Method to find a Order by ID
+        static async find(id: number): Promise<OrderModel | undefined> {
+          const instance = new OrderModel(null)
 
           return await instance.applyFind(id)
         }
 
-        async first(): Promise<ProductModel | undefined> {
-          let model: ProductModel | undefined
+        async first(): Promise<OrderModel | undefined> {
+          let model: OrderModel | undefined
 
           if (this.hasSelect) {
             model = await this.selectFromQuery.executeTakeFirst()
@@ -327,97 +418,97 @@ set updated_at(value: Date) {
             await this.loadRelations(model)
           }
 
-          const data = new ProductModel(model as ProductType)
+          const data = new OrderModel(model as OrderType)
   
           return data
         }
         
-        static async first(): Promise<ProductModel | undefined> {
-          const instance = new ProductModel(null)
+        static async first(): Promise<OrderModel | undefined> {
+          const instance = new OrderModel(null)
 
-          const model = await DB.instance.selectFrom('products')
+          const model = await DB.instance.selectFrom('orders')
             .selectAll()
             .executeTakeFirst()
 
           instance.mapCustomGetters(model)
 
-          const data = new ProductModel(model as ProductType)
+          const data = new OrderModel(model as OrderType)
   
           return data
         }
 
-        async applyFirstOrFail(): Promise<ProductModel | undefined> {
+        async applyFirstOrFail(): Promise<OrderModel | undefined> {
           const model = await this.selectFromQuery.executeTakeFirst()
   
           if (model === undefined)
-            throw new ModelNotFoundException(404, 'No ProductModel results found for query')
+            throw new ModelNotFoundException(404, 'No OrderModel results found for query')
           
           if (model) {
             this.mapCustomGetters(model)
             await this.loadRelations(model)
           }
 
-          const data = new ProductModel(model as ProductType)
+          const data = new OrderModel(model as OrderType)
   
           return data
         }
   
-        async firstOrFail(): Promise<ProductModel | undefined> {
+        async firstOrFail(): Promise<OrderModel | undefined> {
           return await this.applyFirstOrFail()
         }
 
-        static async firstOrFail(): Promise<ProductModel | undefined> {
-          const instance = new ProductModel(null)
+        static async firstOrFail(): Promise<OrderModel | undefined> {
+          const instance = new OrderModel(null)
 
           return await instance.applyFirstOrFail()
         }
   
-        static async all(): Promise<ProductModel[]> {
-          const instance = new ProductModel(null)
+        static async all(): Promise<OrderModel[]> {
+          const instance = new OrderModel(null)
 
-          const models = await DB.instance.selectFrom('products').selectAll().execute()
+          const models = await DB.instance.selectFrom('orders').selectAll().execute()
 
           instance.mapCustomGetters(models)
 
-          const data = await Promise.all(models.map(async (model: ProductType) => {
-            return new ProductModel(model)
+          const data = await Promise.all(models.map(async (model: OrderType) => {
+            return new OrderModel(model)
           }))
   
           return data
         }
 
-        async applyFindOrFail(id: number): Promise<ProductModel> {
-          const model = await DB.instance.selectFrom('products').where('id', '=', id).selectAll().executeTakeFirst()
+        async applyFindOrFail(id: number): Promise<OrderModel> {
+          const model = await DB.instance.selectFrom('orders').where('id', '=', id).selectAll().executeTakeFirst()
   
           
   
           if (model === undefined)
-            throw new ModelNotFoundException(404, `No ProductModel results for ${id}`)
+            throw new ModelNotFoundException(404, `No OrderModel results for ${id}`)
           
-          cache.getOrSet(`product:${id}`, JSON.stringify(model))
+          cache.getOrSet(`order:${id}`, JSON.stringify(model))
 
           this.mapCustomGetters(model)
           await this.loadRelations(model)
 
-          const data = new ProductModel(model as ProductType)
+          const data = new OrderModel(model as OrderType)
   
           return data
         }
 
-        async findOrFail(id: number): Promise<ProductModel> {
+        async findOrFail(id: number): Promise<OrderModel> {
           return await this.applyFindOrFail(id)
         }
   
-        static async findOrFail(id: number): Promise<ProductModel> {
-          const instance = new ProductModel(null)
+        static async findOrFail(id: number): Promise<OrderModel> {
+          const instance = new OrderModel(null)
           
           return await instance.applyFindOrFail(id)
         }
 
-        async applyFindMany(ids: number[]): Promise<ProductModel[]> {
-          let query = DB.instance.selectFrom('products').where('id', 'in', ids)
+        async applyFindMany(ids: number[]): Promise<OrderModel[]> {
+          let query = DB.instance.selectFrom('orders').where('id', 'in', ids)
   
-          const instance = new ProductModel(null)
+          const instance = new OrderModel(null)
   
           
   
@@ -428,34 +519,34 @@ set updated_at(value: Date) {
           instance.mapCustomGetters(models)
           await instance.loadRelations(models)
   
-          return models.map((modelItem: ProductModel) => instance.parseResult(new ProductModel(modelItem)))
+          return models.map((modelItem: OrderModel) => instance.parseResult(new OrderModel(modelItem)))
         }
   
-        static async findMany(ids: number[]): Promise<ProductModel[]> {
-          const instance = new ProductModel(null)
+        static async findMany(ids: number[]): Promise<OrderModel[]> {
+          const instance = new OrderModel(null)
 
           return await instance.applyFindMany(ids)
         }
 
-        async findMany(ids: number[]): Promise<ProductModel[]> {
+        async findMany(ids: number[]): Promise<OrderModel[]> {
           return await this.applyFindMany(ids)
         }
 
-        skip(count: number): ProductModel {
+        skip(count: number): OrderModel {
           this.selectFromQuery = this.selectFromQuery.offset(count)
 
           return this
         }
 
-        static skip(count: number): ProductModel {
-          const instance = new ProductModel(null)
+        static skip(count: number): OrderModel {
+          const instance = new OrderModel(null)
 
           instance.selectFromQuery = instance.selectFromQuery.offset(count)
 
           return instance
         }
 
-        async applyChunk(size: number, callback: (models: ProductModel[]) => Promise<void>): Promise<void> {
+        async applyChunk(size: number, callback: (models: OrderModel[]) => Promise<void>): Promise<void> {
           let page = 1
           let hasMore = true
         
@@ -481,49 +572,49 @@ set updated_at(value: Date) {
           }
         }
 
-        async chunk(size: number, callback: (models: ProductModel[]) => Promise<void>): Promise<void> {
+        async chunk(size: number, callback: (models: OrderModel[]) => Promise<void>): Promise<void> {
           await this.applyChunk(size, callback)
         }
 
-        static async chunk(size: number, callback: (models: ProductModel[]) => Promise<void>): Promise<void> {
-          const instance = new ProductModel(null)
+        static async chunk(size: number, callback: (models: OrderModel[]) => Promise<void>): Promise<void> {
+          const instance = new OrderModel(null)
 
           await instance.applyChunk(size, callback)
         }
 
-        take(count: number): ProductModel {
+        take(count: number): OrderModel {
           this.selectFromQuery = this.selectFromQuery.limit(count)
 
           return this
         }
 
-        static take(count: number): ProductModel {
-          const instance = new ProductModel(null)
+        static take(count: number): OrderModel {
+          const instance = new OrderModel(null)
 
           instance.selectFromQuery = instance.selectFromQuery.limit(count)
 
           return instance
         }
 
-        static async pluck<K extends keyof ProductModel>(field: K): Promise<ProductModel[K][]> {
-         const instance = new ProductModel(null)
+        static async pluck<K extends keyof OrderModel>(field: K): Promise<OrderModel[K][]> {
+         const instance = new OrderModel(null)
 
           if (instance.hasSelect) {
             const model = await instance.selectFromQuery.execute()
-            return model.map((modelItem: ProductModel) => modelItem[field])
+            return model.map((modelItem: OrderModel) => modelItem[field])
           }
 
           const model = await instance.selectFromQuery.selectAll().execute()
 
-          return model.map((modelItem: ProductModel) => modelItem[field])
+          return model.map((modelItem: OrderModel) => modelItem[field])
         }
 
-        async pluck<K extends keyof ProductModel>(field: K): Promise<ProductModel[K][]> {
-          return ProductModel.pluck(field)
+        async pluck<K extends keyof OrderModel>(field: K): Promise<OrderModel[K][]> {
+          return OrderModel.pluck(field)
         }
 
         static async count(): Promise<number> {
-          const instance = new ProductModel(null)
+          const instance = new OrderModel(null)
 
           const result = await instance.selectFromQuery
             .select(sql`COUNT(*) as count`)
@@ -540,8 +631,8 @@ set updated_at(value: Date) {
           return result.count || 0
         }
         
-        static async max(field: keyof ProductModel): Promise<number> {
-         const instance = new ProductModel(null)
+        static async max(field: keyof OrderModel): Promise<number> {
+         const instance = new OrderModel(null)
 
           const result = await instance.selectFromQuery
             .select(sql`MAX(${sql.raw(field as string)}) as max `)
@@ -550,7 +641,7 @@ set updated_at(value: Date) {
           return result.max
         }
         
-        async max(field: keyof ProductModel): Promise<number> {
+        async max(field: keyof OrderModel): Promise<number> {
           const result = await this.selectFromQuery
             .select(sql`MAX(${sql.raw(field as string)}) as max`)
             .executeTakeFirst()
@@ -558,8 +649,8 @@ set updated_at(value: Date) {
            return result.max
         }
 
-        static async min(field: keyof ProductModel): Promise<number> {
-          const instance = new ProductModel(null)
+        static async min(field: keyof OrderModel): Promise<number> {
+          const instance = new OrderModel(null)
 
           const result = await instance.selectFromQuery
             .select(sql`MIN(${sql.raw(field as string)}) as min `)
@@ -568,7 +659,7 @@ set updated_at(value: Date) {
           return result.min
         }
          
-        async min(field: keyof ProductModel): Promise<number> {
+        async min(field: keyof OrderModel): Promise<number> {
           const result = await this.selectFromQuery
             .select(sql`MIN(${sql.raw(field as string)}) as min `)
             .executeTakeFirst()
@@ -576,8 +667,8 @@ set updated_at(value: Date) {
           return result.min
         }
 
-        static async avg(field: keyof ProductModel): Promise<number> {
-          const instance = new ProductModel(null)
+        static async avg(field: keyof OrderModel): Promise<number> {
+          const instance = new OrderModel(null)
 
           const result = await instance.selectFromQuery
             .select(sql`AVG(${sql.raw(field as string)}) as avg `)
@@ -586,7 +677,7 @@ set updated_at(value: Date) {
           return result.avg
         }
 
-        async avg(field: keyof ProductModel): Promise<number> {
+        async avg(field: keyof OrderModel): Promise<number> {
           const result = await this.selectFromQuery
             .select(sql`AVG(${sql.raw(field as string)}) as avg `)
             .executeTakeFirst()
@@ -594,8 +685,8 @@ set updated_at(value: Date) {
           return result.avg
         }
 
-        static async sum(field: keyof ProductModel): Promise<number> {
-          const instance = new ProductModel(null)
+        static async sum(field: keyof OrderModel): Promise<number> {
+          const instance = new OrderModel(null)
 
           const result = await instance.selectFromQuery
             .select(sql`SUM(${sql.raw(field as string)}) as sum `)
@@ -604,7 +695,7 @@ set updated_at(value: Date) {
           return result.sum
         }
 
-        async sum(field: keyof ProductModel): Promise<number> {
+        async sum(field: keyof OrderModel): Promise<number> {
           const result = this.selectFromQuery
             .select(sql`SUM(${sql.raw(field as string)}) as sum `)
             .executeTakeFirst()
@@ -612,7 +703,7 @@ set updated_at(value: Date) {
           return result.sum
         }
         
-        async applyGet(): Promise<ProductModel[]> {
+        async applyGet(): Promise<OrderModel[]> {
           let models
         
           if (this.hasSelect) {
@@ -624,51 +715,51 @@ set updated_at(value: Date) {
           this.mapCustomGetters(models)
           await this.loadRelations(models)
   
-          const data = await Promise.all(models.map(async (model: ProductModel) => {
-            return new ProductModel(model)
+          const data = await Promise.all(models.map(async (model: OrderModel) => {
+            return new OrderModel(model)
           }))
           
           return data
         }
 
-        async get(): Promise<ProductModel[]> {
+        async get(): Promise<OrderModel[]> {
           return await this.applyGet()
         }
 
-        static async get(): Promise<ProductModel[]> {
-          const instance = new ProductModel(null)
+        static async get(): Promise<OrderModel[]> {
+          const instance = new OrderModel(null)
 
           return await instance.applyGet()
         }
 
-        has(relation: string): ProductModel {
+        has(relation: string): OrderModel {
           this.selectFromQuery = this.selectFromQuery.where(({ exists, selectFrom }: any) =>
             exists(
               selectFrom(relation)
                 .select('1')
-                .whereRef(`${relation}.product_id`, '=', 'products.id'),
+                .whereRef(`${relation}.order_id`, '=', 'orders.id'),
             ),
           )
 
           return this
         }
 
-        static has(relation: string): ProductModel {
-          const instance = new ProductModel(null)
+        static has(relation: string): OrderModel {
+          const instance = new OrderModel(null)
 
           instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
             exists(
               selectFrom(relation)
                 .select('1')
-                .whereRef(`${relation}.product_id`, '=', 'products.id'),
+                .whereRef(`${relation}.order_id`, '=', 'orders.id'),
             ),
           )
 
           return instance
         }
 
-        static whereExists(callback: (qb: any) => any): ProductModel {
-          const instance = new ProductModel(null)
+        static whereExists(callback: (qb: any) => any): OrderModel {
+          const instance = new OrderModel(null)
 
           instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) => 
             exists(callback({ exists, selectFrom }))
@@ -679,8 +770,8 @@ set updated_at(value: Date) {
 
         applyWhereHas(
           relation: string,
-          callback: (query: SubqueryBuilder<keyof ProductModel>) => void
-        ): ProductModel {
+          callback: (query: SubqueryBuilder<keyof OrderModel>) => void
+        ): OrderModel {
           const subqueryBuilder = new SubqueryBuilder()
           
           callback(subqueryBuilder)
@@ -690,7 +781,7 @@ set updated_at(value: Date) {
             .where(({ exists, selectFrom }: any) => {
               let subquery = selectFrom(relation)
                 .select('1')
-                .whereRef(`${relation}.product_id`, '=', 'products.id')
+                .whereRef(`${relation}.order_id`, '=', 'orders.id')
   
             conditions.forEach((condition) => {
               switch (condition.method) {
@@ -739,27 +830,27 @@ set updated_at(value: Date) {
 
         whereHas(
           relation: string,
-          callback: (query: SubqueryBuilder<keyof ProductModel>) => void
-        ): ProductModel {
+          callback: (query: SubqueryBuilder<keyof OrderModel>) => void
+        ): OrderModel {
           return this.applyWhereHas(relation, callback)
         }
 
         static whereHas(
           relation: string,
-          callback: (query: SubqueryBuilder<keyof ProductModel>) => void
-        ): ProductModel {
-          const instance = new ProductModel(null)
+          callback: (query: SubqueryBuilder<keyof OrderModel>) => void
+        ): OrderModel {
+          const instance = new OrderModel(null)
           
           return instance.applyWhereHas(relation, callback)
         }
 
-        applyDoesntHave(relation: string): ProductModel {
+        applyDoesntHave(relation: string): OrderModel {
           this.selectFromQuery = this.selectFromQuery.where(({ not, exists, selectFrom }: any) =>
             not(
               exists(
                 selectFrom(relation)
                   .select('1')
-                  .whereRef(`${relation}.product_id`, '=', 'products.id'),
+                  .whereRef(`${relation}.order_id`, '=', 'orders.id'),
               ),
             )
           )
@@ -767,17 +858,17 @@ set updated_at(value: Date) {
           return this
         }
 
-        doesntHave(relation: string): ProductModel {
+        doesntHave(relation: string): OrderModel {
           return this.applyDoesntHave(relation)
         }
 
-        static doesntHave(relation: string): ProductModel {
-          const instance = new ProductModel(null)
+        static doesntHave(relation: string): OrderModel {
+          const instance = new OrderModel(null)
 
           return instance.applyDoesntHave(relation)
         }
 
-        applyWhereDoesntHave(relation: string, callback: (query: SubqueryBuilder<ProductsTable>) => void): ProductModel {
+        applyWhereDoesntHave(relation: string, callback: (query: SubqueryBuilder<OrdersTable>) => void): OrderModel {
           const subqueryBuilder = new SubqueryBuilder()
 
           callback(subqueryBuilder)
@@ -787,7 +878,7 @@ set updated_at(value: Date) {
             .where(({ exists, selectFrom, not }: any) => {
               const subquery = selectFrom(relation)
                 .select('1')
-                .whereRef(`${relation}.product_id`, '=', 'products.id')
+                .whereRef(`${relation}.order_id`, '=', 'orders.id')
 
               return not(exists(subquery))
             })
@@ -833,28 +924,28 @@ set updated_at(value: Date) {
           return this
         }
 
-        whereDoesntHave(relation: string, callback: (query: SubqueryBuilder<ProductsTable>) => void): ProductModel {
+        whereDoesntHave(relation: string, callback: (query: SubqueryBuilder<OrdersTable>) => void): OrderModel {
           return this.applyWhereDoesntHave(relation, callback)
         }
 
         static whereDoesntHave(
           relation: string,
-          callback: (query: SubqueryBuilder<ProductsTable>) => void
-        ): ProductModel {
-          const instance = new ProductModel(null)
+          callback: (query: SubqueryBuilder<OrdersTable>) => void
+        ): OrderModel {
+          const instance = new OrderModel(null)
           
           return instance.applyWhereDoesntHave(relation, callback)
         }
 
-        async applyPaginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<ProductResponse> {
-          const totalRecordsResult = await DB.instance.selectFrom('products')
+        async applyPaginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<OrderResponse> {
+          const totalRecordsResult = await DB.instance.selectFrom('orders')
             .select(DB.instance.fn.count('id').as('total')) // Use 'id' or another actual column name
             .executeTakeFirst()
   
           const totalRecords = Number(totalRecordsResult?.total) || 0
           const totalPages = Math.ceil(totalRecords / (options.limit ?? 10))
   
-          const productsWithExtra = await DB.instance.selectFrom('products')
+          const ordersWithExtra = await DB.instance.selectFrom('orders')
             .selectAll()
             .orderBy('id', 'asc') // Assuming 'id' is used for cursor-based pagination
             .limit((options.limit ?? 10) + 1) // Fetch one extra record
@@ -863,10 +954,10 @@ set updated_at(value: Date) {
   
   
             let nextCursor = null
-            if (productsWithExtra.length > (options.limit ?? 10)) nextCursor = productsWithExtra.pop()?.id ?? null
+            if (ordersWithExtra.length > (options.limit ?? 10)) nextCursor = ordersWithExtra.pop()?.id ?? null
   
           return {
-            data: productsWithExtra,
+            data: ordersWithExtra,
             paging: {
               total_records: totalRecords,
               page: options.page || 1,
@@ -876,92 +967,95 @@ set updated_at(value: Date) {
           }
         }
 
-        async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<ProductResponse> {
+        async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<OrderResponse> {
           return await this.applyPaginate(options)
         }
   
-        // Method to get all products
-        static async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<ProductResponse> {
-          const instance = new ProductModel(null)
+        // Method to get all orders
+        static async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<OrderResponse> {
+          const instance = new OrderModel(null)
 
           return await instance.applyPaginate(options)
         }
 
-        async applyCreate(newProduct: NewProduct): Promise<ProductModel> {
+        async applyCreate(newOrder: NewOrder): Promise<OrderModel> {
           const filteredValues = Object.fromEntries(
-            Object.entries(newProduct).filter(([key]) => 
+            Object.entries(newOrder).filter(([key]) => 
               !this.guarded.includes(key) && this.fillable.includes(key)
             ),
-          ) as NewProduct
+          ) as NewOrder
 
           await this.mapCustomSetters(filteredValues)
           
           filteredValues['uuid'] = randomUUIDv7()
 
-          const result = await DB.instance.insertInto('products')
+          const result = await DB.instance.insertInto('orders')
             .values(filteredValues)
             .executeTakeFirst()
 
-          const model = await this.find(Number(result.numInsertedOrUpdatedRows)) as ProductModel
+          const model = await this.find(Number(result.numInsertedOrUpdatedRows)) as OrderModel
 
-          
+          if (model)
+ dispatch('order:created', model)
 
           return model
         }
         
-        async create(newProduct: NewProduct): Promise<ProductModel> {
-          return await this.applyCreate(newProduct)
+        async create(newOrder: NewOrder): Promise<OrderModel> {
+          return await this.applyCreate(newOrder)
         }
   
-        static async create(newProduct: NewProduct): Promise<ProductModel> {
-          const instance = new ProductModel(null)
+        static async create(newOrder: NewOrder): Promise<OrderModel> {
+          const instance = new OrderModel(null)
 
-          return await instance.applyCreate(newProduct)
+          return await instance.applyCreate(newOrder)
         }
   
-        static async createMany(newProduct: NewProduct[]): Promise<void> {
-          const instance = new ProductModel(null)
+        static async createMany(newOrder: NewOrder[]): Promise<void> {
+          const instance = new OrderModel(null)
 
-          const valuesFiltered = newProduct.map((newProduct: NewProduct) => {
+          const valuesFiltered = newOrder.map((newOrder: NewOrder) => {
             const filteredValues = Object.fromEntries(
-              Object.entries(newProduct).filter(([key]) =>
+              Object.entries(newOrder).filter(([key]) =>
                 !instance.guarded.includes(key) && instance.fillable.includes(key),
               ),
-            ) as NewProduct
+            ) as NewOrder
         
             filteredValues['uuid'] = randomUUIDv7()
             
             return filteredValues
           })
 
-          await DB.instance.insertInto('products')
+          await DB.instance.insertInto('orders')
             .values(valuesFiltered)
             .executeTakeFirst()
         }
   
-        static async forceCreate(newProduct: NewProduct): Promise<ProductModel> {
-          const result = await DB.instance.insertInto('products')
-            .values(newProduct)
+        static async forceCreate(newOrder: NewOrder): Promise<OrderModel> {
+          const result = await DB.instance.insertInto('orders')
+            .values(newOrder)
             .executeTakeFirst()
   
-          const model = await find(Number(result.numInsertedOrUpdatedRows)) as ProductModel
+          const model = await find(Number(result.numInsertedOrUpdatedRows)) as OrderModel
   
-          
+          if (model)
+ dispatch('order:created', model)
   
           return model
         }
   
-        // Method to remove a Product
+        // Method to remove a Order
         static async remove(id: number): Promise<any> {
-          
+          const instance = new OrderModel(null)
+  
+          const model = await instance.find(Number(id))
   
           
   
-          
-  
-          
+          if (model)
+ dispatch('order:deleted', model)
         
-          return await DB.instance.deleteFrom('products')
+          return await DB.instance.deleteFrom('orders')
             .where('id', '=', id)
             .execute()
         }
@@ -982,66 +1076,66 @@ set updated_at(value: Date) {
           return this
         }
 
-        where<V = string>(column: keyof ProductsTable, ...args: [V] | [Operator, V]): ProductModel {
+        where<V = string>(column: keyof OrdersTable, ...args: [V] | [Operator, V]): OrderModel {
           return this.applyWhere<V>(column, ...args)
         }
 
-        static where<V = string>(column: keyof ProductsTable, ...args: [V] | [Operator, V]): ProductModel {
-          const instance = new ProductModel(null)
+        static where<V = string>(column: keyof OrdersTable, ...args: [V] | [Operator, V]): OrderModel {
+          const instance = new OrderModel(null)
 
           return instance.applyWhere<V>(column, ...args)
         }
 
-        whereColumn(first: keyof ProductsTable, operator: Operator, second: keyof ProductsTable): ProductModel {
+        whereColumn(first: keyof OrdersTable, operator: Operator, second: keyof OrdersTable): OrderModel {
           this.selectFromQuery = this.selectFromQuery.whereRef(first, operator, second)
 
           return this
         }
 
-        static whereColumn(first: keyof ProductsTable, operator: Operator, second: keyof ProductsTable): ProductModel {
-          const instance = new ProductModel(null)
+        static whereColumn(first: keyof OrdersTable, operator: Operator, second: keyof OrdersTable): OrderModel {
+          const instance = new OrderModel(null)
 
           instance.selectFromQuery = instance.selectFromQuery.whereRef(first, operator, second)
 
           return instance
         }
 
-        applyWhereRef(column: keyof ProductsTable, ...args: string[]): ProductModel {
+        applyWhereRef(column: keyof OrdersTable, ...args: string[]): OrderModel {
           const [operatorOrValue, value] = args
           const operator = value === undefined ? '=' : operatorOrValue
           const actualValue = value === undefined ? operatorOrValue : value
 
-          const instance = new ProductModel(null)
+          const instance = new OrderModel(null)
           instance.selectFromQuery = instance.selectFromQuery.whereRef(column, operator, actualValue)
           
           return instance
         }
         
-        whereRef(column: keyof ProductsTable, ...args: string[]): ProductModel {
+        whereRef(column: keyof OrdersTable, ...args: string[]): OrderModel {
           return this.applyWhereRef(column, ...args)
         }
 
-        static whereRef(column: keyof ProductsTable, ...args: string[]): ProductModel {
-          const instance = new ProductModel(null)
+        static whereRef(column: keyof OrdersTable, ...args: string[]): OrderModel {
+          const instance = new OrderModel(null)
 
           return instance.applyWhereRef(column, ...args)
         }
 
-        whereRaw(sqlStatement: string): ProductModel {
+        whereRaw(sqlStatement: string): OrderModel {
           this.selectFromQuery = this.selectFromQuery.where(sql`${sqlStatement}`)
 
           return this
         }
 
-        static whereRaw(sqlStatement: string): ProductModel {
-          const instance = new ProductModel(null)
+        static whereRaw(sqlStatement: string): OrderModel {
+          const instance = new OrderModel(null)
 
           instance.selectFromQuery = instance.selectFromQuery.where(sql`${sqlStatement}`)
 
           return instance
         }
 
-        applyOrWhere(...conditions: [string, any][]): ProductModel {
+        applyOrWhere(...conditions: [string, any][]): OrderModel {
           this.selectFromQuery = this.selectFromQuery.where((eb: any) => {
             return eb.or(
               conditions.map(([column, value]) => eb(column, '=', value))
@@ -1063,28 +1157,28 @@ set updated_at(value: Date) {
           return this
         }
   
-        orWhere(...conditions: [string, any][]): ProductModel {
+        orWhere(...conditions: [string, any][]): OrderModel {
           return this.applyOrWhere(...conditions)
         }
 
-        static orWhere(...conditions: [string, any][]): ProductModel {
-          const instance = new ProductModel(null)
+        static orWhere(...conditions: [string, any][]): OrderModel {
+          const instance = new OrderModel(null)
 
           return instance.applyOrWhere(...conditions)
         }
 
         when(
           condition: boolean,
-          callback: (query: ProductModel) => ProductModel,
-        ): ProductModel {
-          return ProductModel.when(condition, callback)
+          callback: (query: OrderModel) => OrderModel,
+        ): OrderModel {
+          return OrderModel.when(condition, callback)
         }
   
         static when(
           condition: boolean,
-          callback: (query: ProductModel) => ProductModel,
-        ): ProductModel {
-          let instance = new ProductModel(null)
+          callback: (query: OrderModel) => OrderModel,
+        ): OrderModel {
+          let instance = new OrderModel(null)
   
           if (condition)
             instance = callback(instance)
@@ -1092,7 +1186,7 @@ set updated_at(value: Date) {
           return instance
         }
 
-        whereNotNull(column: keyof ProductsTable): ProductModel {
+        whereNotNull(column: keyof OrdersTable): OrderModel {
           this.selectFromQuery = this.selectFromQuery.where((eb: any) =>
             eb(column, '=', '').or(column, 'is not', null)
           )
@@ -1108,8 +1202,8 @@ set updated_at(value: Date) {
           return this
         }
   
-        static whereNotNull(column: keyof ProductsTable): ProductModel {
-          const instance = new ProductModel(null)
+        static whereNotNull(column: keyof OrdersTable): OrderModel {
+          const instance = new OrderModel(null)
   
           instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
             eb(column, '=', '').or(column, 'is not', null)
@@ -1126,7 +1220,7 @@ set updated_at(value: Date) {
           return instance
         }
 
-        whereNull(column: keyof ProductsTable): ProductModel {
+        whereNull(column: keyof OrdersTable): OrderModel {
           this.selectFromQuery = this.selectFromQuery.where((eb: any) =>
             eb(column, '=', '').or(column, 'is', null)
           )
@@ -1142,8 +1236,8 @@ set updated_at(value: Date) {
           return this
         }
   
-        static whereNull(column: keyof ProductsTable): ProductModel {
-          const instance = new ProductModel(null)
+        static whereNull(column: keyof OrdersTable): OrderModel {
+          const instance = new OrderModel(null)
   
           instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
             eb(column, '=', '').or(column, 'is', null)
@@ -1160,65 +1254,113 @@ set updated_at(value: Date) {
           return instance
         }
   
-        static whereName(value: string): ProductModel {
-          const instance = new ProductModel(null)
+        static whereCustomerId(value: string): OrderModel {
+          const instance = new OrderModel(null)
   
-          instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
-  
-          return instance
-        } 
-
-static whereDescription(value: string): ProductModel {
-          const instance = new ProductModel(null)
-  
-          instance.selectFromQuery = instance.selectFromQuery.where('description', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('customer_id', '=', value)
   
           return instance
         } 
 
-static whereKey(value: string): ProductModel {
-          const instance = new ProductModel(null)
-  
-          instance.selectFromQuery = instance.selectFromQuery.where('key', '=', value)
-  
-          return instance
-        } 
-
-static whereUnitPrice(value: string): ProductModel {
-          const instance = new ProductModel(null)
-  
-          instance.selectFromQuery = instance.selectFromQuery.where('unitPrice', '=', value)
-  
-          return instance
-        } 
-
-static whereStatus(value: string): ProductModel {
-          const instance = new ProductModel(null)
+static whereStatus(value: string): OrderModel {
+          const instance = new OrderModel(null)
   
           instance.selectFromQuery = instance.selectFromQuery.where('status', '=', value)
   
           return instance
         } 
 
-static whereImage(value: string): ProductModel {
-          const instance = new ProductModel(null)
+static whereTotalAmount(value: string): OrderModel {
+          const instance = new OrderModel(null)
   
-          instance.selectFromQuery = instance.selectFromQuery.where('image', '=', value)
-  
-          return instance
-        } 
-
-static whereProviderId(value: string): ProductModel {
-          const instance = new ProductModel(null)
-  
-          instance.selectFromQuery = instance.selectFromQuery.where('providerId', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('total_amount', '=', value)
   
           return instance
         } 
 
+static whereTaxAmount(value: string): OrderModel {
+          const instance = new OrderModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('tax_amount', '=', value)
+  
+          return instance
+        } 
+
+static whereDiscountAmount(value: string): OrderModel {
+          const instance = new OrderModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('discount_amount', '=', value)
+  
+          return instance
+        } 
+
+static whereDeliveryFee(value: string): OrderModel {
+          const instance = new OrderModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('delivery_fee', '=', value)
+  
+          return instance
+        } 
+
+static whereTipAmount(value: string): OrderModel {
+          const instance = new OrderModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('tip_amount', '=', value)
+  
+          return instance
+        } 
+
+static whereOrderType(value: string): OrderModel {
+          const instance = new OrderModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('order_type', '=', value)
+  
+          return instance
+        } 
+
+static whereDeliveryAddress(value: string): OrderModel {
+          const instance = new OrderModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('delivery_address', '=', value)
+  
+          return instance
+        } 
+
+static whereSpecialInstructions(value: string): OrderModel {
+          const instance = new OrderModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('special_instructions', '=', value)
+  
+          return instance
+        } 
+
+static whereEstimatedDeliveryTime(value: string): OrderModel {
+          const instance = new OrderModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('estimated_delivery_time', '=', value)
+  
+          return instance
+        } 
+
+static whereAppliedCouponId(value: string): OrderModel {
+          const instance = new OrderModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('applied_coupon_id', '=', value)
+  
+          return instance
+        } 
+
+static whereOrderItems(value: string): OrderModel {
+          const instance = new OrderModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('order_items', '=', value)
+  
+          return instance
+        } 
 
 
-        applyWhereIn<V>(column: keyof ProductsTable, values: V[]) {
+
+        applyWhereIn<V>(column: keyof OrdersTable, values: V[]) {
           this.selectFromQuery = this.selectFromQuery.where(column, 'in', values)
   
           this.updateFromQuery = this.updateFromQuery.where(column, 'in', values)
@@ -1228,17 +1370,17 @@ static whereProviderId(value: string): ProductModel {
           return this
         }
 
-        whereIn<V = number>(column: keyof ProductsTable, values: V[]): ProductModel {
+        whereIn<V = number>(column: keyof OrdersTable, values: V[]): OrderModel {
           return this.applyWhereIn<V>(column, values)
         }
   
-        static whereIn<V = number>(column: keyof ProductsTable, values: V[]): ProductModel {
-          const instance = new ProductModel(null)
+        static whereIn<V = number>(column: keyof OrdersTable, values: V[]): OrderModel {
+          const instance = new OrderModel(null)
   
           return instance.applyWhereIn<V>(column, values)
         }
 
-        applyWhereBetween<V>(column: keyof ProductsTable, range: [V, V]): ProductModel {
+        applyWhereBetween<V>(column: keyof OrdersTable, range: [V, V]): OrderModel {
           if (range.length !== 2) {
             throw new HttpError(500, 'Range must have exactly two values: [min, max]')
           }
@@ -1252,17 +1394,17 @@ static whereProviderId(value: string): ProductModel {
           return this
         }
 
-        whereBetween<V = number>(column: keyof ProductsTable, range: [V, V]): ProductModel {
+        whereBetween<V = number>(column: keyof OrdersTable, range: [V, V]): OrderModel {
           return this.applyWhereBetween<V>(column, range)
         }
 
-        static whereBetween<V = number>(column: keyof ProductsTable, range: [V, V]): ProductModel {
-          const instance = new ProductModel(null)
+        static whereBetween<V = number>(column: keyof OrdersTable, range: [V, V]): OrderModel {
+          const instance = new OrderModel(null)
 
           return instance.applyWhereBetween<V>(column, range)
         }
 
-        applyWhereLike(column: keyof ProductsTable, value: string): ProductModel {
+        applyWhereLike(column: keyof OrdersTable, value: string): OrderModel {
           this.selectFromQuery = this.selectFromQuery.where(sql` ${sql.raw(column as string)} LIKE ${value}`)
   
           this.updateFromQuery = this.updateFromQuery.where(sql` ${sql.raw(column as string)} LIKE ${value}`)
@@ -1272,17 +1414,17 @@ static whereProviderId(value: string): ProductModel {
           return this
         }
 
-        whereLike(column: keyof ProductsTable, value: string): ProductModel {
+        whereLike(column: keyof OrdersTable, value: string): OrderModel {
           return this.applyWhereLike(column, value)
         }
           
-        static whereLike(column: keyof ProductsTable, value: string): ProductModel {
-          const instance = new ProductModel(null)
+        static whereLike(column: keyof OrdersTable, value: string): OrderModel {
+          const instance = new OrderModel(null)
   
           return instance.applyWhereLike(column, value)
         }
   
-        applyWhereNotIn<V>(column: keyof ProductsTable, values: V[]): ProductModel {
+        applyWhereNotIn<V>(column: keyof OrdersTable, values: V[]): OrderModel {
           this.selectFromQuery = this.selectFromQuery.where(column, 'not in', values)
   
           this.updateFromQuery = this.updateFromQuery.where(column, 'not in', values)
@@ -1292,12 +1434,12 @@ static whereProviderId(value: string): ProductModel {
           return this
         }
 
-        whereNotIn<V>(column: keyof ProductsTable, values: V[]): ProductModel {
+        whereNotIn<V>(column: keyof OrdersTable, values: V[]): OrderModel {
           return this.applyWhereNotIn<V>(column, values)
         }
   
-        static whereNotIn<V = number>(column: keyof ProductsTable, values: V[]): ProductModel {
-          const instance = new ProductModel(null)
+        static whereNotIn<V = number>(column: keyof OrdersTable, values: V[]): OrderModel {
+          const instance = new OrderModel(null)
   
           return instance.applyWhereNotIn<V>(column, values)
         }
@@ -1315,10 +1457,10 @@ static whereProviderId(value: string): ProductModel {
           return model !== null && model !== undefined
         }
 
-        static async latest(): Promise<ProductType | undefined> {
-          const instance = new ProductModel(null)
+        static async latest(): Promise<OrderType | undefined> {
+          const instance = new OrderModel(null)
 
-          const model = await DB.instance.selectFrom('products')
+          const model = await DB.instance.selectFrom('orders')
             .selectAll()
             .orderBy('id', 'desc')
             .executeTakeFirst()
@@ -1328,15 +1470,15 @@ static whereProviderId(value: string): ProductModel {
 
           instance.mapCustomGetters(model)
 
-          const data = new ProductModel(model as ProductType)
+          const data = new OrderModel(model as OrderType)
 
           return data
         }
 
-        static async oldest(): Promise<ProductType | undefined> {
-          const instance = new ProductModel(null)
+        static async oldest(): Promise<OrderType | undefined> {
+          const instance = new OrderModel(null)
 
-          const model = await DB.instance.selectFrom('products')
+          const model = await DB.instance.selectFrom('orders')
             .selectAll()
             .orderBy('id', 'asc')
             .executeTakeFirst()
@@ -1346,18 +1488,18 @@ static whereProviderId(value: string): ProductModel {
 
           instance.mapCustomGetters(model)
 
-          const data = new ProductModel(model as ProductType)
+          const data = new OrderModel(model as OrderType)
 
           return data
         }
   
         static async firstOrCreate(
-          condition: Partial<ProductType>,
-          newProduct: NewProduct,
-        ): Promise<ProductModel> {
-          const instance = new ProductModel(null)
+          condition: Partial<OrderType>,
+          newOrder: NewOrder,
+        ): Promise<OrderModel> {
+          const instance = new OrderModel(null)
 
-          const key = Object.keys(condition)[0] as keyof ProductType
+          const key = Object.keys(condition)[0] as keyof OrderType
   
           if (!key) {
             throw new HttpError(500, 'Condition must contain at least one key-value pair')
@@ -1366,29 +1508,29 @@ static whereProviderId(value: string): ProductModel {
           const value = condition[key]
   
           // Attempt to find the first record matching the condition
-          const existingProduct = await DB.instance.selectFrom('products')
+          const existingOrder = await DB.instance.selectFrom('orders')
             .selectAll()
             .where(key, '=', value)
             .executeTakeFirst()
   
-          if (existingProduct) {
-            instance.mapCustomGetters(existingProduct)
-            await instance.loadRelations(existingProduct)
+          if (existingOrder) {
+            instance.mapCustomGetters(existingOrder)
+            await instance.loadRelations(existingOrder)
             
-            return new ProductModel(existingProduct as ProductType)
+            return new OrderModel(existingOrder as OrderType)
           }
           else {
-            return await instance.create(newProduct)
+            return await instance.create(newOrder)
           }
         }
   
         static async updateOrCreate(
-          condition: Partial<ProductType>,
-          newProduct: NewProduct,
-        ): Promise<ProductModel> {
-          const instance = new ProductModel(null)
+          condition: Partial<OrderType>,
+          newOrder: NewOrder,
+        ): Promise<OrderModel> {
+          const instance = new OrderModel(null)
 
-          const key = Object.keys(condition)[0] as keyof ProductType
+          const key = Object.keys(condition)[0] as keyof OrderType
   
           if (!key) {
             throw new HttpError(500, 'Condition must contain at least one key-value pair')
@@ -1397,38 +1539,38 @@ static whereProviderId(value: string): ProductModel {
           const value = condition[key]
   
           // Attempt to find the first record matching the condition
-          const existingProduct = await DB.instance.selectFrom('products')
+          const existingOrder = await DB.instance.selectFrom('orders')
             .selectAll()
             .where(key, '=', value)
             .executeTakeFirst()
   
-          if (existingProduct) {
+          if (existingOrder) {
             // If found, update the existing record
-            await DB.instance.updateTable('products')
-              .set(newProduct)
+            await DB.instance.updateTable('orders')
+              .set(newOrder)
               .where(key, '=', value)
               .executeTakeFirstOrThrow()
   
             // Fetch and return the updated record
-            const updatedProduct = await DB.instance.selectFrom('products')
+            const updatedOrder = await DB.instance.selectFrom('orders')
               .selectAll()
               .where(key, '=', value)
               .executeTakeFirst()
   
-            if (!updatedProduct) {
+            if (!updatedOrder) {
               throw new HttpError(500, 'Failed to fetch updated record')
             }
   
             instance.hasSaved = true
 
-            return new ProductModel(updatedProduct as ProductType)
+            return new OrderModel(updatedOrder as OrderType)
           } else {
             // If not found, create a new record
-            return await instance.create(newProduct)
+            return await instance.create(newOrder)
           }
         }
 
-        async loadRelations(models: ProductJsonResponse | ProductJsonResponse[]): Promise<void> {
+        async loadRelations(models: OrderJsonResponse | OrderJsonResponse[]): Promise<void> {
           // Handle both single model and array of models
           const modelArray = Array.isArray(models) ? models : [models]
           if (!modelArray.length) return
@@ -1438,22 +1580,22 @@ static whereProviderId(value: string): ProductModel {
           for (const relation of this.withRelations) {
             const relatedRecords = await DB.instance
               .selectFrom(relation)
-              .where('product_id', 'in', modelIds)
+              .where('order_id', 'in', modelIds)
               .selectAll()
               .execute()
         
             if (Array.isArray(models)) {
-              models.map((model: ProductJsonResponse) => {
-                const records = relatedRecords.filter((record: { product_id: number }) => {
-                  return record.product_id === model.id
+              models.map((model: OrderJsonResponse) => {
+                const records = relatedRecords.filter((record: { order_id: number }) => {
+                  return record.order_id === model.id
                 })
 
                 model[relation] = records.length === 1 ? records[0] : records
                 return model
               })
             } else {
-              const records = relatedRecords.filter((record: { product_id: number }) => {
-                return record.product_id === models.id
+              const records = relatedRecords.filter((record: { order_id: number }) => {
+                return record.order_id === models.id
               })
         
               models[relation] = records.length === 1 ? records[0] : records
@@ -1461,22 +1603,22 @@ static whereProviderId(value: string): ProductModel {
           }
         }
   
-        with(relations: string[]): ProductModel {
+        with(relations: string[]): OrderModel {
           this.withRelations = relations
             
           return this
         }
   
-        static with(relations: string[]): ProductModel {
-          const instance = new ProductModel(null)
+        static with(relations: string[]): OrderModel {
+          const instance = new OrderModel(null)
     
           instance.withRelations = relations
             
           return instance
         }
   
-        async last(): Promise<ProductType | undefined> {
-          let model: ProductModel | undefined
+        async last(): Promise<OrderType | undefined> {
+          let model: OrderModel | undefined
 
           if (this.hasSelect) {
             model = await this.selectFromQuery.executeTakeFirst()
@@ -1490,116 +1632,116 @@ static whereProviderId(value: string): ProductModel {
             await this.loadRelations(model)
           }
 
-          const data = new ProductModel(model as ProductType)
+          const data = new OrderModel(model as OrderType)
   
           return data
         }
   
-        static async last(): Promise<ProductType | undefined> {
-          const model = await DB.instance.selectFrom('products').selectAll().orderBy('id', 'desc').executeTakeFirst()
+        static async last(): Promise<OrderType | undefined> {
+          const model = await DB.instance.selectFrom('orders').selectAll().orderBy('id', 'desc').executeTakeFirst()
   
           if (!model)
             return undefined
   
-          const data = new ProductModel(model as ProductType)
+          const data = new OrderModel(model as OrderType)
   
           return data
         }
 
-        orderBy(column: keyof ProductsTable, order: 'asc' | 'desc'): ProductModel {
+        orderBy(column: keyof OrdersTable, order: 'asc' | 'desc'): OrderModel {
           this.selectFromQuery = this.selectFromQuery.orderBy(column, order)
   
           return this
         }
   
-        static orderBy(column: keyof ProductsTable, order: 'asc' | 'desc'): ProductModel {
-          const instance = new ProductModel(null)
+        static orderBy(column: keyof OrdersTable, order: 'asc' | 'desc'): OrderModel {
+          const instance = new OrderModel(null)
   
           instance.selectFromQuery = instance.selectFromQuery.orderBy(column, order)
   
           return instance
         }
 
-        groupBy(column: keyof ProductsTable): ProductModel {
+        groupBy(column: keyof OrdersTable): OrderModel {
           this.selectFromQuery = this.selectFromQuery.groupBy(column)
   
           return this
         }
   
-        static groupBy(column: keyof ProductsTable): ProductModel {
-          const instance = new ProductModel(null)
+        static groupBy(column: keyof OrdersTable): OrderModel {
+          const instance = new OrderModel(null)
   
           instance.selectFromQuery = instance.selectFromQuery.groupBy(column)
   
           return instance
         }
 
-        having<V = string>(column: keyof ProductsTable, operator: Operator, value: V): ProductModel {
+        having<V = string>(column: keyof OrdersTable, operator: Operator, value: V): OrderModel {
           this.selectFromQuery = this.selectFromQuery.having(column, operator, value)
   
           return this
         }
 
-        static having<V = string>(column: keyof ProductsTable, operator: Operator, value: V): ProductModel {
-          const instance = new ProductModel(null)
+        static having<V = string>(column: keyof OrdersTable, operator: Operator, value: V): OrderModel {
+          const instance = new OrderModel(null)
   
           instance.selectFromQuery = instance.selectFromQuery.having(column, operator, value)
   
           return instance
         }
 
-        inRandomOrder(): ProductModel {
+        inRandomOrder(): OrderModel {
           this.selectFromQuery = this.selectFromQuery.orderBy(sql` ${sql.raw('RANDOM()')} `)
 
           return this
         }
         
-        static inRandomOrder(): ProductModel {
-          const instance = new ProductModel(null)
+        static inRandomOrder(): OrderModel {
+          const instance = new OrderModel(null)
 
           instance.selectFromQuery = instance.selectFromQuery.orderBy(sql` ${sql.raw('RANDOM()')} `)
 
           return instance
         }
 
-        orderByDesc(column: keyof ProductsTable): ProductModel {
+        orderByDesc(column: keyof OrdersTable): OrderModel {
           this.selectFromQuery = this.selectFromQuery.orderBy(column, 'desc')
   
           return this
         }
 
-        static orderByDesc(column: keyof ProductsTable): ProductModel {
-          const instance = new ProductModel(null)
+        static orderByDesc(column: keyof OrdersTable): OrderModel {
+          const instance = new OrderModel(null)
   
           instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'desc')
   
           return instance
         }
           
-        orderByAsc(column: keyof ProductsTable): ProductModel {
+        orderByAsc(column: keyof OrdersTable): OrderModel {
           this.selectFromQuery = this.selectFromQuery.orderBy(column, 'asc')
   
           return this
         }
   
-        static orderByAsc(column: keyof ProductsTable): ProductModel {
-          const instance = new ProductModel(null)
+        static orderByAsc(column: keyof OrdersTable): OrderModel {
+          const instance = new OrderModel(null)
   
           instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'asc')
   
           return instance
         }
 
-        async update(newProduct: ProductUpdate): Promise<ProductModel | undefined> {
+        async update(newOrder: OrderUpdate): Promise<OrderModel | undefined> {
           const filteredValues = Object.fromEntries(
-            Object.entries(newProduct).filter(([key]) => 
+            Object.entries(newOrder).filter(([key]) => 
               !this.guarded.includes(key) && this.fillable.includes(key)
             ),
-          ) as NewProduct
+          ) as NewOrder
 
           await this.mapCustomSetters(filteredValues)
 
-          await DB.instance.updateTable('products')
+          await DB.instance.updateTable('orders')
             .set(filteredValues)
             .where('id', '=', this.id)
             .executeTakeFirst()
@@ -1607,7 +1749,8 @@ static whereProviderId(value: string): ProductModel {
           if (this.id) {
             const model = await this.find(this.id)
 
-            
+            if (model)
+ dispatch('order:updated', model)
     
             return model
           }
@@ -1617,15 +1760,15 @@ static whereProviderId(value: string): ProductModel {
           return undefined
         }
   
-        async forceUpdate(product: ProductUpdate): Promise<ProductModel | undefined> {
+        async forceUpdate(order: OrderUpdate): Promise<OrderModel | undefined> {
           if (this.id === undefined) {
-            this.updateFromQuery.set(product).execute()
+            this.updateFromQuery.set(order).execute()
           }
 
-          await this.mapCustomSetters(product)
+          await this.mapCustomSetters(order)
   
-          await DB.instance.updateTable('products')
-            .set(product)
+          await DB.instance.updateTable('orders')
+            .set(order)
             .where('id', '=', this.id)
             .executeTakeFirst()
   
@@ -1633,7 +1776,8 @@ static whereProviderId(value: string): ProductModel {
             const model = await this.find(this.id)
   
   
-            
+            if (model)
+ dispatch('order:updated', model)
 
             this.hasSaved = true
   
@@ -1645,7 +1789,7 @@ static whereProviderId(value: string): ProductModel {
   
         async save(): Promise<void> {
           if (!this)
-            throw new HttpError(500, 'Product data is undefined')
+            throw new HttpError(500, 'Order data is undefined')
         
           await this.mapCustomSetters(this.attributes)
 
@@ -1659,12 +1803,12 @@ static whereProviderId(value: string): ProductModel {
           this.hasSaved = true
         }
 
-        fill(data: Partial<ProductType>): ProductModel {
+        fill(data: Partial<OrderType>): OrderModel {
           const filteredValues = Object.fromEntries(
             Object.entries(data).filter(([key]) => 
               !this.guarded.includes(key) && this.fillable.includes(key)
             ),
-          ) as NewProduct
+          ) as NewOrder
 
           this.attributes = {
             ...this.attributes,
@@ -1674,7 +1818,7 @@ static whereProviderId(value: string): ProductModel {
           return this
         }
 
-        forceFill(data: Partial<ProductType>): ProductModel {
+        forceFill(data: Partial<OrderType>): OrderModel {
           this.attributes = {
             ...this.attributes,
             ...data
@@ -1684,28 +1828,70 @@ static whereProviderId(value: string): ProductModel {
         }
 
   
-        // Method to delete (soft delete) the product instance
-        async delete(): Promise<ProductsTable> {
+        // Method to delete (soft delete) the order instance
+        async delete(): Promise<OrdersTable> {
           if (this.id === undefined)
             this.deleteFromQuery.execute()
-            
-            
+            const model = await this.find(Number(this.id))
+            if (model)
+ dispatch('order:deleted', model)
             
   
-            return await DB.instance.deleteFrom('products')
+            return await DB.instance.deleteFrom('orders')
               .where('id', '=', this.id)
               .execute()
         }
   
         
+        async userBelong(): Promise<UserModel> {
+          if (this.user_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
+  
+          const model = await User
+            .where('id', '=', this.user_id)
+            .first()
+  
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
+  
+          return model
+        }
+
+
+        async couponBelong(): Promise<CouponModel> {
+          if (this.coupon_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
+  
+          const model = await Coupon
+            .where('id', '=', this.coupon_id)
+            .first()
+  
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
+  
+          return model
+        }
+
+
   
         
+          toSearchableObject(): Partial<OrdersTable> {
+              return {
+                  id: this.id,
+customer_id: this.customer_id,
+status: this.status,
+total_amount: this.total_amount,
+order_type: this.order_type,
+created_at: this.created_at
+              }
+          }
+      
   
         
 
         
   
-        distinct(column: keyof ProductType): ProductModel {
+        distinct(column: keyof OrderType): OrderModel {
           this.selectFromQuery = this.selectFromQuery.select(column).distinct()
   
           this.hasSelect = true
@@ -1713,8 +1899,8 @@ static whereProviderId(value: string): ProductModel {
           return this
         }
   
-        static distinct(column: keyof ProductType): ProductModel {
-          const instance = new ProductModel(null)
+        static distinct(column: keyof OrderType): OrderModel {
+          const instance = new OrderModel(null)
   
           instance.selectFromQuery = instance.selectFromQuery.select(column).distinct()
   
@@ -1723,45 +1909,56 @@ static whereProviderId(value: string): ProductModel {
           return instance
         }
   
-        join(table: string, firstCol: string, secondCol: string): ProductModel {
+        join(table: string, firstCol: string, secondCol: string): OrderModel {
           this.selectFromQuery = this.selectFromQuery.innerJoin(table, firstCol, secondCol)
   
           return this
         }
   
-        static join(table: string, firstCol: string, secondCol: string): ProductModel {
-          const instance = new ProductModel(null)
+        static join(table: string, firstCol: string, secondCol: string): OrderModel {
+          const instance = new OrderModel(null)
   
           instance.selectFromQuery = instance.selectFromQuery.innerJoin(table, firstCol, secondCol)
   
           return instance
         }
   
-        toJSON(): Partial<ProductJsonResponse> {
-          const output: Partial<ProductJsonResponse> = {
+        toJSON(): Partial<OrderJsonResponse> {
+          const output: Partial<OrderJsonResponse> = {
 
 id: this.id,
-name: this.name,
-   description: this.description,
-   key: this.key,
-   unit_price: this.unit_price,
+customer_id: this.customer_id,
    status: this.status,
-   image: this.image,
-   provider_id: this.provider_id,
+   total_amount: this.total_amount,
+   tax_amount: this.tax_amount,
+   discount_amount: this.discount_amount,
+   delivery_fee: this.delivery_fee,
+   tip_amount: this.tip_amount,
+   order_type: this.order_type,
+   delivery_address: this.delivery_address,
+   special_instructions: this.special_instructions,
+   estimated_delivery_time: this.estimated_delivery_time,
+   applied_coupon_id: this.applied_coupon_id,
+   order_items: this.order_items,
    
         created_at: this.created_at,
 
         updated_at: this.updated_at,
 
-      ...this.customColumns,
+      orders: this.orders,
+user_id: this.user_id,
+   user: this.user,
+coupon_id: this.coupon_id,
+   coupon: this.coupon,
+...this.customColumns,
 }
 
           return output
         }
   
-        parseResult(model: ProductModel): ProductModel {
+        parseResult(model: OrderModel): OrderModel {
           for (const hiddenAttribute of this.hidden) {
-            delete model[hiddenAttribute as keyof ProductModel]
+            delete model[hiddenAttribute as keyof OrderModel]
           }
 
           return model
@@ -1770,29 +1967,29 @@ name: this.name,
         
       }
   
-      async function find(id: number): Promise<ProductModel | undefined> {
-        let query = DB.instance.selectFrom('products').where('id', '=', id).selectAll()
+      async function find(id: number): Promise<OrderModel | undefined> {
+        let query = DB.instance.selectFrom('orders').where('id', '=', id).selectAll()
   
         const model = await query.executeTakeFirst()
   
         if (!model) return undefined
   
-        return new ProductModel(model)
+        return new OrderModel(model)
       }
   
       export async function count(): Promise<number> {
-        const results = await ProductModel.count()
+        const results = await OrderModel.count()
   
         return results
       }
   
-      export async function create(newProduct: NewProduct): Promise<ProductModel> {
+      export async function create(newOrder: NewOrder): Promise<OrderModel> {
   
-        const result = await DB.instance.insertInto('products')
-          .values(newProduct)
+        const result = await DB.instance.insertInto('orders')
+          .values(newOrder)
           .executeTakeFirstOrThrow()
   
-        return await find(Number(result.numInsertedOrUpdatedRows)) as ProductModel
+        return await find(Number(result.numInsertedOrUpdatedRows)) as OrderModel
       }
   
       export async function rawQuery(rawQuery: string): Promise<any> {
@@ -1800,182 +1997,105 @@ name: this.name,
       }
   
       export async function remove(id: number): Promise<void> {
-        await DB.instance.deleteFrom('products')
+        await DB.instance.deleteFrom('orders')
           .where('id', '=', id)
           .execute()
       }
   
-      export async function whereName(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('name', '=', value)
+      export async function whereCustomerId(value: string): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('customer_id', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-export async function whereDescription(value: number): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('description', '=', value)
+export async function whereStatus(value: string): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('status', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-export async function whereKey(value: number): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('key', '=', value)
+export async function whereTotalAmount(value: number): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('total_amount', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-export async function whereUnitPrice(value: number): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('unit_price', '=', value)
+export async function whereTaxAmount(value: number): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('tax_amount', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-export async function whereStatus(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('status', '=', value)
+export async function whereDiscountAmount(value: number): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('discount_amount', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-export async function whereImage(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('image', '=', value)
+export async function whereDeliveryFee(value: number): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('delivery_fee', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-export async function whereProviderId(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('provider_id', '=', value)
+export async function whereTipAmount(value: number): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('tip_amount', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-
-  
-      export const Product = ProductModel
-  
-      export default Product
-                  delete model[hiddenAttribute as keyof ProductModel]
-          }
-
-          return model
-        }
-  
-        
-      }
-  
-      async function find(id: number): Promise<ProductModel | undefined> {
-        let query = DB.instance.selectFrom('products').where('id', '=', id).selectAll()
-  
-        const model = await query.executeTakeFirst()
-  
-        if (!model) return undefined
-  
-        return new ProductModel(model)
-      }
-  
-      export async function count(): Promise<number> {
-        const results = await ProductModel.count()
-  
-        return results
-      }
-  
-      export async function create(newProduct: NewProduct): Promise<ProductModel> {
-  
-        const result = await DB.instance.insertInto('products')
-          .values(newProduct)
-          .executeTakeFirstOrThrow()
-  
-        return await find(Number(result.numInsertedOrUpdatedRows)) as ProductModel
-      }
-  
-      export async function rawQuery(rawQuery: string): Promise<any> {
-        return await sql`${rawQuery}`.execute(DB.instance)
-      }
-  
-      export async function remove(id: number): Promise<void> {
-        await DB.instance.deleteFrom('products')
-          .where('id', '=', id)
-          .execute()
-      }
-  
-      export async function whereName(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('name', '=', value)
+export async function whereOrderType(value: string): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('order_type', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-export async function whereDescription(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('description', '=', value)
+export async function whereDeliveryAddress(value: string): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('delivery_address', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-export async function wherePrice(value: number): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('price', '=', value)
+export async function whereSpecialInstructions(value: string): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('special_instructions', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-export async function whereImageUrl(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('image_url', '=', value)
+export async function whereEstimatedDeliveryTime(value: string // Store as ISO date string): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('estimated_delivery_time', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-export async function whereIsAvailable(value: boolean): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('is_available', '=', value)
+export async function whereAppliedCouponId(value: string): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('applied_coupon_id', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
-export async function whereInventoryCount(value: number): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('inventory_count', '=', value)
+export async function whereOrderItems(value: string // Store as JSON string): Promise<OrderModel[]> {
+          const query = DB.instance.selectFrom('orders').where('order_items', '=', value)
           const results = await query.execute()
   
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
-        } 
-
-export async function whereCategoryId(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('category_id', '=', value)
-          const results = await query.execute()
-  
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
-        } 
-
-export async function wherePreparationTime(value: number): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('preparation_time', '=', value)
-          const results = await query.execute()
-  
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
-        } 
-
-export async function whereAllergens(value: string // Store as JSON string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('allergens', '=', value)
-          const results = await query.execute()
-  
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
-        } 
-
-export async function whereNutritionalInfo(value: string // Store as JSON string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('nutritional_info', '=', value)
-          const results = await query.execute()
-  
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
+          return results.map((modelItem: OrderModel) => new OrderModel(modelItem))
         } 
 
 
   
-      export const Product = ProductModel
+      export const Order = OrderModel
   
-      export default Product
+      export default Order
       

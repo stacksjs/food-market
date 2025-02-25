@@ -1,5 +1,5 @@
 import type { schema } from '@stacksjs/validation'
-import type { ProjectRequestType } from '../types/requests'
+import type { ProductCategoryRequestType } from '../types/requests'
 import { Request } from '@stacksjs/router'
 import { customValidate, validateField } from '@stacksjs/validation'
 
@@ -11,27 +11,31 @@ interface ValidationField {
 interface CustomAttributes {
   [key: string]: ValidationField
 }
-interface RequestDataProject {
+interface RequestDataProductCategory {
   id: number
   name: string
   description: string
-  url: string
-  status: string
+  image_url: string
+  is_active: boolean
+  parent_category_id: string
+  display_order: number
   created_at?: Date
   updated_at?: Date
 }
-export class ProjectRequest extends Request<RequestDataProject> implements ProjectRequestType {
+export class ProductCategoryRequest extends Request<RequestDataProductCategory> implements ProductCategoryRequestType {
   public id = 1
   public name = ''
   public description = ''
-  public url = ''
-  public status = ''
+  public image_url = ''
+  public is_active = false
+  public parent_category_id = ''
+  public display_order = 0
   public created_at = new Date()
   public updated_at = new Date()
-
+  public uuid = ''
   public async validate(attributes?: CustomAttributes): Promise<void> {
     if (attributes === undefined || attributes === null) {
-      await validateField('Project', this.all())
+      await validateField('ProductCategory', this.all())
     }
     else {
       await customValidate(attributes, this.all())
@@ -39,4 +43,4 @@ export class ProjectRequest extends Request<RequestDataProject> implements Proje
   }
 }
 
-export const projectRequest = new ProjectRequest()
+export const productcategoryRequest = new ProductCategoryRequest()

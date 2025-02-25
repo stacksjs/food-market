@@ -12,7 +12,7 @@ export default {
     useUuid: true,
     useTimestamps: true,
     useSearch: {
-      displayable: ['id', 'name', 'description', 'price', 'category_id', 'is_available', 'inventory_count'], 
+      displayable: ['id', 'name', 'description', 'price', 'category_id', 'is_available', 'inventory_count'],
       searchable: ['name', 'description', 'category_id'],
       sortable: ['price', 'created_at', 'updated_at', 'inventory_count', 'preparation_time'],
       filterable: ['category_id', 'is_available', 'allergens'],
@@ -66,7 +66,7 @@ export default {
           min: 'Price must be at least 0.01',
         },
       },
-      factory: () => parseFloat(faker.commerce.price({ min: 0.01, max: 1000, dec: 2 })),
+      factory: () => Number.parseFloat(faker.commerce.price({ min: 0.01, max: 1000, dec: 2 })),
     },
 
     image_url: {
@@ -84,7 +84,7 @@ export default {
 
     is_available: {
       required: false,
-      order: 5, 
+      order: 5,
       fillable: true,
       validation: {
         rule: schema.boolean(),
@@ -97,7 +97,7 @@ export default {
       order: 6,
       fillable: true,
       validation: {
-        rule: schema.number().integer().min(0),
+        rule: schema.number().min(0),
         message: {
           min: 'Inventory count must be at least 0',
         },
@@ -123,7 +123,7 @@ export default {
       order: 8,
       fillable: true,
       validation: {
-        rule: schema.number().integer().min(1),
+        rule: schema.number().min(1),
         message: {
           min: 'Preparation time must be at least 1 minute',
         },
@@ -139,9 +139,9 @@ export default {
         rule: schema.string(), // Store as JSON string
       },
       factory: () => {
-        const possibleAllergens = ['Gluten', 'Dairy', 'Nuts', 'Soy', 'Eggs', 'Fish', 'Shellfish'];
-        const count = faker.number.int({ min: 0, max: 3 });
-        return JSON.stringify(faker.helpers.arrayElements(possibleAllergens, count));
+        const possibleAllergens = ['Gluten', 'Dairy', 'Nuts', 'Soy', 'Eggs', 'Fish', 'Shellfish']
+        const count = faker.number.int({ min: 0, max: 3 })
+        return JSON.stringify(faker.helpers.arrayElements(possibleAllergens, count))
       },
     },
 
@@ -158,12 +158,10 @@ export default {
           fat: faker.number.float({ min: 0, max: 50, precision: 0.1 }),
           protein: faker.number.float({ min: 0, max: 30, precision: 0.1 }),
           carbs: faker.number.float({ min: 0, max: 100, precision: 0.1 }),
-        });
+        })
       },
     },
   },
-
-
 
   dashboard: {
     highlight: true,

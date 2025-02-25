@@ -1,17 +1,15 @@
 import type { PersonalAccessTokensTable } from '../src/models/AccessToken'
-import type { ActivitiesTable } from '../src/models/Activity'
-import type { DeploymentsTable } from '../src/models/Deployment'
+import type { CouponsTable } from '../src/models/Coupon'
 import type { ErrorsTable } from '../src/models/Error'
 import type { FailedJobsTable } from '../src/models/FailedJob'
 import type { JobsTable } from '../src/models/Job'
+import type { LoyaltyPointsTable } from '../src/models/LoyaltyPoint'
+import type { LoyaltyRewardsTable } from '../src/models/LoyaltyReward'
+import type { OrdersTable } from '../src/models/Order'
 import type { PaymentMethodsTable } from '../src/models/PaymentMethod'
-import type { PostsTable } from '../src/models/Post'
 import type { ProductsTable } from '../src/models/Product'
-import type { ProjectsTable } from '../src/models/Project'
-import type { ReleasesTable } from '../src/models/Release'
+import type { ProductCategoriesTable } from '../src/models/ProductCategory'
 import type { RequestsTable } from '../src/models/Request'
-import type { SubscribersTable } from '../src/models/Subscriber'
-import type { SubscriberEmailsTable } from '../src/models/SubscriberEmail'
 import type { SubscriptionsTable } from '../src/models/Subscription'
 import type { TeamsTable } from '../src/models/Team'
 import type { TransactionsTable } from '../src/models/Transaction'
@@ -19,14 +17,14 @@ import type { UsersTable } from '../src/models/User'
 
 export interface TeamUsersTable {
   id?: number
-  team_id: number
   user_id: number
+  team_id: number
 }
 
 export interface TeamUsersTable {
   id?: number
-  user_id: number
   team_id: number
+  user_id: number
 }
 
 export interface MigrationsTable {
@@ -49,23 +47,21 @@ export interface PasskeysTable {
 }
 
 export interface Database {
-  projects: ProjectsTable
-  subscriber_emails: SubscriberEmailsTable
-  personal_access_tokens: PersonalAccessTokensTable
+  products: ProductsTable
+  orders: OrdersTable
+  coupons: CouponsTable
+  transactions: TransactionsTable
+  loyalty_points: LoyaltyPointsTable
+  loyalty_rewards: LoyaltyRewardsTable
+  product_categories: ProductCategoriesTable
   team_users: TeamUsersTable
-  teams: TeamsTable
-  requests: RequestsTable
-  activities: ActivitiesTable
-  subscribers: SubscribersTable
-  deployments: DeploymentsTable
-  releases: ReleasesTable
   users: UsersTable
-  posts: PostsTable
   failed_jobs: FailedJobsTable
   products: ProductsTable
+  personal_access_tokens: PersonalAccessTokensTable
   payment_methods: PaymentMethodsTable
+  teams: TeamsTable
   requests: RequestsTable
-  transactions: TransactionsTable
   jobs: JobsTable
   subscriptions: SubscriptionsTable
   errors: ErrorsTable

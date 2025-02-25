@@ -1,6 +1,5 @@
 import { Action } from '@stacksjs/actions'
 import { mail } from '@stacksjs/email'
-import { response } from '@stacksjs/router'
 
 export default new Action({
   name: 'User Show',

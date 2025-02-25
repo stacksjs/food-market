@@ -40,8 +40,7 @@ export default {
     billable: true,
   },
 
-  hasOne: ['Subscriber'],
-  hasMany: ['Deployment', 'Subscription', 'PaymentMethod', 'Post', 'Transaction'],
+  hasMany: ['Subscription', 'PaymentMethod', 'Transaction'],
 
   belongsToMany: ['Team'],
 

@@ -31,7 +31,7 @@ export default {
   },
 
   belongsTo: ['User', 'Coupon'],
-  hasMany: ['OrderItem'],
+  hasMany: ['Order'],
 
   attributes: {
     customer_id: {
@@ -52,8 +52,8 @@ export default {
         rule: schema.string(),
       },
       factory: () => {
-        const statuses = ['PENDING', 'PREPARING', 'READY', 'DELIVERED', 'CANCELED'];
-        return faker.helpers.arrayElement(statuses);
+        const statuses = ['PENDING', 'PREPARING', 'READY', 'DELIVERED', 'CANCELED']
+        return faker.helpers.arrayElement(statuses)
       },
     },
 
@@ -64,7 +64,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => parseFloat(faker.commerce.price({ min: 10, max: 200, dec: 2 })),
+      factory: () => Number.parseFloat(faker.commerce.price({ min: 10, max: 200, dec: 2 })),
     },
 
     tax_amount: {
@@ -74,7 +74,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => parseFloat(faker.commerce.price({ min: 1, max: 20, dec: 2 })),
+      factory: () => Number.parseFloat(faker.commerce.price({ min: 1, max: 20, dec: 2 })),
     },
 
     discount_amount: {
@@ -84,7 +84,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => parseFloat(faker.commerce.price({ min: 0, max: 15, dec: 2 })),
+      factory: () => Number.parseFloat(faker.commerce.price({ min: 0, max: 15, dec: 2 })),
     },
 
     delivery_fee: {
@@ -94,7 +94,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => parseFloat(faker.commerce.price({ min: 0, max: 10, dec: 2 })),
+      factory: () => Number.parseFloat(faker.commerce.price({ min: 0, max: 10, dec: 2 })),
     },
 
     tip_amount: {
@@ -104,7 +104,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => parseFloat(faker.commerce.price({ min: 0, max: 20, dec: 2 })),
+      factory: () => Number.parseFloat(faker.commerce.price({ min: 0, max: 20, dec: 2 })),
     },
 
     order_type: {
@@ -115,8 +115,8 @@ export default {
         rule: schema.string(),
       },
       factory: () => {
-        const types = ['DINE_IN', 'TAKEOUT', 'DELIVERY'];
-        return faker.helpers.arrayElement(types);
+        const types = ['DINE_IN', 'TAKEOUT', 'DELIVERY']
+        return faker.helpers.arrayElement(types)
       },
     },
 
@@ -148,9 +148,9 @@ export default {
         rule: schema.string(), // Store as ISO date string
       },
       factory: () => {
-        const now = new Date();
-        const futureDate = new Date(now.getTime() + faker.number.int({ min: 15, max: 120 }) * 60000);
-        return futureDate.toISOString();
+        const now = new Date()
+        const futureDate = new Date(now.getTime() + faker.number.int({ min: 15, max: 120 }) * 60000)
+        return futureDate.toISOString()
       },
     },
 
@@ -172,19 +172,19 @@ export default {
         rule: schema.string(), // Store as JSON string
       },
       factory: () => {
-        const itemCount = faker.number.int({ min: 1, max: 5 });
-        const items = [];
-        
+        const itemCount = faker.number.int({ min: 1, max: 5 })
+        const items = []
+
         for (let i = 0; i < itemCount; i++) {
           items.push({
             product_id: faker.string.uuid(),
             quantity: faker.number.int({ min: 1, max: 5 }),
-            price: parseFloat(faker.commerce.price({ min: 5, max: 50, dec: 2 })),
+            price: Number.parseFloat(faker.commerce.price({ min: 5, max: 50, dec: 2 })),
             special_instructions: faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.2 }),
-          });
+          })
         }
-        
-        return JSON.stringify(items);
+
+        return JSON.stringify(items)
       },
     },
   },
