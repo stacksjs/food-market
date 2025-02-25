@@ -1,4 +1,4 @@
-import type { Attribute, Attributes, Model, VineType } from '@stacksjs/types'
+import type { Attribute, Attributes, AttributesElements, Model, VineType } from '@stacksjs/types'
 import { log } from '@stacksjs/cli'
 import { db } from '@stacksjs/database'
 import { handleError } from '@stacksjs/error-handling'
@@ -230,7 +230,7 @@ export function pluckChanges(array1: string[], array2: string[]): { added: strin
   return { added, removed }
 }
 
-export function arrangeColumns(attributes: Attributes | undefined): Array<[string, Attribute]> {
+export function arrangeColumns(attributes: AttributesElements | undefined): Array<[string, Attribute]> {
   if (!attributes)
     return []
 
