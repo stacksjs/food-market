@@ -1,6 +1,5 @@
 import type { Err, Ok, Result } from '@stacksjs/error-handling'
 import type { MigrationResult } from 'kysely'
-import { $ } from 'bun'
 import { log } from '@stacksjs/cli'
 import { database } from '@stacksjs/config'
 import { err, handleError, ok } from '@stacksjs/error-handling'
@@ -12,19 +11,21 @@ import { db } from './utils'
 
 const driver = database.default || ''
 
-export const migrator: Migrator = new Migrator({
-  db,
+export function migrator(): Migrator {
+  return new Migrator({
+    db,
 
-  provider: new FileMigrationProvider({
-    fs,
-    path,
-    // This needs to be an absolute path.
-    migrationFolder: path.userMigrationsPath(),
-  }),
+    provider: new FileMigrationProvider({
+      fs,
+      path,
+      // This needs to be an absolute path.
+      migrationFolder: path.userMigrationsPath(),
+    }),
 
-  migrationTableName: database.migrations,
-  migrationLockTableName: database.migrationLocks,
-})
+    migrationTableName: database.migrations,
+    migrationLockTableName: database.migrationLocks,
+  })
+}
 
 // const migratorForeign = new Migrator({
 //   db,
@@ -41,7 +42,7 @@ export async function runDatabaseMigration(): Promise<Result<MigrationResult[] |
   try {
     log.info('Migrating database...')
 
-    const { error, results } = await migrator.migrateToLatest()
+    const { error, results } = await migrator().migrateToLatest()
 
     if (error) {
       return err(handleError(error))
@@ -119,7 +120,7 @@ export async function haveModelFieldsChangedSinceLastMigration(modelPath: string
 
   // now that we know the date, we need to check the git history for changes to the model file since that date
   const cmd = ``
-  const gitHistory = await $`${cmd}`.text()
+  const gitHistory = await Bun.$`${cmd}`.text()
 
   // if there are updates, then we need to check whether
   // the updates include the any updates to the model

@@ -1,16 +1,15 @@
-import type { TransactionModel } from '../../../../orm/src/models/Transaction'
+import type { PaymentTransactionsTable } from '../../../../orm/src/models/PaymentTransaction'
 import type { UserModel } from '../../../../orm/src/models/User'
-import Product from '../../../../orm/src/models/Product'
-import { Transaction } from '../../../../orm/src/models/Transaction'
+import { db } from '@stacksjs/database'
 
 export interface ManageTransaction {
-  store: (user: UserModel, productId: number) => Promise<TransactionModel>
-  list: (user: UserModel) => Promise<TransactionModel[]>
+  store: (user: UserModel, productId: number) => Promise<PaymentTransactionsTable | undefined>
+  list: (user: UserModel) => Promise<PaymentTransactionsTable[]>
 }
 
 export const manageTransaction: ManageTransaction = (() => {
-  async function store(user: UserModel, productId: number): Promise<TransactionModel> {
-    const product = await Product.find(productId)
+  async function store(user: UserModel, productId: number): Promise<PaymentTransactionsTable | undefined> {
+    const product = await db.selectFrom('payment_products').where('id', '=', productId).selectAll().executeTakeFirst()
 
     const data = {
       name: product?.name,
@@ -22,13 +21,15 @@ export const manageTransaction: ManageTransaction = (() => {
       user_id: user.id,
     }
 
-    const transaction = await Transaction.create(data)
+    const createdTransaction = await db.insertInto('payment_transactions').values(data).executeTakeFirst()
+
+    const transaction = await db.selectFrom('payment_transactions').where('id', '=', Number(createdTransaction.insertId)).selectAll().executeTakeFirst()
 
     return transaction
   }
 
-  async function list(user: UserModel): Promise<TransactionModel[]> {
-    const transaction = await Transaction.where('user_id', user.id).get()
+  async function list(user: UserModel): Promise<PaymentTransactionsTable[]> {
+    const transaction = await db.selectFrom('payment_transactions').where('user_id', '=', user.id).selectAll().execute()
 
     return transaction
   }

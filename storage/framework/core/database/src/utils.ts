@@ -2,23 +2,22 @@ import type { Database } from '@stacksjs/orm'
 import type { RawBuilder } from 'kysely'
 import { app, database } from '@stacksjs/config'
 import { log } from '@stacksjs/logging'
-import { path } from '@stacksjs/path'
+import { projectPath } from '@stacksjs/path'
 import { Kysely, MysqlDialect, PostgresDialect, sql } from 'kysely'
 import { BunWorkerDialect } from 'kysely-bun-worker'
 import { createPool } from 'mysql2'
 import { Pool } from 'pg'
 
-const appEnv = app.env || 'local'
-
 export function getDialect(): MysqlDialect | PostgresDialect | BunWorkerDialect {
-  const driver = database.default ?? 'sqlite'
+  const appEnv = app.env || 'local'
+  const driver = database.default || 'sqlite'
 
   log.debug(`Using database driver: ${driver}`)
 
   if (driver === 'sqlite') {
     const defaultName = appEnv !== 'testing' ? 'database/stacks.sqlite' : 'database/stacks_testing.sqlite'
     const sqliteDbName = database.connections?.sqlite.database ?? defaultName
-    const dbPath = path.projectPath(sqliteDbName)
+    const dbPath = projectPath(sqliteDbName)
 
     return new BunWorkerDialect({
       url: dbPath,
