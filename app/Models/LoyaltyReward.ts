@@ -47,6 +47,7 @@ export default {
         switch (type) {
           case 'DISCOUNT':
             const percentage = faker.number.int({ min: 5, max: 50 })
+
             return `${percentage}% discount on your order`
           case 'FREE_ITEM':
             return `Free ${faker.commerce.productName()}`
