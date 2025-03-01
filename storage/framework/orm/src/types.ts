@@ -7,6 +7,8 @@ import type { LoyaltyPointsTable } from '../src/models/LoyaltyPoint'
 import type { LoyaltyRewardsTable } from '../src/models/LoyaltyReward'
 import type { OrdersTable } from '../src/models/Order'
 import type { PaymentMethodsTable } from '../src/models/PaymentMethod'
+import type { PaymentProductsTable } from '../src/models/PaymentProduct'
+import type { PaymentTransactionsTable } from '../src/models/PaymentTransaction'
 import type { ProductsTable } from '../src/models/Product'
 import type { ProductCategoriesTable } from '../src/models/ProductCategory'
 import type { RequestsTable } from '../src/models/Request'
@@ -57,13 +59,14 @@ export interface Database {
   team_users: TeamUsersTable
   users: UsersTable
   failed_jobs: FailedJobsTable
-  products: ProductsTable
   personal_access_tokens: PersonalAccessTokensTable
   payment_methods: PaymentMethodsTable
+  payment_transactions: PaymentTransactionsTable
   teams: TeamsTable
   requests: RequestsTable
   jobs: JobsTable
   subscriptions: SubscriptionsTable
+  payment_products: PaymentProductsTable
   errors: ErrorsTable
   passkeys: PasskeysTable
   migrations: MigrationsTable

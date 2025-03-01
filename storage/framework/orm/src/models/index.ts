@@ -16,7 +16,9 @@ export { default as Order } from './Order'
 
 export { default as PaymentMethod } from './PaymentMethod'
 
-export { default as Product } from './Product'
+export { default as PaymentProduct } from './PaymentProduct'
+
+export { default as PaymentTransaction } from './PaymentTransaction'
 
 export { default as Product } from './Product'
 

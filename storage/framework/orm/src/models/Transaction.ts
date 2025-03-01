@@ -67,7 +67,7 @@ order?: OrderModel
   
       export class TransactionModel {
         private readonly hidden: Array<keyof TransactionJsonResponse> = ["payment_details"]
-        private readonly fillable: Array<keyof TransactionJsonResponse> = ["order_id","amount","status","payment_method","payment_details","transaction_reference","loyalty_points_earned","loyalty_points_redeemed","uuid","user_id","payment_method_id"]
+        private readonly fillable: Array<keyof TransactionJsonResponse> = ["order_id","amount","status","payment_method","payment_details","transaction_reference","loyalty_points_earned","loyalty_points_redeemed","uuid","user_id"]
         private readonly guarded: Array<keyof TransactionJsonResponse> = []
         protected attributes: Partial<TransactionJsonResponse> = {}
         protected originalAttributes: Partial<TransactionJsonResponse> = {}
@@ -819,16 +819,16 @@ set updated_at(value: Date) {
             switch (condition.method) {
               case 'where':
                 if (condition.type === 'and') {
-                  this.where(condition.column, condition.operator!, condition.value)
+                  this.where(condition.column, condition.operator!, condition.value || [])
                 }
                 break
 
               case 'whereIn':
                 if (condition.operator === 'is not') {
-                  this.whereNotIn(condition.column, condition.values)
+                  this.whereNotIn(condition.column, condition.values || [])
                 }
                 else {
-                  this.whereIn(condition.column, condition.values)
+                  this.whereIn(condition.column, condition.values || [])
                 }
 
                 break
@@ -842,7 +842,7 @@ set updated_at(value: Date) {
                 break
 
               case 'whereBetween':
-                this.whereBetween(condition.column, condition.values)
+                this.whereBetween(condition.column, condition.range || [0, 0])
                 break
 
               case 'whereExists': {

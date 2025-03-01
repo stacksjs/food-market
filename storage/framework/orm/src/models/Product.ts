@@ -11,17 +11,26 @@ import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} fr
       import { cache } from '@stacksjs/cache'
       import { randomUUIDv7 } from 'bun'
       
-      
+      import ProductCategory from './ProductCategory'
+
+import type {ProductCategoryModel} from './ProductCategory'
+
+
   
       export interface ProductsTable {
         id?: number
-        name?: string
-      description?: number
-      key?: number
-      unit_price?: number
-      status?: string
-      image?: string
-      provider_id?: string
+        product_category_id?: number 
+product_category?: ProductCategoryModel
+ name?: string
+      description?: string
+      price?: number
+      image_url?: string
+      is_available?: boolean
+      inventory_count?: number
+      category_id?: string
+      preparation_time?: number
+      allergens?: string // Store as JSON string
+      nutritional_info?: string // Store as JSON string
      uuid?: string 
 
         created_at?: Date
@@ -60,7 +69,7 @@ import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} fr
   
       export class ProductModel {
         private readonly hidden: Array<keyof ProductJsonResponse> = []
-        private readonly fillable: Array<keyof ProductJsonResponse> = ["name","description","key","unit_price","status","image","provider_id","uuid","product_category_id"]
+        private readonly fillable: Array<keyof ProductJsonResponse> = ["name","description","price","image_url","is_available","inventory_count","category_id","preparation_time","allergens","nutritional_info","uuid","product_category_id"]
         private readonly guarded: Array<keyof ProductJsonResponse> = []
         protected attributes: Partial<ProductJsonResponse> = {}
         protected originalAttributes: Partial<ProductJsonResponse> = {}
@@ -142,7 +151,15 @@ import type { Generated, Insertable, RawBuilder, Selectable, Updateable, Sql} fr
           }
         }
 
-        get id(): number | undefined {
+        get product_category_id(): number | undefined {
+        return this.attributes.product_category_id
+      }
+
+get product_category(): ProductCategoryModel | undefined {
+        return this.attributes.product_category
+      }
+
+get id(): number | undefined {
     return this.attributes.id
   }
 
@@ -154,28 +171,40 @@ get name(): string | undefined {
       return this.attributes.name
     }
 
-get description(): number | undefined {
+get description(): string | undefined {
       return this.attributes.description
     }
 
-get key(): number | undefined {
-      return this.attributes.key
+get price(): number | undefined {
+      return this.attributes.price
     }
 
-get unit_price(): number | undefined {
-      return this.attributes.unit_price
+get image_url(): string | undefined {
+      return this.attributes.image_url
     }
 
-get status(): string | undefined {
-      return this.attributes.status
+get is_available(): boolean | undefined {
+      return this.attributes.is_available
     }
 
-get image(): string | undefined {
-      return this.attributes.image
+get inventory_count(): number | undefined {
+      return this.attributes.inventory_count
     }
 
-get provider_id(): string | undefined {
-      return this.attributes.provider_id
+get category_id(): string | undefined {
+      return this.attributes.category_id
+    }
+
+get preparation_time(): number | undefined {
+      return this.attributes.preparation_time
+    }
+
+get allergens(): string // Store as JSON string | undefined {
+      return this.attributes.allergens
+    }
+
+get nutritional_info(): string // Store as JSON string | undefined {
+      return this.attributes.nutritional_info
     }
 
 get created_at(): Date | undefined {
@@ -195,28 +224,40 @@ set name(value: string) {
       this.attributes.name = value
     }
 
-set description(value: number) {
+set description(value: string) {
       this.attributes.description = value
     }
 
-set key(value: number) {
-      this.attributes.key = value
+set price(value: number) {
+      this.attributes.price = value
     }
 
-set unit_price(value: number) {
-      this.attributes.unit_price = value
+set image_url(value: string) {
+      this.attributes.image_url = value
     }
 
-set status(value: string) {
-      this.attributes.status = value
+set is_available(value: boolean) {
+      this.attributes.is_available = value
     }
 
-set image(value: string) {
-      this.attributes.image = value
+set inventory_count(value: number) {
+      this.attributes.inventory_count = value
     }
 
-set provider_id(value: string) {
-      this.attributes.provider_id = value
+set category_id(value: string) {
+      this.attributes.category_id = value
+    }
+
+set preparation_time(value: number) {
+      this.attributes.preparation_time = value
+    }
+
+set allergens(value: string // Store as JSON string) {
+      this.attributes.allergens = value
+    }
+
+set nutritional_info(value: string // Store as JSON string) {
+      this.attributes.nutritional_info = value
     }
 
 set updated_at(value: Date) {
@@ -796,16 +837,16 @@ set updated_at(value: Date) {
             switch (condition.method) {
               case 'where':
                 if (condition.type === 'and') {
-                  this.where(condition.column, condition.operator!, condition.value)
+                  this.where(condition.column, condition.operator!, condition.value || [])
                 }
                 break
 
               case 'whereIn':
                 if (condition.operator === 'is not') {
-                  this.whereNotIn(condition.column, condition.values)
+                  this.whereNotIn(condition.column, condition.values || [])
                 }
                 else {
-                  this.whereIn(condition.column, condition.values)
+                  this.whereIn(condition.column, condition.values || [])
                 }
 
                 break
@@ -819,7 +860,7 @@ set updated_at(value: Date) {
                 break
 
               case 'whereBetween':
-                this.whereBetween(condition.column, condition.values)
+                this.whereBetween(condition.column, condition.range || [0, 0])
                 break
 
               case 'whereExists': {
@@ -904,7 +945,8 @@ set updated_at(value: Date) {
 
           const model = await this.find(Number(result.numInsertedOrUpdatedRows)) as ProductModel
 
-          
+          if (model)
+ dispatch('product:created', model)
 
           return model
         }
@@ -946,20 +988,22 @@ set updated_at(value: Date) {
   
           const model = await find(Number(result.numInsertedOrUpdatedRows)) as ProductModel
   
-          
+          if (model)
+ dispatch('product:created', model)
   
           return model
         }
   
         // Method to remove a Product
         static async remove(id: number): Promise<any> {
-          
+          const instance = new ProductModel(null)
+  
+          const model = await instance.find(Number(id))
   
           
   
-          
-  
-          
+          if (model)
+ dispatch('product:deleted', model)
         
           return await DB.instance.deleteFrom('products')
             .where('id', '=', id)
@@ -1176,42 +1220,66 @@ static whereDescription(value: string): ProductModel {
           return instance
         } 
 
-static whereKey(value: string): ProductModel {
+static wherePrice(value: string): ProductModel {
           const instance = new ProductModel(null)
   
-          instance.selectFromQuery = instance.selectFromQuery.where('key', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('price', '=', value)
   
           return instance
         } 
 
-static whereUnitPrice(value: string): ProductModel {
+static whereImageUrl(value: string): ProductModel {
           const instance = new ProductModel(null)
   
-          instance.selectFromQuery = instance.selectFromQuery.where('unitPrice', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('image_url', '=', value)
   
           return instance
         } 
 
-static whereStatus(value: string): ProductModel {
+static whereIsAvailable(value: string): ProductModel {
           const instance = new ProductModel(null)
   
-          instance.selectFromQuery = instance.selectFromQuery.where('status', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('is_available', '=', value)
   
           return instance
         } 
 
-static whereImage(value: string): ProductModel {
+static whereInventoryCount(value: string): ProductModel {
           const instance = new ProductModel(null)
   
-          instance.selectFromQuery = instance.selectFromQuery.where('image', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('inventory_count', '=', value)
   
           return instance
         } 
 
-static whereProviderId(value: string): ProductModel {
+static whereCategoryId(value: string): ProductModel {
           const instance = new ProductModel(null)
   
-          instance.selectFromQuery = instance.selectFromQuery.where('providerId', '=', value)
+          instance.selectFromQuery = instance.selectFromQuery.where('category_id', '=', value)
+  
+          return instance
+        } 
+
+static wherePreparationTime(value: string): ProductModel {
+          const instance = new ProductModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('preparation_time', '=', value)
+  
+          return instance
+        } 
+
+static whereAllergens(value: string): ProductModel {
+          const instance = new ProductModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('allergens', '=', value)
+  
+          return instance
+        } 
+
+static whereNutritionalInfo(value: string): ProductModel {
+          const instance = new ProductModel(null)
+  
+          instance.selectFromQuery = instance.selectFromQuery.where('nutritional_info', '=', value)
   
           return instance
         } 
@@ -1607,7 +1675,8 @@ static whereProviderId(value: string): ProductModel {
           if (this.id) {
             const model = await this.find(this.id)
 
-            
+            if (model)
+ dispatch('product:updated', model)
     
             return model
           }
@@ -1633,7 +1702,8 @@ static whereProviderId(value: string): ProductModel {
             const model = await this.find(this.id)
   
   
-            
+            if (model)
+ dispatch('product:updated', model)
 
             this.hasSaved = true
   
@@ -1688,8 +1758,9 @@ static whereProviderId(value: string): ProductModel {
         async delete(): Promise<ProductsTable> {
           if (this.id === undefined)
             this.deleteFromQuery.execute()
-            
-            
+            const model = await this.find(Number(this.id))
+            if (model)
+ dispatch('product:deleted', model)
             
   
             return await DB.instance.deleteFrom('products')
@@ -1698,8 +1769,35 @@ static whereProviderId(value: string): ProductModel {
         }
   
         
+        async productCategoryBelong(): Promise<ProductCategoryModel> {
+          if (this.product_category_id === undefined)
+            throw new HttpError(500, 'Relation Error!')
+  
+          const model = await ProductCategory
+            .where('id', '=', this.product_category_id)
+            .first()
+  
+          if (! model)
+            throw new HttpError(500, 'Model Relation Not Found!')
+  
+          return model
+        }
+
+
   
         
+          toSearchableObject(): Partial<ProductsTable> {
+              return {
+                  id: this.id,
+name: this.name,
+description: this.description,
+price: this.price,
+category_id: this.category_id,
+is_available: this.is_available,
+inventory_count: this.inventory_count
+              }
+          }
+      
   
         
 
@@ -1743,17 +1841,22 @@ static whereProviderId(value: string): ProductModel {
 id: this.id,
 name: this.name,
    description: this.description,
-   key: this.key,
-   unit_price: this.unit_price,
-   status: this.status,
-   image: this.image,
-   provider_id: this.provider_id,
+   price: this.price,
+   image_url: this.image_url,
+   is_available: this.is_available,
+   inventory_count: this.inventory_count,
+   category_id: this.category_id,
+   preparation_time: this.preparation_time,
+   allergens: this.allergens,
+   nutritional_info: this.nutritional_info,
    
         created_at: this.created_at,
 
         updated_at: this.updated_at,
 
-      ...this.customColumns,
+      product_category_id: this.product_category_id,
+   product_category: this.product_category,
+...this.customColumns,
 }
 
           return output
@@ -1762,104 +1865,6 @@ name: this.name,
         parseResult(model: ProductModel): ProductModel {
           for (const hiddenAttribute of this.hidden) {
             delete model[hiddenAttribute as keyof ProductModel]
-          }
-
-          return model
-        }
-  
-        
-      }
-  
-      async function find(id: number): Promise<ProductModel | undefined> {
-        let query = DB.instance.selectFrom('products').where('id', '=', id).selectAll()
-  
-        const model = await query.executeTakeFirst()
-  
-        if (!model) return undefined
-  
-        return new ProductModel(model)
-      }
-  
-      export async function count(): Promise<number> {
-        const results = await ProductModel.count()
-  
-        return results
-      }
-  
-      export async function create(newProduct: NewProduct): Promise<ProductModel> {
-  
-        const result = await DB.instance.insertInto('products')
-          .values(newProduct)
-          .executeTakeFirstOrThrow()
-  
-        return await find(Number(result.numInsertedOrUpdatedRows)) as ProductModel
-      }
-  
-      export async function rawQuery(rawQuery: string): Promise<any> {
-        return await sql`${rawQuery}`.execute(DB.instance)
-      }
-  
-      export async function remove(id: number): Promise<void> {
-        await DB.instance.deleteFrom('products')
-          .where('id', '=', id)
-          .execute()
-      }
-  
-      export async function whereName(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('name', '=', value)
-          const results = await query.execute()
-  
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
-        } 
-
-export async function whereDescription(value: number): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('description', '=', value)
-          const results = await query.execute()
-  
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
-        } 
-
-export async function whereKey(value: number): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('key', '=', value)
-          const results = await query.execute()
-  
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
-        } 
-
-export async function whereUnitPrice(value: number): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('unit_price', '=', value)
-          const results = await query.execute()
-  
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
-        } 
-
-export async function whereStatus(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('status', '=', value)
-          const results = await query.execute()
-  
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
-        } 
-
-export async function whereImage(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('image', '=', value)
-          const results = await query.execute()
-  
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
-        } 
-
-export async function whereProviderId(value: string): Promise<ProductModel[]> {
-          const query = DB.instance.selectFrom('products').where('provider_id', '=', value)
-          const results = await query.execute()
-  
-          return results.map((modelItem: ProductModel) => new ProductModel(modelItem))
-        } 
-
-
-  
-      export const Product = ProductModel
-  
-      export default Product
-                  delete model[hiddenAttribute as keyof ProductModel]
           }
 
           return model

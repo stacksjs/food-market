@@ -144,13 +144,12 @@ interface RequestDataTransaction {
   loyalty_points_earned: number
   loyalty_points_redeemed: number
   user_id: number
-  payment_method_id: number
   created_at?: Date
   updated_at?: Date
 }
 export interface TransactionRequestType extends Request {
   validate: (attributes?: CustomAttributes) => void
-  get: ((key: 'id') => number) & ((key: 'order_id' | 'status' | 'payment_method' | 'transaction_reference') => string) & ((key: 'amount' | 'loyalty_points_earned' | 'loyalty_points_redeemed') => number) & ((key: 'payment_details') => string) & ((key: 'user_id') => string) & ((key: 'payment_method_id') => string)
+  get: ((key: 'id') => number) & ((key: 'order_id' | 'status' | 'payment_method' | 'transaction_reference') => string) & ((key: 'amount' | 'loyalty_points_earned' | 'loyalty_points_redeemed') => number) & ((key: 'payment_details') => string) & ((key: 'user_id') => string)
 
   all: () => RequestDataTransaction
   id: number
@@ -163,7 +162,6 @@ export interface TransactionRequestType extends Request {
   loyalty_points_earned: number
   loyalty_points_redeemed: number
   user_id: number
-  payment_method_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -305,37 +303,6 @@ export interface FailedJobRequestType extends Request {
   updated_at?: Date
 }
 
-interface RequestDataProduct {
-  id: number
-  name: string
-  description: number
-  key: number
-  unit_price: number
-  status: string
-  image: string
-  provider_id: string
-  product_category_id: number
-  created_at?: Date
-  updated_at?: Date
-}
-export interface ProductRequestType extends Request {
-  validate: (attributes?: CustomAttributes) => void
-  get: ((key: 'id') => number) & ((key: 'name' | 'status' | 'image' | 'provider_id') => string) & ((key: 'description' | 'key' | 'unit_price') => number) & ((key: 'product_category_id') => string)
-
-  all: () => RequestDataProduct
-  id: number
-  name: string
-  description: number
-  key: number
-  unit_price: number
-  status: string
-  image: string
-  provider_id: string
-  product_category_id: number
-  created_at?: Date
-  updated_at?: Date
-}
-
 interface RequestDataAccessToken {
   id: number
   name: string
@@ -400,6 +367,33 @@ export interface PaymentMethodRequestType extends Request {
   is_default: boolean
   provider_id: string
   user_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+
+interface RequestDataPaymentTransaction {
+  id: number
+  name: string
+  description: string
+  amount: number
+  type: string
+  provider_id: string
+  payment_method_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+export interface PaymentTransactionRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: ((key: 'id') => number) & ((key: 'name' | 'description' | 'type' | 'provider_id') => string) & ((key: 'amount') => number) & ((key: 'payment_method_id') => string)
+
+  all: () => RequestDataPaymentTransaction
+  id: number
+  name: string
+  description: string
+  amount: number
+  type: string
+  provider_id: string
+  payment_method_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -530,6 +524,35 @@ export interface SubscriptionRequestType extends Request {
   updated_at?: Date
 }
 
+interface RequestDataPaymentProduct {
+  id: number
+  name: string
+  description: number
+  key: number
+  unit_price: number
+  status: string
+  image: string
+  provider_id: string
+  created_at?: Date
+  updated_at?: Date
+}
+export interface PaymentProductRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: ((key: 'id') => number) & ((key: 'name' | 'status' | 'image' | 'provider_id') => string) & ((key: 'description' | 'key' | 'unit_price') => number)
+
+  all: () => RequestDataPaymentProduct
+  id: number
+  name: string
+  description: number
+  key: number
+  unit_price: number
+  status: string
+  image: string
+  provider_id: string
+  created_at?: Date
+  updated_at?: Date
+}
+
 interface RequestDataError {
   id: number
   type: string
@@ -555,4 +578,4 @@ export interface ErrorRequestType extends Request {
   updated_at?: Date
 }
 
-export type ModelRequest = ProductRequestType | OrderRequestType | CouponRequestType | TransactionRequestType | LoyaltyPointRequestType | LoyaltyRewardRequestType | ProductCategoryRequestType | UserRequestType | FailedJobRequestType | ProductRequestType | AccessTokenRequestType | PaymentMethodRequestType | TeamRequestType | RequestRequestType | JobRequestType | SubscriptionRequestType | ErrorRequestType
+export type ModelRequest = ProductRequestType | OrderRequestType | CouponRequestType | TransactionRequestType | LoyaltyPointRequestType | LoyaltyRewardRequestType | ProductCategoryRequestType | UserRequestType | FailedJobRequestType | AccessTokenRequestType | PaymentMethodRequestType | PaymentTransactionRequestType | TeamRequestType | RequestRequestType | JobRequestType | SubscriptionRequestType | PaymentProductRequestType | ErrorRequestType

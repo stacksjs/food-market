@@ -2,7 +2,8 @@ import type { Insertable, RawBuilder, Selectable, Updateable } from '@stacksjs/d
 import type { Operator } from '@stacksjs/orm'
 import type { Stripe } from '@stacksjs/payments'
 import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
-import type { PaymentMethodModel } from './PaymentMethod'
+import type { PaymentMethodModel, PaymentMethodsTable } from './PaymentMethod'
+import type { PaymentTransactionsTable } from './PaymentTransaction'
 import type { SubscriptionModel } from './Subscription'
 import type { TransactionModel } from './Transaction'
 import { randomUUIDv7 } from 'bun'
@@ -808,16 +809,16 @@ export class UserModel {
       switch (condition.method) {
         case 'where':
           if (condition.type === 'and') {
-            this.where(condition.column, condition.operator!, condition.value)
+            this.where(condition.column, condition.operator!, condition.value || [])
           }
           break
 
         case 'whereIn':
           if (condition.operator === 'is not') {
-            this.whereNotIn(condition.column, condition.values)
+            this.whereNotIn(condition.column, condition.values || [])
           }
           else {
-            this.whereIn(condition.column, condition.values)
+            this.whereIn(condition.column, condition.values || [])
           }
 
           break
@@ -831,7 +832,7 @@ export class UserModel {
           break
 
         case 'whereBetween':
-          this.whereBetween(condition.column, condition.values)
+          this.whereBetween(condition.column, condition.range || [0, 0])
           break
 
         case 'whereExists': {
@@ -1728,7 +1729,7 @@ export class UserModel {
     return customer
   }
 
-  async storeTransaction(productId: number): Promise<TransactionModel> {
+  async storeTransaction(productId: number): Promise<PaymentTransactionsTable | undefined> {
     const transaction = await manageTransaction.store(this, productId)
 
     return transaction
@@ -1749,7 +1750,7 @@ export class UserModel {
     return customer
   }
 
-  async defaultPaymentMethod(): Promise<PaymentMethodModel | undefined> {
+  async defaultPaymentMethod(): Promise<PaymentMethodsTable | undefined> {
     const defaultPaymentMethod = await managePaymentMethod.retrieveDefaultPaymentMethod(this)
 
     return defaultPaymentMethod
@@ -1807,7 +1808,7 @@ export class UserModel {
     return deletedPaymentMethod
   }
 
-  async retrievePaymentMethod(paymentMethod: number): Promise<PaymentMethodModel | undefined> {
+  async retrievePaymentMethod(paymentMethod: number): Promise<PaymentMethodsTable | undefined> {
     const defaultPaymentMethod = await managePaymentMethod.retrievePaymentMethod(this, paymentMethod)
 
     return defaultPaymentMethod
@@ -1839,7 +1840,7 @@ export class UserModel {
     return manageInvoice.list(this)
   }
 
-  async transactionHistory(): Promise<TransactionModel[]> {
+  async transactionHistory(): Promise<PaymentTransactionsTable[]> {
     return manageTransaction.list(this)
   }
 
@@ -1867,7 +1868,7 @@ export class UserModel {
     return await manageSubscription.isIncomplete(this, type)
   }
 
-  async paymentMethods(cardType?: string): Promise<PaymentMethodModel[]> {
+  async paymentMethods(cardType?: string): Promise<PaymentMethodsTable[]> {
     return await managePaymentMethod.listPaymentMethods(this, cardType)
   }
 
