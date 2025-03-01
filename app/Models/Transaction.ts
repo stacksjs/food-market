@@ -60,10 +60,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const statuses = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']
-        return faker.helpers.arrayElement(statuses)
-      },
+      factory: () => faker.helpers.arrayElement(['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']),
     },
 
     payment_method: {
@@ -73,10 +70,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const methods = ['CREDIT_CARD', 'DEBIT_CARD', 'CASH', 'WALLET']
-        return faker.helpers.arrayElement(methods)
-      },
+      factory: () => faker.helpers.arrayElement(['CREDIT_CARD', 'DEBIT_CARD', 'CASH', 'WALLET']),
     },
 
     payment_details: {
