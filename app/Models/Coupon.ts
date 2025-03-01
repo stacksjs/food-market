@@ -65,10 +65,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const types = ['PERCENTAGE', 'FIXED_AMOUNT', 'FREE_ITEM']
-        return faker.helpers.arrayElement(types)
-      },
+      factory: () => faker.helpers.arrayElement(['PERCENTAGE', 'FIXED_AMOUNT', 'FREE_ITEM']),
     },
 
     discount_value: {
@@ -78,16 +75,7 @@ export default {
       validation: {
         rule: schema.number().min(0.01),
       },
-      factory: () => {
-        const type = faker.helpers.arrayElement(['PERCENTAGE', 'FIXED_AMOUNT', 'FREE_ITEM'])
-
-        if (type === 'PERCENTAGE') {
-          return faker.number.float({ min: 5, max: 50, precision: 0.01 })
-        }
-        else {
-          return Number.parseFloat(faker.commerce.price({ min: 1, max: 100, dec: 2 }))
-        }
-      },
+      factory: () => faker.number.float({ min: 5, max: 50 }),
     },
 
     min_order_amount: {
@@ -117,11 +105,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        // Only provide a product ID if the discount type is FREE_ITEM
-        const type = faker.helpers.arrayElement(['PERCENTAGE', 'FIXED_AMOUNT', 'FREE_ITEM'])
-        return type === 'FREE_ITEM' ? faker.string.uuid() : null
-      },
+      factory: () => faker.helpers.maybe(() => faker.string.uuid(), { probability: 0.3 }),
     },
 
     is_active: {
@@ -161,10 +145,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const startDate = faker.date.recent()
-        return startDate.toISOString()
-      },
+      factory: () => faker.date.recent().toISOString(),
     },
 
     end_date: {
@@ -174,10 +155,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const future = faker.date.future()
-        return future.toISOString()
-      },
+      factory: () => faker.date.future().toISOString(),
     },
 
     applicable_products: {
@@ -188,13 +166,8 @@ export default {
         rule: schema.string(),
       },
       factory: () => {
-        // 70% chance of being applicable to all products (empty array)
-        if (faker.datatype.boolean({ probability: 0.7 })) {
-          return JSON.stringify([])
-        }
-
-        // Otherwise, generate 1-5 random product IDs
-        const count = faker.number.int({ min: 1, max: 5 })
+        // Generate product IDs array and stringify
+        const count = faker.number.int({ min: 0, max: 5 })
         const productIds = Array.from({ length: count }, () => faker.string.uuid())
         return JSON.stringify(productIds)
       },
@@ -208,13 +181,8 @@ export default {
         rule: schema.string(),
       },
       factory: () => {
-        // 70% chance of being applicable to all categories (empty array)
-        if (faker.datatype.boolean({ probability: 0.7 })) {
-          return JSON.stringify([])
-        }
-
-        // Otherwise, generate 1-3 random category IDs
-        const count = faker.number.int({ min: 1, max: 3 })
+        // Generate category IDs array and stringify
+        const count = faker.number.int({ min: 0, max: 3 })
         const categoryIds = Array.from({ length: count }, () => faker.string.uuid())
         return JSON.stringify(categoryIds)
       },

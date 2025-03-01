@@ -51,10 +51,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const statuses = ['PENDING', 'PREPARING', 'READY', 'DELIVERED', 'CANCELED']
-        return faker.helpers.arrayElement(statuses)
-      },
+      factory: () => faker.helpers.arrayElement(['PENDING', 'PREPARING', 'READY', 'DELIVERED', 'CANCELED']),
     },
 
     total_amount: {
@@ -114,10 +111,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const types = ['DINE_IN', 'TAKEOUT', 'DELIVERY']
-        return faker.helpers.arrayElement(types)
-      },
+      factory: () => faker.helpers.arrayElement(['DINE_IN', 'TAKEOUT', 'DELIVERY']),
     },
 
     delivery_address: {

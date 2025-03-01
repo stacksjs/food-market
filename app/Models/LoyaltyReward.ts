@@ -40,23 +40,12 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const rewardTypes = ['DISCOUNT', 'FREE_ITEM', 'PRIORITY_SERVICE']
-        const type = faker.helpers.arrayElement(rewardTypes)
-
-        switch (type) {
-          case 'DISCOUNT':
-            const percentage = faker.number.int({ min: 5, max: 50 })
-
-            return `${percentage}% discount on your order`
-          case 'FREE_ITEM':
-            return `Free ${faker.commerce.productName()}`
-          case 'PRIORITY_SERVICE':
-            return `Priority ${faker.helpers.arrayElement(['service', 'delivery', 'seating', 'checkout'])}`
-          default:
-            return `Loyalty reward`
-        }
-      },
+      factory: () => faker.helpers.arrayElement([
+        `10% discount on your order`,
+        `20% discount on your order`,
+        `Free product with purchase`,
+        `Priority delivery service`,
+      ]),
     },
 
     description: {
@@ -86,10 +75,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const types = ['DISCOUNT', 'FREE_ITEM', 'PRIORITY_SERVICE']
-        return faker.helpers.arrayElement(types)
-      },
+      factory: () => faker.helpers.arrayElement(['DISCOUNT', 'FREE_ITEM', 'PRIORITY_SERVICE']),
     },
 
     discount_percentage: {
@@ -99,10 +85,7 @@ export default {
       validation: {
         rule: schema.number().min(0).max(100),
       },
-      factory: () => {
-        const type = faker.helpers.arrayElement(['DISCOUNT', 'FREE_ITEM', 'PRIORITY_SERVICE'])
-        return type === 'DISCOUNT' ? faker.number.int({ min: 5, max: 50 }) : null
-      },
+      factory: () => faker.helpers.maybe(() => faker.number.int({ min: 5, max: 50 }), { probability: 0.6 }),
     },
 
     free_product_id: {
@@ -112,10 +95,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const type = faker.helpers.arrayElement(['DISCOUNT', 'FREE_ITEM', 'PRIORITY_SERVICE'])
-        return type === 'FREE_ITEM' ? faker.string.uuid() : null
-      },
+      factory: () => faker.helpers.maybe(() => faker.string.uuid(), { probability: 0.4 }),
     },
 
     is_active: {

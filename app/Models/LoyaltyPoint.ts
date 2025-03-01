@@ -58,10 +58,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const sources = ['ORDER', 'PROMOTION', 'REFERRAL', 'MANUAL']
-        return faker.helpers.arrayElement(sources)
-      },
+      factory: () => faker.helpers.arrayElement(['ORDER', 'PROMOTION', 'REFERRAL', 'MANUAL']),
     },
 
     source_reference_id: {
@@ -81,22 +78,12 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        const source = faker.helpers.arrayElement(['ORDER', 'PROMOTION', 'REFERRAL', 'MANUAL'])
-
-        switch (source) {
-          case 'ORDER':
-            return `Points earned from order #${faker.string.alphanumeric(8).toUpperCase()}`
-          case 'PROMOTION':
-            return `Bonus points from ${faker.company.buzzPhrase()} promotion`
-          case 'REFERRAL':
-            return `Referral bonus for inviting ${faker.person.fullName()}`
-          case 'MANUAL':
-            return `Manual adjustment by ${faker.person.fullName()}`
-          default:
-            return `Loyalty points entry`
-        }
-      },
+      factory: () => faker.helpers.arrayElement([
+        `Points earned from order #${faker.string.alphanumeric(8).toUpperCase()}`,
+        `Bonus points from promotion`,
+        `Referral bonus for inviting a friend`,
+        `Manual adjustment by administrator`,
+      ]),
     },
 
     expiry_date: {
@@ -106,15 +93,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
-        // 70% chance of having an expiry date
-        if (faker.datatype.boolean({ probability: 0.7 })) {
-          // Set expiry date between 3 months and 1 year from now
-          const future = faker.date.future({ years: 1, refDate: new Date(Date.now() + 7776000000) })
-          return future.toISOString()
-        }
-        return null
-      },
+      factory: () => faker.helpers.maybe(() => faker.date.future().toISOString(), { probability: 0.7 }),
     },
 
     is_used: {

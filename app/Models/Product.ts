@@ -141,7 +141,8 @@ export default {
       factory: () => {
         const possibleAllergens = ['Gluten', 'Dairy', 'Nuts', 'Soy', 'Eggs', 'Fish', 'Shellfish']
         const count = faker.number.int({ min: 0, max: 3 })
-        return JSON.stringify(faker.helpers.arrayElements(possibleAllergens, count))
+        const allergens = faker.helpers.arrayElements(possibleAllergens, count)
+        return JSON.stringify(allergens)
       },
     },
 
@@ -155,9 +156,9 @@ export default {
       factory: () => {
         return JSON.stringify({
           calories: faker.number.int({ min: 50, max: 800 }),
-          fat: faker.number.float({ min: 0, max: 50, precision: 0.1 }),
-          protein: faker.number.float({ min: 0, max: 30, precision: 0.1 }),
-          carbs: faker.number.float({ min: 0, max: 100, precision: 0.1 }),
+          fat: faker.number.float({ min: 0, max: 50 }),
+          protein: faker.number.float({ min: 0, max: 30 }),
+          carbs: faker.number.float({ min: 0, max: 100 }),
         })
       },
     },
