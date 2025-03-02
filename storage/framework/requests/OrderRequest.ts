@@ -26,6 +26,7 @@ interface RequestDataOrder {
   estimated_delivery_time: string // Store as ISO date string
   applied_coupon_id: string
   order_items: string // Store as JSON string
+  gift_card_id: number
   coupon_id: number
   created_at?: Date
   updated_at?: Date
@@ -45,6 +46,7 @@ export class OrderRequest extends Request<RequestDataOrder> implements OrderRequ
   public estimated_delivery_time = ''
   public applied_coupon_id = ''
   public order_items = ''
+  public gift_card_id = 0
   public coupon_id = 0
   public created_at = new Date()
   public updated_at = new Date()

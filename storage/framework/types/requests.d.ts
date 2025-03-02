@@ -47,6 +47,51 @@ export interface ProductRequestType extends Request {
   updated_at?: Date
 }
 
+interface RequestDataGiftCard {
+  id: number
+  code: string
+  initial_balance: number
+  current_balance: number
+  currency: string
+  status: string
+  purchaser_id: string
+  recipient_email: string
+  recipient_name: string
+  personal_message: string
+  is_digital: boolean
+  is_reloadable: boolean
+  is_active: boolean
+  expiry_date: string
+  last_used_date: string
+  template_id: string
+  created_at?: Date
+  updated_at?: Date
+}
+export interface GiftCardRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: ((key: 'id') => number) & ((key: 'code' | 'currency' | 'status' | 'purchaser_id' | 'recipient_email' | 'recipient_name' | 'personal_message' | 'expiry_date' | 'last_used_date' | 'template_id') => string) & ((key: 'initial_balance' | 'current_balance') => number) & ((key: 'is_digital' | 'is_reloadable' | 'is_active') => boolean)
+
+  all: () => RequestDataGiftCard
+  id: number
+  code: string
+  initial_balance: number
+  current_balance: number
+  currency: string
+  status: string
+  purchaser_id: string
+  recipient_email: string
+  recipient_name: string
+  personal_message: string
+  is_digital: boolean
+  is_reloadable: boolean
+  is_active: boolean
+  expiry_date: string
+  last_used_date: string
+  template_id: string
+  created_at?: Date
+  updated_at?: Date
+}
+
 interface RequestDataOrder {
   id: number
   customer_id: string
@@ -62,13 +107,14 @@ interface RequestDataOrder {
   estimated_delivery_time: string // Store as ISO date string
   applied_coupon_id: string
   order_items: string // Store as JSON string
+  gift_card_id: number
   coupon_id: number
   created_at?: Date
   updated_at?: Date
 }
 export interface OrderRequestType extends Request {
   validate: (attributes?: CustomAttributes) => void
-  get: ((key: 'id') => number) & ((key: 'customer_id' | 'status' | 'order_type' | 'delivery_address' | 'special_instructions' | 'applied_coupon_id') => string) & ((key: 'total_amount' | 'tax_amount' | 'discount_amount' | 'delivery_fee' | 'tip_amount') => number) & ((key: 'estimated_delivery_time') => string) & ((key: 'order_items') => string) & ((key: 'coupon_id') => string)
+  get: ((key: 'id') => number) & ((key: 'customer_id' | 'status' | 'order_type' | 'delivery_address' | 'special_instructions' | 'applied_coupon_id') => string) & ((key: 'total_amount' | 'tax_amount' | 'discount_amount' | 'delivery_fee' | 'tip_amount') => number) & ((key: 'estimated_delivery_time') => string) & ((key: 'order_items') => string) & ((key: 'gift_card_id') => string) & ((key: 'coupon_id') => string)
 
   all: () => RequestDataOrder
   id: number
@@ -85,6 +131,7 @@ export interface OrderRequestType extends Request {
   estimated_delivery_time: string // Store as ISO date string
   applied_coupon_id: string
   order_items: string // Store as JSON string
+  gift_card_id: number
   coupon_id: number
   created_at?: Date
   updated_at?: Date
@@ -578,4 +625,4 @@ export interface ErrorRequestType extends Request {
   updated_at?: Date
 }
 
-export type ModelRequest = ProductRequestType | OrderRequestType | CouponRequestType | TransactionRequestType | LoyaltyPointRequestType | LoyaltyRewardRequestType | ProductCategoryRequestType | UserRequestType | FailedJobRequestType | AccessTokenRequestType | PaymentMethodRequestType | PaymentTransactionRequestType | TeamRequestType | RequestRequestType | JobRequestType | SubscriptionRequestType | PaymentProductRequestType | ErrorRequestType
+export type ModelRequest = ProductRequestType | GiftCardRequestType | OrderRequestType | CouponRequestType | TransactionRequestType | LoyaltyPointRequestType | LoyaltyRewardRequestType | ProductCategoryRequestType | UserRequestType | FailedJobRequestType | AccessTokenRequestType | PaymentMethodRequestType | PaymentTransactionRequestType | TeamRequestType | RequestRequestType | JobRequestType | SubscriptionRequestType | PaymentProductRequestType | ErrorRequestType

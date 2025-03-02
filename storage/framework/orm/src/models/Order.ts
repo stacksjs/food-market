@@ -83,7 +83,7 @@ coupon?: CouponModel
   
       export class OrderModel {
         private readonly hidden: Array<keyof OrderJsonResponse> = []
-        private readonly fillable: Array<keyof OrderJsonResponse> = ["customer_id","status","total_amount","tax_amount","discount_amount","delivery_fee","tip_amount","order_type","delivery_address","special_instructions","estimated_delivery_time","applied_coupon_id","order_items","uuid","coupon_id"]
+        private readonly fillable: Array<keyof OrderJsonResponse> = ["customer_id","status","total_amount","tax_amount","discount_amount","delivery_fee","tip_amount","order_type","delivery_address","special_instructions","estimated_delivery_time","applied_coupon_id","order_items","uuid","gift_card_id","coupon_id"]
         private readonly guarded: Array<keyof OrderJsonResponse> = []
         protected attributes: Partial<OrderJsonResponse> = {}
         protected originalAttributes: Partial<OrderJsonResponse> = {}

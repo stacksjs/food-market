@@ -9,8 +9,22 @@ export interface Attributes {
   preparation_time: number
   allergens: string // Store as JSON string
   nutritional_info: string // Store as JSON string
-  customer_id: string
+  code: string
+  initial_balance: number
+  current_balance: number
+  currency: string
   status: string
+  purchaser_id: string
+  recipient_email: string
+  recipient_name: string
+  personal_message: string
+  is_digital: boolean
+  is_reloadable: boolean
+  is_active: boolean
+  expiry_date: string
+  last_used_date: string
+  template_id: string
+  customer_id: string
   total_amount: number
   tax_amount: number
   discount_amount: number
@@ -22,13 +36,11 @@ export interface Attributes {
   estimated_delivery_time: string // Store as ISO date string
   applied_coupon_id: string
   order_items: string // Store as JSON string
-  code: string
   discount_type: string
   discount_value: number
   min_order_amount: number
   max_discount_amount: number
   free_product_id: string
-  is_active: boolean
   usage_limit: number
   usage_count: number
   start_date: string
@@ -46,7 +58,6 @@ export interface Attributes {
   points: number
   source: string
   source_reference_id: string
-  expiry_date: string
   is_used: boolean
   points_required: number
   reward_type: string

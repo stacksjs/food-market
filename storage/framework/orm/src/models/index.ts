@@ -6,6 +6,8 @@ export { default as Error } from './Error'
 
 export { default as FailedJob } from './FailedJob'
 
+export { default as GiftCard } from './GiftCard'
+
 export { default as Job } from './Job'
 
 export { default as LoyaltyPoint } from './LoyaltyPoint'
