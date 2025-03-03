@@ -1,24 +1,20 @@
 import type { Faker } from '@stacksjs/faker'
 import type { Model } from '@stacksjs/types'
-import { collect } from '@stacksjs/collections'
-
 import { schema } from '@stacksjs/validation'
 
 export default {
-  name: 'PaymentMethod', // defaults to the sanitized file name
-  table: 'payment_methods', // defaults to the lowercase, plural name of the model name (or the name of the model file)
+  name: 'PaymentProduct', // defaults to the sanitized file name
+  table: 'payment_products', // defaults to the lowercase, plural name of the model name (or the name of the model file)
   primaryKey: 'id', // defaults to `id`
   autoIncrement: true, // defaults to true
-  belongsTo: ['User'],
-  hasMany: ['PaymentTransaction'],
   traits: {
     useSeeder: {
-      count: 5,
+      count: 10,
     },
     useUuid: true,
   },
   attributes: {
-    type: {
+    name: {
       required: true,
       fillable: true,
       validation: {
@@ -29,10 +25,21 @@ export default {
           maxLength: 'type must have a maximum of 512 characters',
         },
       },
-      factory: (faker: Faker) => 'card',
+      factory: (faker: Faker) => faker.food.dish(),
     },
 
-    lastFour: {
+    description: {
+      fillable: true,
+      validation: {
+        rule: schema.number(),
+        message: {
+          number: 'last_four must be a number',
+          required: 'last_four is required',
+        },
+      },
+      factory: (faker: Faker) => faker.lorem.lines(3),
+    },
+    key: {
       required: true,
       fillable: true,
       validation: {
@@ -42,52 +49,36 @@ export default {
           required: 'last_four is required',
         },
       },
-      factory: (faker: Faker) => faker.string.numeric(4),
+      factory: (faker: Faker) => faker.string.alphanumeric(5),
     },
 
-    brand: {
-      required: true,
-      fillable: true,
-      validation: {
-        rule: schema.string().maxLength(50),
-        message: {
-          number: 'brand must be a number',
-          required: 'brand is required',
-        },
-      },
-      factory: (faker: Faker) => collect(['visa', 'mastercard', 'amex', 'jcb']).random().first(),
-    },
-
-    expMonth: {
-      required: true,
+    unitPrice: {
       fillable: true,
       validation: {
         rule: schema.number(),
         message: {
-          string: 'exp_month must be a number',
-          required: 'exp_month is required',
+          string: 'expires must be a string',
+          required: 'expires is required',
         },
       },
-      factory: (faker: Faker) => faker.number.int({ min: 1, max: 12 }),
+      factory: (faker: Faker) => faker.number.int({ min: 1000, max: 10000 }),
     },
-
-    expYear: {
-      required: true,
+    status: {
       fillable: true,
       validation: {
-        rule: schema.number(),
+        rule: schema.string(),
+      },
+      factory: (faker: Faker) => faker.lorem.lines(1),
+    },
+    image: {
+      fillable: true,
+      validation: {
+        rule: schema.string(),
         message: {
-          string: 'exp_year must be a number',
-          required: 'exp_year is required',
+          string: 'image must be a string',
         },
       },
-      factory: (faker: Faker) => faker.number.int({ min: 2024, max: 2050 }),
-    },
-    isDefault: {
-      fillable: true,
-      validation: {
-        rule: schema.boolean(),
-      },
+      factory: (faker: Faker) => faker.image.url(),
     },
     providerId: {
       fillable: true,
@@ -95,7 +86,6 @@ export default {
         rule: schema.string().maxLength(255),
         message: {
           string: 'provider_id must be a string',
-          required: 'provider_id is required',
         },
       },
       factory: (faker: Faker) => faker.string.alphanumeric(10),

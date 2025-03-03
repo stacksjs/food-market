@@ -3,15 +3,17 @@ import { sql } from '@stacksjs/database'
 
 export async function up(db: Database<any>) {
   await db.schema
-    .createTable('users')
+    .createTable('payment_transactions')
     .addColumn('id', 'integer', col => col.primaryKey().autoIncrement())
     .addColumn('uuid', 'text')
-    .addColumn('email', 'varchar(255)', col => col.unique().notNull())
-    .addColumn('name', 'varchar(255)', col => col.notNull())
-    .addColumn('password', 'varchar(255)', col => col.notNull())
-    .addColumn('job_title', 'varchar(255)', col => col.notNull())
-    .addColumn('stripe_id', 'varchar(255)')
-    .addColumn('public_passkey', 'text')
+    .addColumn('name', 'text', col => col.notNull())
+    .addColumn('description', 'text')
+    .addColumn('amount', 'numeric', col => col.notNull())
+    .addColumn('type', 'text', col => col.notNull())
+    .addColumn('provider_id', 'text')
+    .addColumn('payment_method_id', 'integer', (col) =>
+        col.references('payment_methods.id').onDelete('cascade')
+      ) 
     .addColumn('created_at', 'timestamp', col => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .addColumn('updated_at', 'timestamp')
     .execute()
