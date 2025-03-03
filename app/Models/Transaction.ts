@@ -1,5 +1,5 @@
 import type { Model } from '@stacksjs/types'
-import { faker } from '@stacksjs/faker'
+import type { Faker } from '@stacksjs/faker'
 import { schema } from '@stacksjs/validation'
 
 export default {
@@ -40,7 +40,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.string.uuid(),
+      factory: (faker: Faker) => faker.string.uuid(),
     },
 
     amount: {
@@ -50,7 +50,7 @@ export default {
       validation: {
         rule: schema.number().min(0.01),
       },
-      factory: () => Number.parseFloat(faker.commerce.price({ min: 5, max: 500, dec: 2 })),
+      factory: (faker: Faker) => Number.parseFloat(faker.commerce.price({ min: 5, max: 500, dec: 2 })),
     },
 
     status: {
@@ -60,7 +60,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.helpers.arrayElement(['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']),
+      factory: (faker: Faker) => faker.helpers.arrayElement(['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']),
     },
 
     payment_method: {
@@ -70,7 +70,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.helpers.arrayElement(['CREDIT_CARD', 'DEBIT_CARD', 'CASH', 'WALLET']),
+      factory: (faker: Faker) => faker.helpers.arrayElement(['CREDIT_CARD', 'DEBIT_CARD', 'CASH', 'WALLET']),
     },
 
     payment_details: {
@@ -81,7 +81,7 @@ export default {
       validation: {
         rule: schema.string(), // Store as JSON string
       },
-      factory: () => {
+      factory: (faker: Faker) => {
         // Generate mock payment details based on payment method
         const paymentMethod = faker.helpers.arrayElement(['CREDIT_CARD', 'DEBIT_CARD', 'CASH', 'WALLET'])
 
@@ -116,7 +116,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.string.alphanumeric(16).toUpperCase(),
+      factory: (faker: Faker) => faker.string.alphanumeric(16).toUpperCase(),
     },
 
     loyalty_points_earned: {
@@ -126,7 +126,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => faker.number.int({ min: 0, max: 100 }),
+      factory: (faker: Faker) => faker.number.int({ min: 0, max: 100 }),
     },
 
     loyalty_points_redeemed: {
@@ -136,7 +136,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => faker.number.int({ min: 0, max: 50 }),
+      factory: (faker: Faker) => faker.number.int({ min: 0, max: 50 }),
     },
   },
 

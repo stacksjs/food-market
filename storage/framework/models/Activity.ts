@@ -1,5 +1,5 @@
 import type { Model } from '@stacksjs/types'
-import { faker } from '@stacksjs/faker'
+import type { Faker } from '@stacksjs/faker'
 import { schema } from '@stacksjs/validation'
 
 export default {
@@ -32,7 +32,7 @@ export default {
         },
       },
 
-      factory: () => faker.lorem.sentence({ min: 3, max: 6 }),
+      factory: (faker: Faker) => faker.lorem.sentence({ min: 3, max: 6 }),
     },
 
     description: {
@@ -44,7 +44,7 @@ export default {
         },
       },
 
-      factory: () => faker.lorem.sentence({ min: 10, max: 25 }),
+      factory: (faker: Faker) => faker.lorem.sentence({ min: 10, max: 25 }),
     },
 
     address: {
@@ -57,7 +57,7 @@ export default {
         },
       },
 
-      factory: () => faker.location.streetAddress(),
+      factory: (faker: Faker) => faker.location.streetAddress(),
     },
 
     latlng: {
@@ -70,7 +70,7 @@ export default {
         },
       },
 
-      factory: () => `${faker.location.latitude()}, ${faker.location.longitude()}`,
+      factory: (faker: Faker) => `${faker.location.latitude()}, ${faker.location.longitude()}`,
     },
 
     infoSource: {
@@ -83,7 +83,7 @@ export default {
         },
       },
 
-      factory: () => faker.internet.url(),
+      factory: (faker: Faker) => faker.internet.url(),
     },
 
     wereDetained: {
@@ -95,7 +95,7 @@ export default {
         },
       },
 
-      factory: () => faker.datatype.boolean(),
+      factory: (faker: Faker) => faker.datatype.boolean(),
     },
   },
 } satisfies Model

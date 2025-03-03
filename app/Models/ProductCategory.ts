@@ -1,5 +1,5 @@
 import type { Model } from '@stacksjs/types'
-import { faker } from '@stacksjs/faker'
+import type { Faker } from '@stacksjs/faker'
 import { schema } from '@stacksjs/validation'
 
 export default {
@@ -43,7 +43,7 @@ export default {
           maxLength: 'Name must have a maximum of 50 characters',
         },
       },
-      factory: () => faker.commerce.department(),
+      factory: (faker: Faker) => faker.commerce.department(),
     },
 
     description: {
@@ -53,7 +53,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.commerce.productDescription(),
+      factory: (faker: Faker) => faker.commerce.productDescription(),
     },
 
     image_url: {
@@ -63,7 +63,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.image.url(),
+      factory: (faker: Faker) => faker.image.url(),
     },
 
     is_active: {
@@ -73,7 +73,7 @@ export default {
       validation: {
         rule: schema.boolean(),
       },
-      factory: () => true,
+      factory: (faker: Faker) => true,
     },
 
     parent_category_id: {
@@ -83,7 +83,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => null, // Most categories won't have a parent
+      factory: (faker: Faker) => null, // Most categories won't have a parent
     },
 
     display_order: {
@@ -93,7 +93,7 @@ export default {
       validation: {
         rule: schema.number(),
       },
-      factory: () => faker.number.int({ min: 1, max: 100 }),
+      factory: (faker: Faker) => faker.number.int({ min: 1, max: 100 }),
     },
   },
 

@@ -1,5 +1,5 @@
+import type { Faker } from '@stacksjs/faker'
 import type { Model } from '@stacksjs/types'
-import { faker } from '@stacksjs/faker'
 import { schema } from '@stacksjs/validation'
 
 export default {
@@ -43,7 +43,7 @@ export default {
           maxLength: 'Name must have a maximum of 100 characters',
         },
       },
-      factory: () => faker.commerce.productName(),
+      factory: (faker: Faker) => faker.commerce.productName(),
     },
 
     description: {
@@ -53,7 +53,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.commerce.productDescription(),
+      factory: (faker: Faker) => faker.commerce.productDescription(),
     },
 
     price: {
@@ -66,7 +66,7 @@ export default {
           min: 'Price must be at least 0.01',
         },
       },
-      factory: () => Number.parseFloat(faker.commerce.price({ min: 0.01, max: 1000, dec: 2 })),
+      factory: (faker: Faker) => Number.parseFloat(faker.commerce.price({ min: 0.01, max: 1000, dec: 2 })),
     },
 
     image_url: {
@@ -79,7 +79,7 @@ export default {
           string: 'Image URL must be a string',
         },
       },
-      factory: () => faker.image.url(),
+      factory: (faker: Faker) => faker.image.url(),
     },
 
     is_available: {
@@ -89,7 +89,7 @@ export default {
       validation: {
         rule: schema.boolean(),
       },
-      factory: () => true,
+      factory: (faker: Faker) => true,
     },
 
     inventory_count: {
@@ -102,7 +102,7 @@ export default {
           min: 'Inventory count must be at least 0',
         },
       },
-      factory: () => faker.number.int({ min: 0, max: 100 }),
+      factory: (faker: Faker) => faker.number.int({ min: 0, max: 100 }),
     },
 
     category_id: {
@@ -115,7 +115,7 @@ export default {
           uuid: 'Category ID must be a valid UUID',
         },
       },
-      factory: () => faker.string.uuid(),
+      factory: (faker: Faker) => faker.string.uuid(),
     },
 
     preparation_time: {
@@ -128,7 +128,7 @@ export default {
           min: 'Preparation time must be at least 1 minute',
         },
       },
-      factory: () => faker.number.int({ min: 1, max: 60 }),
+      factory: (faker: Faker) => faker.number.int({ min: 1, max: 60 }),
     },
 
     allergens: {
@@ -138,7 +138,7 @@ export default {
       validation: {
         rule: schema.string(), // Store as JSON string
       },
-      factory: () => {
+      factory: (faker: Faker) => {
         const possibleAllergens = ['Gluten', 'Dairy', 'Nuts', 'Soy', 'Eggs', 'Fish', 'Shellfish']
         const count = faker.number.int({ min: 0, max: 3 })
         const allergens = faker.helpers.arrayElements(possibleAllergens, count)
@@ -153,7 +153,7 @@ export default {
       validation: {
         rule: schema.string(), // Store as JSON string
       },
-      factory: () => {
+      factory: (faker: Faker) => {
         return JSON.stringify({
           calories: faker.number.int({ min: 50, max: 800 }),
           fat: faker.number.float({ min: 0, max: 50 }),

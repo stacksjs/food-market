@@ -1,5 +1,5 @@
 import type { Model } from '@stacksjs/types'
-import { faker } from '@stacksjs/faker'
+import type { Faker } from '@stacksjs/faker'
 import { schema } from '@stacksjs/validation'
 
 export default {
@@ -45,7 +45,7 @@ export default {
           maxLength: 'Code must have a maximum of 50 characters',
         },
       },
-      factory: () => faker.string.alphanumeric(12).toUpperCase(),
+      factory: (faker: Faker) => faker.string.alphanumeric(12).toUpperCase(),
     },
 
     initial_balance: {
@@ -55,7 +55,7 @@ export default {
       validation: {
         rule: schema.number().min(0.01),
       },
-      factory: () => Number.parseFloat(faker.commerce.price({ min: 10, max: 200, dec: 2 })),
+      factory: (faker: Faker) => Number.parseFloat(faker.commerce.price({ min: 10, max: 200, dec: 2 })),
     },
 
     current_balance: {
@@ -65,7 +65,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => 1,
+      factory: (faker: Faker) => 1,
     },
 
     currency: {
@@ -75,7 +75,7 @@ export default {
       validation: {
         rule: schema.string().maxLength(3),
       },
-      factory: () => faker.helpers.arrayElement(['USD', 'EUR', 'GBP', 'CAD', 'AUD']),
+      factory: (faker: Faker) => faker.helpers.arrayElement(['USD', 'EUR', 'GBP', 'CAD', 'AUD']),
     },
 
     status: {
@@ -85,7 +85,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.helpers.arrayElement(['ACTIVE', 'USED', 'EXPIRED', 'DEACTIVATED']),
+      factory: (faker: Faker) => faker.helpers.arrayElement(['ACTIVE', 'USED', 'EXPIRED', 'DEACTIVATED']),
     },
 
     purchaser_id: {
@@ -95,7 +95,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.string.uuid(),
+      factory: (faker: Faker) => faker.string.uuid(),
     },
 
     recipient_email: {
@@ -105,7 +105,7 @@ export default {
       validation: {
         rule: schema.string().email(),
       },
-      factory: () => faker.helpers.maybe(() => faker.internet.email(), { probability: 0.7 }),
+      factory: (faker: Faker) => faker.helpers.maybe(() => faker.internet.email(), { probability: 0.7 }),
     },
 
     recipient_name: {
@@ -115,7 +115,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.helpers.maybe(() => faker.person.fullName(), { probability: 0.6 }),
+      factory: (faker: Faker) => faker.helpers.maybe(() => faker.person.fullName(), { probability: 0.6 }),
     },
 
     personal_message: {
@@ -125,7 +125,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.4 }),
+      factory: (faker: Faker) => faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.4 }),
     },
 
     is_digital: {
@@ -135,7 +135,7 @@ export default {
       validation: {
         rule: schema.boolean(),
       },
-      factory: () => faker.datatype.boolean({ probability: 0.8 }), // 80% digital
+      factory: (faker: Faker) => faker.datatype.boolean({ probability: 0.8 }), // 80% digital
     },
 
     is_reloadable: {
@@ -145,7 +145,7 @@ export default {
       validation: {
         rule: schema.boolean(),
       },
-      factory: () => faker.datatype.boolean({ probability: 0.3 }), // 30% reloadable
+      factory: (faker: Faker) => faker.datatype.boolean({ probability: 0.3 }), // 30% reloadable
     },
 
     is_active: {
@@ -155,7 +155,7 @@ export default {
       validation: {
         rule: schema.boolean(),
       },
-      factory: () => faker.datatype.boolean({ probability: 0.9 }), // 90% active
+      factory: (faker: Faker) => faker.datatype.boolean({ probability: 0.9 }), // 90% active
     },
 
     expiry_date: {
@@ -165,7 +165,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => {
+      factory: (faker: Faker) => {
         // Set expiry to 1-3 years in the future
         const now = new Date()
         const yearOffset = faker.number.int({ min: 1, max: 3 })
@@ -181,7 +181,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.helpers.maybe(() => faker.date.recent().toISOString(), { probability: 0.3 }),
+      factory: (faker: Faker) => faker.helpers.maybe(() => faker.date.recent().toISOString(), { probability: 0.3 }),
     },
 
     template_id: {
@@ -191,7 +191,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.helpers.maybe(() => faker.string.uuid(), { probability: 0.5 }),
+      factory: (faker: Faker) => faker.helpers.maybe(() => faker.string.uuid(), { probability: 0.5 }),
     },
   },
 

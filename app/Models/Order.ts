@@ -1,5 +1,5 @@
+import type { Faker } from '@stacksjs/faker'
 import type { Model } from '@stacksjs/types'
-import { faker } from '@stacksjs/faker'
 import { schema } from '@stacksjs/validation'
 
 export default {
@@ -41,7 +41,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.string.uuid(),
+      factory: (faker: Faker) => faker.string.uuid(),
     },
 
     status: {
@@ -51,7 +51,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.helpers.arrayElement(['PENDING', 'PREPARING', 'READY', 'DELIVERED', 'CANCELED']),
+      factory: (faker: Faker) => faker.helpers.arrayElement(['PENDING', 'PREPARING', 'READY', 'DELIVERED', 'CANCELED']),
     },
 
     total_amount: {
@@ -61,7 +61,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => Number.parseFloat(faker.commerce.price({ min: 10, max: 200, dec: 2 })),
+      factory: (faker: Faker) => Number.parseFloat(faker.commerce.price({ min: 10, max: 200, dec: 2 })),
     },
 
     tax_amount: {
@@ -71,7 +71,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => Number.parseFloat(faker.commerce.price({ min: 1, max: 20, dec: 2 })),
+      factory: (faker: Faker) => Number.parseFloat(faker.commerce.price({ min: 1, max: 20, dec: 2 })),
     },
 
     discount_amount: {
@@ -81,7 +81,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => Number.parseFloat(faker.commerce.price({ min: 0, max: 15, dec: 2 })),
+      factory: (faker: Faker) => Number.parseFloat(faker.commerce.price({ min: 0, max: 15, dec: 2 })),
     },
 
     delivery_fee: {
@@ -91,7 +91,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => Number.parseFloat(faker.commerce.price({ min: 0, max: 10, dec: 2 })),
+      factory: (faker: Faker) => Number.parseFloat(faker.commerce.price({ min: 0, max: 10, dec: 2 })),
     },
 
     tip_amount: {
@@ -101,7 +101,7 @@ export default {
       validation: {
         rule: schema.number().min(0),
       },
-      factory: () => Number.parseFloat(faker.commerce.price({ min: 0, max: 20, dec: 2 })),
+      factory: (faker: Faker) => Number.parseFloat(faker.commerce.price({ min: 0, max: 20, dec: 2 })),
     },
 
     order_type: {
@@ -111,7 +111,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.helpers.arrayElement(['DINE_IN', 'TAKEOUT', 'DELIVERY']),
+      factory: (faker: Faker) => faker.helpers.arrayElement(['DINE_IN', 'TAKEOUT', 'DELIVERY']),
     },
 
     delivery_address: {
@@ -121,7 +121,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.location.streetAddress(),
+      factory: (faker: Faker) => faker.location.streetAddress(),
     },
 
     special_instructions: {
@@ -131,7 +131,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.3 }),
+      factory: (faker: Faker) => faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.3 }),
     },
 
     estimated_delivery_time: {
@@ -141,7 +141,7 @@ export default {
       validation: {
         rule: schema.string(), // Store as ISO date string
       },
-      factory: () => {
+      factory: (faker: Faker) => {
         const now = new Date()
         const futureDate = new Date(now.getTime() + faker.number.int({ min: 15, max: 120 }) * 60000)
         return futureDate.toISOString()
@@ -155,7 +155,7 @@ export default {
       validation: {
         rule: schema.string(),
       },
-      factory: () => faker.helpers.maybe(() => faker.string.uuid(), { probability: 0.2 }),
+      factory: (faker: Faker) => faker.helpers.maybe(() => faker.string.uuid(), { probability: 0.2 }),
     },
 
     order_items: {
@@ -165,7 +165,7 @@ export default {
       validation: {
         rule: schema.string(), // Store as JSON string
       },
-      factory: () => {
+      factory: (faker: Faker) => {
         const itemCount = faker.number.int({ min: 1, max: 5 })
         const items = []
 
