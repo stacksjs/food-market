@@ -1,6 +1,6 @@
+import type { Faker } from '@stacksjs/faker'
 import type { Model } from '@stacksjs/types'
 import { collect } from '@stacksjs/collections'
-import type { Faker } from '@stacksjs/faker'
 import { schema } from '@stacksjs/validation'
 
 export default {

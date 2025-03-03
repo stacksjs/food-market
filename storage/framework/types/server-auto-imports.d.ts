@@ -155,7 +155,6 @@ declare global {
   const UsersTable: typeof import('./../orm/src/models')['UsersTable']
   const accesstokenRequest: typeof import('./../requests')['accesstokenRequest']
   const couponRequest: typeof import('./../requests')['couponRequest']
-  const default: typeof import('./../orm/src/models')['default']
   const errorRequest: typeof import('./../requests')['errorRequest']
   const failedjobRequest: typeof import('./../requests')['failedjobRequest']
   const giftcardRequest: typeof import('./../requests')['giftcardRequest']

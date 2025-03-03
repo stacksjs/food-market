@@ -1,6 +1,6 @@
-import type { Model } from '@stacksjs/types'
 // soon, these will be auto-imported
 import type { Faker } from '@stacksjs/faker'
+import type { Model } from '@stacksjs/types'
 import { schema } from '@stacksjs/validation'
 
 export default {

@@ -154,7 +154,6 @@
     "UsersTable": true,
     "accesstokenRequest": true,
     "couponRequest": true,
-    "default": true,
     "errorRequest": true,
     "failedjobRequest": true,
     "giftcardRequest": true,
