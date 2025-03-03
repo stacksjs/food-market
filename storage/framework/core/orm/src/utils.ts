@@ -1077,6 +1077,12 @@ export async function deleteModelEvents(): Promise<void> {
   await fs.writeFile(eventFile, '')
 }
 
+export async function deleteOrmImports(): Promise<void> {
+  const ormImportFile = path.frameworkPath(`orm/src/index.ts`)
+
+  await fs.writeFile(ormImportFile, '')
+}
+
 export async function deleteExistingModelRequest(modelStringFile?: string): Promise<void> {
   const requestD = path.frameworkPath('types/requests.d.ts')
   await fs.writeFile(requestD, '')
@@ -1219,6 +1225,10 @@ export async function generateModelFiles(modelStringFile?: string): Promise<void
     await deleteModelEvents()
     log.success('Deleted old model events')
 
+    log.info('Deleting old orm imports...')
+    await deleteOrmImports()
+    log.success('Deleted old orm imports')
+
     log.info('Deleting old Model Requests...')
     await deleteExistingModelRequest(modelStringFile)
     log.success('Deleted Model Requests')
@@ -1344,7 +1354,7 @@ async function writeModelOrmImports(modelFiles: string[]): Promise<void> {
     ormImportString += `export { default as ${modelName} } from './${modelName}'\n\n`
   }
 
-  const file = Bun.file(path.frameworkPath(`orm/src/models/index.ts`))
+  const file = Bun.file(path.frameworkPath(`orm/src/index.ts`))
   const writer = file.writer()
 
   writer.write(ormImportString)
