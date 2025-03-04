@@ -16,6 +16,20 @@ export interface Relation<T = string> extends BaseRelation {
 }
 
 export interface HasOne<T = string> extends Array<Relation<T>> {}
+
+export interface MorphTo {
+  name: string
+}
+
+export interface MorphOne<T = string> extends BaseRelation {
+  model: T
+  morphName?: string
+  type?: string
+  id?: string
+}
+
+export interface MorphMany<T = string> extends MorphOne<T> {}
+
 export interface HasMany<T = string> extends Array<Relation<T>> {}
 export interface BelongsTo<T = string> extends Array<Relation<T>> {}
 
@@ -165,6 +179,12 @@ export interface ModelOptions extends Base {
   belongsToMany?: BelongsToMany<ModelNames> | ModelNames[]
 
   hasOneThrough?: HasOneThrough<ModelNames> | ModelNames[]
+
+  morphOne?: MorphOne<ModelNames> | ModelNames
+
+  morphMany?: MorphMany<ModelNames>[] | ModelNames[]
+
+  morphTo?: MorphTo
 
   scopes?: {
     [key: string]: (value: any) => any
