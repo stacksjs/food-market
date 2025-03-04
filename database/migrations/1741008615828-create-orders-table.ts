@@ -19,12 +19,10 @@ export async function up(db: Database<any>) {
     .addColumn('estimated_delivery_time', 'text')
     .addColumn('applied_coupon_id', 'text')
     .addColumn('order_items', 'text', col => col.notNull())
-    .addColumn('gift_card_id', 'integer', (col) =>
-        col.references('gift_cards.id').onDelete('cascade')
-      ) 
-    .addColumn('coupon_id', 'integer', (col) =>
-        col.references('coupons.id').onDelete('cascade')
-      ) 
+    .addColumn('gift_card_id', 'integer', col =>
+      col.references('gift_cards.id').onDelete('cascade'))
+    .addColumn('coupon_id', 'integer', col =>
+      col.references('coupons.id').onDelete('cascade'))
     .addColumn('created_at', 'timestamp', col => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .addColumn('updated_at', 'timestamp')
     .execute()
