@@ -26,9 +26,9 @@ function generateCustomSetters(model: Model): string {
   let output = ''
 
   if (model.set) {
-    for (const [methodName, getter] of Object.entries(model.set)) {
-      const getterStr = getter.toString()
-      output += removeAttrString(`${methodName}: ${getterStr}, \n`)
+    for (const [methodName, setter] of Object.entries(model.set)) {
+      const setterStr = setter.toString()
+      output += removeAttrString(`${methodName}: ${setterStr}, \n`)
     }
   }
 
@@ -36,7 +36,11 @@ function generateCustomSetters(model: Model): string {
 }
 
 function removeAttrString(getterFn: string): string {
-  return getterFn.replace('(attributes)', '()').replace('attributes', 'model')
+  let result = getterFn.replace('(attributes)', '()')
+
+  result = result.replace(/attributes/g, 'model')
+
+  return result
 }
 
 function getUpvoteTableName(model: Model, tableName: string): string {
@@ -1771,7 +1775,7 @@ export async function generateModelString(
             .execute()
         }
   
-        applyWhere<V>(column: keyof UsersTable, ...args: [V] | [Operator, V]): UserModel {
+        applyWhere<V>(column: keyof ${formattedTableName}Table, ...args: [V] | [Operator, V]): ${modelName}Model {
           if (args.length === 1) {
             const [value] = args
             this.selectFromQuery = this.selectFromQuery.where(column, '=', value)

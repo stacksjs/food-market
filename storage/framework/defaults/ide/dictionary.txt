@@ -345,6 +345,7 @@ typesense
 unconfig
 undeployed
 undeploys
+Unfeature
 unhead
 unimport
 universalify
@@ -380,6 +381,7 @@ vstyle
 vueform
 vueuse
 wafv
+Waitlist
 webfont
 weboutlook
 whois
