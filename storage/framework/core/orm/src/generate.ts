@@ -135,7 +135,7 @@ export async function generateModelString(
       }`
 
     instanceSoftDeleteStatementsUpdateFrom += `
-        const instance = new ${modelName}Model(null)
+        const instance = new ${modelName}Model(undefined)
   
         if (instance.softDeletes) {
           return await DB.instance.updateTable('${tableName}')
@@ -159,7 +159,7 @@ export async function generateModelString(
 
   if (typeof observer === 'boolean') {
     if (observer) {
-      removeInstanceStatment += `const instance = new ${modelName}Model(null)`
+      removeInstanceStatment += `const instance = new ${modelName}Model(undefined)`
       mittCreateStatement += `if (model)\n dispatch('${formattedModelName}:created', model)`
       mittUpdateStatement += `if (model)\n dispatch('${formattedModelName}:updated', model)`
       mittDeleteStatement += `if (model)\n dispatch('${formattedModelName}:deleted', model)`
@@ -170,7 +170,7 @@ export async function generateModelString(
   }
 
   if (Array.isArray(observer)) {
-    removeInstanceStatment += `const instance = new ${modelName}Model(null)`
+    removeInstanceStatment += `const instance = new ${modelName}Model(undefined)`
     // Iterate through the array and append statements based on its contents
     if (observer.includes('create')) {
       mittCreateStatement += `if (model)\n dispatch('${formattedModelName}:created', model);`
@@ -230,12 +230,9 @@ export async function generateModelString(
       const relationName = camelCase(relation.relationName || tableRelation)
 
       // declareFields += `public ${snakeCase(relationName)}: ${modelRelation}Model[] | undefined\n`
-      getFields += `get ${snakeCase(relationName)}():${modelRelation}Model[] | undefined {
+      getFields += `get ${snakeCase(relationName)}():${modelRelation}Model[] | [] {
         return this.attributes.${snakeCase(relationName)}
       }\n\n`
-
-      // constructorFields += `this.${snakeCase(relationName)} = ${formattedModelName}?.${snakeCase(relationName)}\n`
-      fieldString += `${snakeCase(relationName)}?: ${modelRelation}Model[] | undefined\n`
 
       jsonRelations += `${snakeCase(relationName)}: this.${snakeCase(relationName)},\n`
     }
@@ -244,7 +241,7 @@ export async function generateModelString(
       const morphName = relation.relationName || `${formattedModelName}able`
 
       // Add field to the model for relationship access
-      fieldString += `${snakeCase(morphName)}?: ${modelRelation}Model | undefined\n`
+      fieldString += `${snakeCase(morphName)}: ${modelRelation}Model | undefined\n`
 
       // Add getter for the relationship
       getFields += `get ${snakeCase(morphName)}():${modelRelation}Model | undefined {
@@ -276,10 +273,10 @@ export async function generateModelString(
       const morphName = relation.relationName || `${formattedModelName}able`
 
       // Add field to the model for relationship access
-      fieldString += `${snakeCase(morphName)}?: ${modelRelation}Model[] | undefined\n`
+      fieldString += `${snakeCase(morphName)}: ${modelRelation}Model[] | undefined\n`
 
       // Add getter for the relationship
-      getFields += `get ${snakeCase(morphName)}():${modelRelation}Model[] | undefined {
+      getFields += `get ${snakeCase(morphName)}():${modelRelation}Model[] | [] {
         return this.attributes.${snakeCase(morphName)}
       }\n\n`
 
@@ -315,23 +312,18 @@ export async function generateModelString(
     if (relationType === 'belongsType' && !relationCount) {
       const relationName = camelCase(relation.relationName || formattedModelRelation)
 
-      fieldString += ` ${relation.modelKey}?: number \n`
-      // declareFields += `public ${relation.modelKey}: number | undefined \n   `
+      fieldString += ` ${relation.modelKey}: number \n`
 
       getFields += `get ${relation.modelKey}(): number | undefined {
         return this.attributes.${relation.modelKey}
       }\n\n`
 
-      // constructorFields += `this.${relation.modelKey} = ${formattedModelName}?.${relation.modelKey}\n   `
       jsonRelations += `${relation.modelKey}: this.${relation.modelKey},\n   `
-
-      // declareFields += `public ${snakeCase(relationName)}: ${modelRelation}Model | undefined\n`
 
       getFields += `get ${snakeCase(relationName)}(): ${modelRelation}Model | undefined {
         return this.attributes.${snakeCase(relationName)}
       }\n\n`
 
-      // constructorFields += `this.${snakeCase(relationName)} = ${formattedModelName}?.${snakeCase(relationName)}\n`
       fieldString += `${snakeCase(relationName)}?: ${modelRelation}Model\n`
 
       jsonRelations += `${snakeCase(relationName)}: this.${snakeCase(relationName)},\n`
@@ -381,7 +373,7 @@ export async function generateModelString(
 
   // declareFields += `public id: number | undefined \n   `
 
-  getFields += `get id(): number | undefined {
+  getFields += `get id(): number {
     return this.attributes.id
   }\n\n`
 
@@ -402,7 +394,7 @@ export async function generateModelString(
     const searchAttrs = Array.isArray(displayableAttributes) ? displayableAttributes : []
 
     displayableStatements += `
-          toSearchableObject(): Partial<${formattedTableName}Table> {
+          toSearchableObject(): Partial<${modelName}JsonResponse> {
               return {
                   ${searchAttrs
                     .map(attr => `${attr}: this.${attr}`)
@@ -501,7 +493,7 @@ export async function generateModelString(
         return customer
       }
   
-       async defaultPaymentMethod(): Promise<PaymentMethodsTable | undefined> {
+       async defaultPaymentMethod(): Promise<PaymentMethodModel | undefined> {
         const defaultPaymentMethod = await managePaymentMethod.retrieveDefaultPaymentMethod(this)
   
         return defaultPaymentMethod
@@ -786,20 +778,22 @@ export async function generateModelString(
   for (const attribute of attributes) {
     const entity = mapEntity(attribute)
 
-    fieldString += ` ${snakeCase(attribute.field)}?: ${entity}\n     `
-    // declareFields += `public ${snakeCase(attribute.field)}: ${entity} | undefined \n   `
-    getFields += `get ${snakeCase(attribute.field)}(): ${entity} | undefined {
+    const optionalIndicator = attribute.required === false ? '?' : ''
+    const undefinedIndicator = attribute.required === false ? ' | undefined' : ''
+
+    fieldString += ` ${snakeCase(attribute.field)}${optionalIndicator}: ${entity}\n     `
+    getFields += `get ${snakeCase(attribute.field)}(): ${entity}${undefinedIndicator} {
       return this.attributes.${snakeCase(attribute.field)}
     }\n\n`
 
     setFields += `set ${snakeCase(attribute.field)}(value: ${entity}) {
       this.attributes.${snakeCase(attribute.field)} = value
     }\n\n`
-    // constructorFields += `this.${snakeCase(attribute.field)} = ${formattedModelName}?.${snakeCase(attribute.field)}\n   `
+
     jsonFields += `${snakeCase(attribute.field)}: this.${snakeCase(attribute.field)},\n   `
 
     whereStatements += `static where${pascalCase(attribute.field)}(value: string): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           instance.selectFromQuery = instance.selectFromQuery.where('${attribute.field}', '=', value)
   
@@ -808,18 +802,13 @@ export async function generateModelString(
 
     whereFunctionStatements += `export async function where${pascalCase(attribute.field)}(value: ${entity}): Promise<${modelName}Model[]> {
           const query = DB.instance.selectFrom('${tableName}').where('${snakeCase(attribute.field)}', '=', value)
-          const results = await query.execute()
+          const results: ${modelName}JsonResponse = await query.execute()
   
-          return results.map((modelItem: ${modelName}Model) => new ${modelName}Model(modelItem))
+          return results.map((modelItem: ${modelName}JsonResponse) => new ${modelName}Model(modelItem))
         } \n\n`
   }
 
   if (useTimestamps) {
-    // declareFields += `
-    //     public created_at: Date | undefined
-    //     public updated_at: Date | undefined
-    //   `
-
     getFields += `get created_at(): Date | undefined {
       return this.attributes.created_at
     }
@@ -915,11 +904,11 @@ export async function generateModelString(
       ${relationImports}
   
       export interface ${formattedTableName}Table {
-        id?: number
+        id: Generated<number>
        ${fieldString}
       }
   
-      interface ${modelName}Response {
+      export interface ${modelName}Response {
         data: ${modelName}JsonResponse[]
         paging: {
           total_records: number
@@ -929,16 +918,15 @@ export async function generateModelString(
         next_cursor: number | null
       }
 
-      export interface ${modelName}JsonResponse extends Omit<${formattedTableName}Table, 'password'> {
+      export interface ${modelName}JsonResponse extends Omit<Selectable<${formattedTableName}Table>, 'password'> {
         [key: string]: any
       }
         
-      export type ${modelName}Type = Selectable<${formattedTableName}Table>
-      export type New${modelName} = Partial<Insertable<${formattedTableName}Table>>
+      export type New${modelName} = Insertable<${formattedTableName}Table>
       export type ${modelName}Update = Updateable<${formattedTableName}Table>
   
       type SortDirection = 'asc' | 'desc'
-      interface SortOptions { column: ${modelName}Type, order: SortDirection }
+      interface SortOptions { column: ${modelName}JsonResponse, order: SortDirection }
       // Define a type for the options parameter
       interface QueryOptions {
         sort?: SortOptions
@@ -951,8 +939,8 @@ export async function generateModelString(
         private readonly hidden: Array<keyof ${modelName}JsonResponse> = ${hidden}
         private readonly fillable: Array<keyof ${modelName}JsonResponse> = ${fillable}
         private readonly guarded: Array<keyof ${modelName}JsonResponse> = ${guarded}
-        protected attributes: Partial<${modelName}JsonResponse> = {}
-        protected originalAttributes: Partial<${modelName}JsonResponse> = {}
+        protected attributes = {} as ${modelName}JsonResponse
+        protected originalAttributes = {} as ${modelName}JsonResponse
         ${privateSoftDeletes}
         protected selectFromQuery: any
         protected withRelations: string[]
@@ -962,7 +950,7 @@ export async function generateModelString(
         private hasSaved: boolean
         private customColumns: Record<string, unknown> = {}
        
-        constructor(${formattedModelName}: Partial<${modelName}Type> | null) {
+        constructor(${formattedModelName}: ${modelName}JsonResponse | undefined) {
           if (${formattedModelName}) {
 
             this.attributes = { ...${formattedModelName} }
@@ -1018,7 +1006,7 @@ export async function generateModelString(
           }
         }
 
-        async mapCustomSetters(model: ${modelName}JsonResponse): Promise<void> {
+        async mapCustomSetters(model: New${modelName}): Promise<void> {
           const customSetter = {
             default: () => {
             },
@@ -1055,7 +1043,7 @@ export async function generateModelString(
           }, {})
         }
 
-        isDirty(column?: keyof ${modelName}Type): boolean {
+        isDirty(column?: keyof ${modelName}JsonResponse): boolean {
           if (column) {
             return this.attributes[column] !== this.originalAttributes[column]
           }
@@ -1067,15 +1055,15 @@ export async function generateModelString(
           })
         }
 
-        isClean(column?: keyof ${modelName}Type): boolean {
+        isClean(column?: keyof ${modelName}JsonResponse): boolean {
           return !this.isDirty(column)
         }
 
-        wasChanged(column?: keyof ${modelName}Type): boolean {
+        wasChanged(column?: keyof ${modelName}JsonResponse): boolean {
           return this.hasSaved && this.isDirty(column)
         }
   
-        select(params: (keyof ${modelName}Type)[] | RawBuilder<string> | string): ${modelName}Model {
+        select(params: (keyof ${modelName}JsonResponse)[] | RawBuilder<string> | string): ${modelName}Model {
           this.selectFromQuery = this.selectFromQuery.select(params)
 
           this.hasSelect = true
@@ -1083,8 +1071,8 @@ export async function generateModelString(
           return this
         }
 
-        static select(params: (keyof ${modelName}Type)[] | RawBuilder<string> | string): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+        static select(params: (keyof ${modelName}JsonResponse)[] | RawBuilder<string> | string): ${modelName}Model {
+          const instance = new ${modelName}Model(undefined)
   
           // Initialize a query with the table name and selected fields
           instance.selectFromQuery = instance.selectFromQuery.select(params)
@@ -1103,7 +1091,7 @@ export async function generateModelString(
           this.mapCustomGetters(model)
           await this.loadRelations(model)
           
-          const data = new ${modelName}Model(model as ${modelName}Type)
+          const data = new ${modelName}Model(model)
   
           cache.getOrSet(\`${formattedModelName}:\${id}\`, JSON.stringify(model))
   
@@ -1116,13 +1104,13 @@ export async function generateModelString(
 
         // Method to find a ${modelName} by ID
         static async find(id: number): Promise<${modelName}Model | undefined> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           return await instance.applyFind(id)
         }
 
         async first(): Promise<${modelName}Model | undefined> {
-          let model: ${modelName}Model | undefined
+          let model: ${modelName}JsonResponse | undefined
 
           if (this.hasSelect) {
             model = await this.selectFromQuery.executeTakeFirst()
@@ -1136,13 +1124,13 @@ export async function generateModelString(
             await this.loadRelations(model)
           }
 
-          const data = new ${modelName}Model(model as ${modelName}Type)
+          const data = new ${modelName}Model(model)
   
           return data
         }
         
         static async first(): Promise<${modelName}Model | undefined> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}JsonResponse(null)
 
           const model = await DB.instance.selectFrom('${tableName}')
             .selectAll()
@@ -1150,7 +1138,7 @@ export async function generateModelString(
 
           instance.mapCustomGetters(model)
 
-          const data = new ${modelName}Model(model as ${modelName}Type)
+          const data = new ${modelName}Model(model)
   
           return data
         }
@@ -1166,7 +1154,7 @@ export async function generateModelString(
             await this.loadRelations(model)
           }
 
-          const data = new ${modelName}Model(model as ${modelName}Type)
+          const data = new ${modelName}Model(model)
   
           return data
         }
@@ -1176,19 +1164,19 @@ export async function generateModelString(
         }
 
         static async firstOrFail(): Promise<${modelName}Model | undefined> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           return await instance.applyFirstOrFail()
         }
   
         static async all(): Promise<${modelName}Model[]> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           const models = await DB.instance.selectFrom('${tableName}').selectAll().execute()
 
           instance.mapCustomGetters(models)
 
-          const data = await Promise.all(models.map(async (model: ${modelName}Type) => {
+          const data = await Promise.all(models.map(async (model: ${modelName}JsonResponse) => {
             return new ${modelName}Model(model)
           }))
   
@@ -1208,7 +1196,7 @@ export async function generateModelString(
           this.mapCustomGetters(model)
           await this.loadRelations(model)
 
-          const data = new ${modelName}Model(model as ${modelName}Type)
+          const data = new ${modelName}Model(model)
   
           return data
         }
@@ -1218,7 +1206,7 @@ export async function generateModelString(
         }
   
         static async findOrFail(id: number): Promise<${modelName}Model> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
           
           return await instance.applyFindOrFail(id)
         }
@@ -1226,7 +1214,7 @@ export async function generateModelString(
         async applyFindMany(ids: number[]): Promise<${modelName}Model[]> {
           let query = DB.instance.selectFrom('${tableName}').where('id', 'in', ids)
   
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           ${instanceSoftDeleteStatements}
   
@@ -1237,11 +1225,11 @@ export async function generateModelString(
           instance.mapCustomGetters(models)
           await instance.loadRelations(models)
   
-          return models.map((modelItem: ${modelName}Model) => instance.parseResult(new ${modelName}Model(modelItem)))
+          return models.map((modelItem: ${modelName}JsonResponse) => instance.parseResult(new ${modelName}Model(modelItem)))
         }
   
         static async findMany(ids: number[]): Promise<${modelName}Model[]> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           return await instance.applyFindMany(ids)
         }
@@ -1257,7 +1245,7 @@ export async function generateModelString(
         }
 
         static skip(count: number): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           instance.selectFromQuery = instance.selectFromQuery.offset(count)
 
@@ -1295,7 +1283,7 @@ export async function generateModelString(
         }
 
         static async chunk(size: number, callback: (models: ${modelName}Model[]) => Promise<void>): Promise<void> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           await instance.applyChunk(size, callback)
         }
@@ -1307,7 +1295,7 @@ export async function generateModelString(
         }
 
         static take(count: number): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           instance.selectFromQuery = instance.selectFromQuery.limit(count)
 
@@ -1315,7 +1303,7 @@ export async function generateModelString(
         }
 
         static async pluck<K extends keyof ${modelName}Model>(field: K): Promise<${modelName}Model[K][]> {
-         const instance = new ${modelName}Model(null)
+         const instance = new ${modelName}Model(undefined)
 
           if (instance.hasSelect) {
             const model = await instance.selectFromQuery.execute()
@@ -1339,7 +1327,7 @@ export async function generateModelString(
         }
 
         static async count(): Promise<number> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           const result = await instance.selectFromQuery
             .select(sql\`COUNT(*) as count\`)
@@ -1357,7 +1345,7 @@ export async function generateModelString(
         }
         
         static async max(field: keyof ${modelName}Model): Promise<number> {
-         const instance = new ${modelName}Model(null)
+         const instance = new ${modelName}Model(undefined)
 
           const result = await instance.selectFromQuery
             .select(sql\`MAX(\${sql.raw(field as string)}) as max \`)
@@ -1375,7 +1363,7 @@ export async function generateModelString(
         }
 
         static async min(field: keyof ${modelName}Model): Promise<number> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           const result = await instance.selectFromQuery
             .select(sql\`MIN(\${sql.raw(field as string)}) as min \`)
@@ -1393,7 +1381,7 @@ export async function generateModelString(
         }
 
         static async avg(field: keyof ${modelName}Model): Promise<number> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           const result = await instance.selectFromQuery
             .select(sql\`AVG(\${sql.raw(field as string)}) as avg \`)
@@ -1411,7 +1399,7 @@ export async function generateModelString(
         }
 
         static async sum(field: keyof ${modelName}Model): Promise<number> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           const result = await instance.selectFromQuery
             .select(sql\`SUM(\${sql.raw(field as string)}) as sum \`)
@@ -1440,7 +1428,7 @@ export async function generateModelString(
           this.mapCustomGetters(models)
           await this.loadRelations(models)
   
-          const data = await Promise.all(models.map(async (model: ${modelName}Model) => {
+          const data = await Promise.all(models.map(async (model: ${modelName}JsonResponse) => {
             return new ${modelName}Model(model)
           }))
           
@@ -1452,7 +1440,7 @@ export async function generateModelString(
         }
 
         static async get(): Promise<${modelName}Model[]> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           return await instance.applyGet()
         }
@@ -1470,7 +1458,7 @@ export async function generateModelString(
         }
 
         static has(relation: string): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
             exists(
@@ -1484,7 +1472,7 @@ export async function generateModelString(
         }
 
         static whereExists(callback: (qb: any) => any): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) => 
             exists(callback({ exists, selectFrom }))
@@ -1564,7 +1552,7 @@ export async function generateModelString(
           relation: string,
           callback: (query: SubqueryBuilder<keyof ${modelName}Model>) => void
         ): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
           
           return instance.applyWhereHas(relation, callback)
         }
@@ -1588,7 +1576,7 @@ export async function generateModelString(
         }
 
         static doesntHave(relation: string): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           return instance.applyDoesntHave(relation)
         }
@@ -1657,7 +1645,7 @@ export async function generateModelString(
           relation: string,
           callback: (query: SubqueryBuilder<${formattedTableName}Table>) => void
         ): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
           
           return instance.applyWhereDoesntHave(relation, callback)
         }
@@ -1698,7 +1686,7 @@ export async function generateModelString(
   
         // Method to get all ${tableName}
         static async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<${modelName}Response> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           return await instance.applyPaginate(options)
         }
@@ -1730,13 +1718,13 @@ export async function generateModelString(
         }
   
         static async create(new${modelName}: New${modelName}): Promise<${modelName}Model> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           return await instance.applyCreate(new${modelName})
         }
   
         static async createMany(new${modelName}: New${modelName}[]): Promise<void> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           const valuesFiltered = new${modelName}.map((new${modelName}: New${modelName}) => {
             const filteredValues = Object.fromEntries(
@@ -1803,7 +1791,7 @@ export async function generateModelString(
         }
 
         static where<V = string>(column: keyof ${formattedTableName}Table, ...args: [V] | [Operator, V]): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           return instance.applyWhere<V>(column, ...args)
         }
@@ -1815,7 +1803,7 @@ export async function generateModelString(
         }
 
         static whereColumn(first: keyof ${formattedTableName}Table, operator: Operator, second: keyof ${formattedTableName}Table): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           instance.selectFromQuery = instance.selectFromQuery.whereRef(first, operator, second)
 
@@ -1827,7 +1815,7 @@ export async function generateModelString(
           const operator = value === undefined ? '=' : operatorOrValue
           const actualValue = value === undefined ? operatorOrValue : value
 
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
           instance.selectFromQuery = instance.selectFromQuery.whereRef(column, operator, actualValue)
           
           return instance
@@ -1838,7 +1826,7 @@ export async function generateModelString(
         }
 
         static whereRef(column: keyof ${formattedTableName}Table, ...args: string[]): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           return instance.applyWhereRef(column, ...args)
         }
@@ -1850,7 +1838,7 @@ export async function generateModelString(
         }
 
         static whereRaw(sqlStatement: string): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           instance.selectFromQuery = instance.selectFromQuery.where(sql\`\${sqlStatement}\`)
 
@@ -1884,7 +1872,7 @@ export async function generateModelString(
         }
 
         static orWhere(...conditions: [string, any][]): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           return instance.applyOrWhere(...conditions)
         }
@@ -1900,7 +1888,7 @@ export async function generateModelString(
           condition: boolean,
           callback: (query: ${modelName}Model) => ${modelName}Model,
         ): ${modelName}Model {
-          let instance = new ${modelName}Model(null)
+          let instance = new ${modelName}Model(undefined)
   
           if (condition)
             instance = callback(instance)
@@ -1925,7 +1913,7 @@ export async function generateModelString(
         }
   
         static whereNotNull(column: keyof ${formattedTableName}Table): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
             eb(column, '=', '').or(column, 'is not', null)
@@ -1959,7 +1947,7 @@ export async function generateModelString(
         }
   
         static whereNull(column: keyof ${formattedTableName}Table): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
             eb(column, '=', '').or(column, 'is', null)
@@ -1993,7 +1981,7 @@ export async function generateModelString(
         }
   
         static whereIn<V = number>(column: keyof ${formattedTableName}Table, values: V[]): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           return instance.applyWhereIn<V>(column, values)
         }
@@ -2017,7 +2005,7 @@ export async function generateModelString(
         }
 
         static whereBetween<V = number>(column: keyof ${formattedTableName}Table, range: [V, V]): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           return instance.applyWhereBetween<V>(column, range)
         }
@@ -2037,7 +2025,7 @@ export async function generateModelString(
         }
           
         static whereLike(column: keyof ${formattedTableName}Table, value: string): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           return instance.applyWhereLike(column, value)
         }
@@ -2057,7 +2045,7 @@ export async function generateModelString(
         }
   
         static whereNotIn<V = number>(column: keyof ${formattedTableName}Table, values: V[]): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           return instance.applyWhereNotIn<V>(column, values)
         }
@@ -2075,8 +2063,8 @@ export async function generateModelString(
           return model !== null && model !== undefined
         }
 
-        static async latest(): Promise<${modelName}Type | undefined> {
-          const instance = new ${modelName}Model(null)
+        static async latest(): Promise<${modelName}Model | undefined> {
+          const instance = new ${modelName}Model(undefined)
 
           const model = await DB.instance.selectFrom('${tableName}')
             .selectAll()
@@ -2088,13 +2076,13 @@ export async function generateModelString(
 
           instance.mapCustomGetters(model)
 
-          const data = new ${modelName}Model(model as ${modelName}Type)
+          const data = new ${modelName}Model(model)
 
           return data
         }
 
-        static async oldest(): Promise<${modelName}Type | undefined> {
-          const instance = new ${modelName}Model(null)
+        static async oldest(): Promise<${modelName}Model | undefined> {
+          const instance = new ${modelName}Model(undefined)
 
           const model = await DB.instance.selectFrom('${tableName}')
             .selectAll()
@@ -2106,18 +2094,18 @@ export async function generateModelString(
 
           instance.mapCustomGetters(model)
 
-          const data = new ${modelName}Model(model as ${modelName}Type)
+          const data = new ${modelName}Model(model)
 
           return data
         }
   
         static async firstOrCreate(
-          condition: Partial<${modelName}Type>,
+          condition: Partial<${modelName}JsonResponse>,
           new${modelName}: New${modelName},
         ): Promise<${modelName}Model> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
-          const key = Object.keys(condition)[0] as keyof ${modelName}Type
+          const key = Object.keys(condition)[0] as keyof ${modelName}JsonResponse
   
           if (!key) {
             throw new HttpError(500, 'Condition must contain at least one key-value pair')
@@ -2135,7 +2123,7 @@ export async function generateModelString(
             instance.mapCustomGetters(existing${modelName})
             await instance.loadRelations(existing${modelName})
             
-            return new ${modelName}Model(existing${modelName} as ${modelName}Type)
+            return new ${modelName}Model(existing${modelName} as ${modelName}JsonResponse)
           }
           else {
             return await instance.create(new${modelName})
@@ -2143,12 +2131,12 @@ export async function generateModelString(
         }
   
         static async updateOrCreate(
-          condition: Partial<${modelName}Type>,
+          condition: Partial<${modelName}JsonResponse>,
           new${modelName}: New${modelName},
         ): Promise<${modelName}Model> {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
-          const key = Object.keys(condition)[0] as keyof ${modelName}Type
+          const key = Object.keys(condition)[0] as keyof ${modelName}JsonResponse
   
           if (!key) {
             throw new HttpError(500, 'Condition must contain at least one key-value pair')
@@ -2181,7 +2169,7 @@ export async function generateModelString(
   
             instance.hasSaved = true
 
-            return new ${modelName}Model(updated${modelName} as ${modelName}Type)
+            return new ${modelName}Model(updated${modelName} as ${modelName}JsonResponse)
           } else {
             // If not found, create a new record
             return await instance.create(new${modelName})
@@ -2228,15 +2216,15 @@ export async function generateModelString(
         }
   
         static with(relations: string[]): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
     
           instance.withRelations = relations
             
           return instance
         }
   
-        async last(): Promise<${modelName}Type | undefined> {
-          let model: ${modelName}Model | undefined
+        async last(): Promise<${modelName}Model | undefined> {
+          let model: ${modelName}JsonResponse | undefined
 
           if (this.hasSelect) {
             model = await this.selectFromQuery.executeTakeFirst()
@@ -2250,18 +2238,18 @@ export async function generateModelString(
             await this.loadRelations(model)
           }
 
-          const data = new ${modelName}Model(model as ${modelName}Type)
+          const data = new ${modelName}Model(model)
   
           return data
         }
   
-        static async last(): Promise<${modelName}Type | undefined> {
+        static async last(): Promise<${modelName}Model | undefined> {
           const model = await DB.instance.selectFrom('${tableName}').selectAll().orderBy('id', 'desc').executeTakeFirst()
   
           if (!model)
             return undefined
   
-          const data = new ${modelName}Model(model as ${modelName}Type)
+          const data = new ${modelName}Model(model)
   
           return data
         }
@@ -2273,7 +2261,7 @@ export async function generateModelString(
         }
   
         static orderBy(column: keyof ${formattedTableName}Table, order: 'asc' | 'desc'): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           instance.selectFromQuery = instance.selectFromQuery.orderBy(column, order)
   
@@ -2287,7 +2275,7 @@ export async function generateModelString(
         }
   
         static groupBy(column: keyof ${formattedTableName}Table): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           instance.selectFromQuery = instance.selectFromQuery.groupBy(column)
   
@@ -2301,7 +2289,7 @@ export async function generateModelString(
         }
 
         static having<V = string>(column: keyof ${formattedTableName}Table, operator: Operator, value: V): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           instance.selectFromQuery = instance.selectFromQuery.having(column, operator, value)
   
@@ -2315,7 +2303,7 @@ export async function generateModelString(
         }
         
         static inRandomOrder(): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
 
           instance.selectFromQuery = instance.selectFromQuery.orderBy(sql\` \${sql.raw('RANDOM()')} \`)
 
@@ -2329,7 +2317,7 @@ export async function generateModelString(
         }
 
         static orderByDesc(column: keyof ${formattedTableName}Table): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'desc')
   
@@ -2343,7 +2331,7 @@ export async function generateModelString(
         }
   
         static orderByAsc(column: keyof ${formattedTableName}Table): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'asc')
   
@@ -2419,7 +2407,7 @@ export async function generateModelString(
           this.hasSaved = true
         }
 
-        fill(data: Partial<${modelName}Type>): ${modelName}Model {
+        fill(data: Partial<${modelName}JsonResponse>): ${modelName}Model {
           const filteredValues = Object.fromEntries(
             Object.entries(data).filter(([key]) => 
               !this.guarded.includes(key) && this.fillable.includes(key)
@@ -2434,7 +2422,7 @@ export async function generateModelString(
           return this
         }
 
-        forceFill(data: Partial<${modelName}Type>): ${modelName}Model {
+        forceFill(data: Partial<${modelName}JsonResponse>): ${modelName}Model {
           this.attributes = {
             ...this.attributes,
             ...data
@@ -2465,7 +2453,7 @@ export async function generateModelString(
 
         ${likeableStatements}
   
-        distinct(column: keyof ${modelName}Type): ${modelName}Model {
+        distinct(column: keyof ${modelName}JsonResponse): ${modelName}Model {
           this.selectFromQuery = this.selectFromQuery.select(column).distinct()
   
           this.hasSelect = true
@@ -2473,8 +2461,8 @@ export async function generateModelString(
           return this
         }
   
-        static distinct(column: keyof ${modelName}Type): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+        static distinct(column: keyof ${modelName}JsonResponse): ${modelName}Model {
+          const instance = new ${modelName}Model(undefined)
   
           instance.selectFromQuery = instance.selectFromQuery.select(column).distinct()
   
@@ -2490,15 +2478,15 @@ export async function generateModelString(
         }
   
         static join(table: string, firstCol: string, secondCol: string): ${modelName}Model {
-          const instance = new ${modelName}Model(null)
+          const instance = new ${modelName}Model(undefined)
   
           instance.selectFromQuery = instance.selectFromQuery.innerJoin(table, firstCol, secondCol)
   
           return instance
         }
   
-        toJSON(): Partial<${modelName}JsonResponse> {
-          const output: Partial<${modelName}JsonResponse> = ${jsonFields}
+        toJSON(): ${modelName}JsonResponse {
+          const output: ${modelName}JsonResponse = ${jsonFields}
 
           return output
         }

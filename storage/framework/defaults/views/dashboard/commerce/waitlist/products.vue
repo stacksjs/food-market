@@ -14,13 +14,16 @@ interface WaitlistEntry {
   name: string
   email: string
   phone: string | null
-  product: string
-  source: string
+  productId: number
+  quantity: number
+  notificationPreference: 'sms' | 'email' | 'both'
+  notes: string | null
   status: string
   dateAdded: string
-  notes: string | null
   notified: boolean
   priority: number
+  lastNotified: string | null
+  source: string
 }
 
 // Define product type for dropdown
@@ -32,10 +35,58 @@ interface Product {
 }
 
 // Available statuses
-const statuses = ['all', 'Pending', 'Notified', 'Converted', 'Expired']
+const statuses = ['all', 'Waiting', 'Notified', 'Purchased', 'Cancelled']
 
 // Available sources
 const sources = ['all', 'Website', 'Mobile App', 'In-Store', 'Social Media', 'Email Campaign', 'Referral']
+
+// Notification preferences
+const notificationPreferences = ['sms', 'email', 'both']
+
+// Table preferences
+const tablePreferences: string[] = []
+
+// Calculate estimated wait time based on party size and current queue
+function calculateEstimatedWait(partySize: number): number {
+  const baseWait = 15 // Base wait time in minutes
+  const queueFactor = waitlistEntries.value.filter(e => e.status === 'Waiting').length * 5
+  const partySizeFactor = Math.ceil(partySize / 2) * 5
+  return baseWait + queueFactor + partySizeFactor
+}
+
+// Update queue positions
+function updateQueuePositions(): void {
+  // This function is no longer needed for product waitlist
+  return
+}
+
+// Send SMS notification
+async function sendSMSNotification(entry: WaitlistEntry, message: string): Promise<void> {
+  // In a real app, this would integrate with Twilio or similar service
+  console.log(`Sending SMS to ${entry.phone}: ${message}`)
+}
+
+// Send notification based on preference
+async function notifyCustomer(entry: WaitlistEntry, message: string): Promise<void> {
+  if (entry.notificationPreference === 'sms' || entry.notificationPreference === 'both') {
+    await sendSMSNotification(entry, message)
+  }
+  if (entry.notificationPreference === 'email' || entry.notificationPreference === 'both') {
+    // Send email notification
+    console.log(`Sending email to ${entry.email}: ${message}`)
+  }
+  entry.lastNotified = new Date().toISOString()
+  entry.notified = true
+}
+
+// Calculate wait time statistics
+const waitTimeStats = computed(() => {
+  const waitingEntries = waitlistEntries.value.filter(e => e.status === 'Waiting')
+  return {
+    totalWaiting: waitingEntries.length,
+    averageQuantity: Math.round(waitingEntries.reduce((acc, curr) => acc + curr.quantity, 0) / (waitingEntries.length || 1))
+  }
+})
 
 // Sample waitlist data
 const waitlistEntries = ref<WaitlistEntry[]>([
@@ -44,104 +95,128 @@ const waitlistEntries = ref<WaitlistEntry[]>([
     name: 'John Smith',
     email: 'john.smith@example.com',
     phone: '+1 (555) 123-4567',
-    product: 'Truffle Mushroom Pasta',
-    source: 'Website',
-    status: 'Pending',
+    productId: 1,
+    quantity: 4,
+    notificationPreference: 'sms',
+    notes: 'Interested in bulk purchase',
+    status: 'Waiting',
     dateAdded: '2024-01-10',
-    notes: 'Interested in being notified as soon as the product is available',
     notified: false,
-    priority: 2
+    priority: 2,
+    lastNotified: null,
+    source: 'Website'
   },
   {
     id: 2,
     name: 'Emily Johnson',
     email: 'emily.j@example.com',
     phone: '+1 (555) 987-6543',
-    product: 'Matcha Green Tea Latte',
-    source: 'Mobile App',
-    status: 'Pending',
-    dateAdded: '2024-01-12',
+    productId: 2,
+    quantity: 2,
+    notificationPreference: 'email',
     notes: null,
+    status: 'Waiting',
+    dateAdded: '2024-01-12',
     notified: false,
-    priority: 1
+    priority: 1,
+    lastNotified: null,
+    source: 'Website'
   },
   {
     id: 3,
     name: 'Michael Brown',
     email: 'michael.b@example.com',
     phone: null,
-    product: 'Truffle Mushroom Pasta',
-    source: 'In-Store',
-    status: 'Notified',
-    dateAdded: '2024-01-15',
+    productId: 3,
+    quantity: 3,
+    notificationPreference: 'both',
     notes: 'VIP customer, notify immediately when available',
+    status: 'Purchased',
+    dateAdded: '2024-01-15',
     notified: true,
-    priority: 3
+    priority: 3,
+    lastNotified: '2024-01-15T12:30:00',
+    source: 'Mobile App'
   },
   {
     id: 4,
     name: 'Sarah Wilson',
     email: 'sarah.w@example.com',
     phone: '+1 (555) 456-7890',
-    product: 'Avocado Toast',
-    source: 'Website',
-    status: 'Pending',
-    dateAdded: '2024-01-18',
+    productId: 4,
+    quantity: 2,
+    notificationPreference: 'sms',
     notes: 'Wants to be notified when back in stock',
+    status: 'Waiting',
+    dateAdded: '2024-01-18',
     notified: false,
-    priority: 2
+    priority: 2,
+    lastNotified: null,
+    source: 'Website'
   },
   {
     id: 5,
     name: 'David Lee',
     email: 'david.l@example.com',
     phone: '+1 (555) 234-5678',
-    product: 'Truffle Mushroom Pasta',
-    source: 'Social Media',
-    status: 'Notified',
-    dateAdded: '2024-01-20',
+    productId: 5,
+    quantity: 3,
+    notificationPreference: 'email',
     notes: 'Requested notification via SMS',
+    status: 'Purchased',
+    dateAdded: '2024-01-20',
     notified: true,
-    priority: 2
+    priority: 2,
+    lastNotified: '2024-01-20T12:30:00',
+    source: 'Mobile App'
   },
   {
     id: 6,
     name: 'Jennifer Martinez',
     email: 'jennifer.m@example.com',
     phone: null,
-    product: 'Matcha Green Tea Latte',
-    source: 'Email Campaign',
-    status: 'Pending',
-    dateAdded: '2024-01-22',
+    productId: 6,
+    quantity: 2,
+    notificationPreference: 'both',
     notes: null,
+    status: 'Waiting',
+    dateAdded: '2024-01-22',
     notified: false,
-    priority: 1
+    priority: 1,
+    lastNotified: null,
+    source: 'Website'
   },
   {
     id: 7,
     name: 'Robert Taylor',
     email: 'robert.t@example.com',
     phone: '+1 (555) 876-5432',
-    product: 'Truffle Mushroom Pasta',
-    source: 'Website',
-    status: 'Pending',
-    dateAdded: '2024-01-25',
+    productId: 7,
+    quantity: 4,
+    notificationPreference: 'sms',
     notes: 'Wants to purchase multiple units when available',
+    status: 'Waiting',
+    dateAdded: '2024-01-25',
     notified: false,
-    priority: 3
+    priority: 3,
+    lastNotified: null,
+    source: 'Website'
   },
   {
     id: 8,
     name: 'Lisa Anderson',
     email: 'lisa.a@example.com',
     phone: '+1 (555) 345-6789',
-    product: 'Matcha Green Tea Latte',
-    source: 'Mobile App',
-    status: 'Notified',
-    dateAdded: '2024-01-28',
+    productId: 8,
+    quantity: 2,
+    notificationPreference: 'email',
     notes: null,
+    status: 'Purchased',
+    dateAdded: '2024-01-28',
     notified: true,
-    priority: 2
+    priority: 2,
+    lastNotified: '2024-01-28T12:30:00',
+    source: 'Website'
   }
 ])
 
@@ -150,8 +225,8 @@ const products = computed<Product[]>(() => {
   const productMap = new Map<string, number>()
 
   waitlistEntries.value.forEach(entry => {
-    const count = productMap.get(entry.product) || 0
-    productMap.set(entry.product, count + 1)
+    const count = productMap.get(entry.name) || 0
+    productMap.set(entry.name, count + 1)
   })
 
   return Array.from(productMap.entries()).map(([name, count], index) => ({
@@ -162,98 +237,121 @@ const products = computed<Product[]>(() => {
   }))
 })
 
-// Filter and sort options
-const searchQuery = ref('')
-const sortBy = ref('dateAdded')
-const sortOrder = ref('desc')
-const productFilter = ref('all')
-const statusFilter = ref('all')
-const sourceFilter = ref('all')
-const viewMode = useLocalStorage('waitlist-view-mode', 'list') // Default to list view and save in localStorage
+// Search and filter refs
+const searchQuery = ref<string>('')
+const statusFilter = ref<string>('all')
+const partySizeFilter = ref<string>('all')
+const tablePreferenceFilter = ref<string>('all')
 
-// Filtered and sorted entries
+// Filter functions
 const filteredEntries = computed(() => {
-  return waitlistEntries.value
-    .filter(entry => {
-      // Apply search filter
-      const matchesSearch =
-        entry.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        entry.email.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        (entry.notes && entry.notes.toLowerCase().includes(searchQuery.value.toLowerCase()))
+  return waitlistEntries.value.filter(entry => {
+    // Apply search filter
+    const matchesSearch = searchQuery.value === '' ||
+      entry.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      (entry.phone && entry.phone.includes(searchQuery.value)) ||
+      entry.email.toLowerCase().includes(searchQuery.value.toLowerCase())
 
-      // Apply product filter
-      const matchesProduct = productFilter.value === 'all' || entry.product === productFilter.value
-
-      // Apply status filter
-      const matchesStatus = statusFilter.value === 'all' || entry.status === statusFilter.value
-
-      // Apply source filter
-      const matchesSource = sourceFilter.value === 'all' || entry.source === sourceFilter.value
-
-      return matchesSearch && matchesProduct && matchesStatus && matchesSource
-    })
-    .sort((a, b) => {
-      // Apply sorting
-      let comparison = 0
-      if (sortBy.value === 'dateAdded') {
-        comparison = new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime()
-      } else if (sortBy.value === 'name') {
-        comparison = a.name.localeCompare(b.name)
-      } else if (sortBy.value === 'priority') {
-        comparison = b.priority - a.priority
+    // Apply quantity filter
+    let matchesQuantity = true
+    if (partySizeFilter.value !== 'all') {
+      const [minStr, maxStr] = partySizeFilter.value.split('-')
+      if (!minStr) return false
+      const min = parseInt(minStr)
+      if (maxStr) {
+        const max = parseInt(maxStr)
+        matchesQuantity = entry.quantity >= min && entry.quantity <= max
+      } else {
+        // For "7+" case
+        matchesQuantity = entry.quantity >= min
       }
+    }
 
-      return sortOrder.value === 'asc' ? comparison : -comparison
-    })
+    // Apply status filter
+    const matchesStatus = statusFilter.value === 'all' || entry.status === statusFilter.value
+
+    // Apply source filter
+    const matchesSource = sourceFilter.value === 'all' || entry.source === sourceFilter.value
+
+    return matchesSearch && matchesQuantity && matchesStatus && matchesSource
+  })
 })
 
-// Pagination
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-const totalPages = computed(() => Math.ceil(filteredEntries.value.length / itemsPerPage.value))
+// Sort refs and functions
+const sortBy = ref<'name' | 'dateAdded' | 'quantity'>('dateAdded')
+const sortOrder = ref<'asc' | 'desc'>('asc')
 
-const paginatedEntries = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  const end = start + itemsPerPage.value
-  return filteredEntries.value.slice(start, end)
-})
-
-function changePage(page: number): void {
-  currentPage.value = page
-}
-
-function previousPage(): void {
-  if (currentPage.value > 1) {
-    currentPage.value--
+function toggleSort(field: 'name' | 'dateAdded' | 'quantity') {
+  if (sortBy.value === field) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortBy.value = field
+    sortOrder.value = 'asc'
   }
 }
 
-function nextPage(): void {
+// Sort entries
+const sortedEntries = computed(() => {
+  return [...filteredEntries.value].sort((a, b) => {
+    if (sortBy.value === 'name') {
+      return sortOrder.value === 'asc'
+        ? a.name.localeCompare(b.name)
+        : b.name.localeCompare(a.name)
+    }
+    if (sortBy.value === 'dateAdded') {
+      return sortOrder.value === 'asc'
+        ? new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime()
+        : new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
+    }
+    if (sortBy.value === 'quantity') {
+      return sortOrder.value === 'asc'
+        ? a.quantity - b.quantity
+        : b.quantity - a.quantity
+    }
+    return 0
+  })
+})
+
+// Pagination
+const itemsPerPage = 10
+const currentPage = ref(1)
+
+const paginatedEntries = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return sortedEntries.value.slice(start, end)
+})
+
+const totalPages = computed(() => Math.ceil(sortedEntries.value.length / itemsPerPage))
+
+function nextPage() {
   if (currentPage.value < totalPages.value) {
     currentPage.value++
   }
 }
 
-// Toggle sort order
-function toggleSort(column: string): void {
-  if (sortBy.value === column) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortBy.value = column
-    sortOrder.value = 'desc'
+function prevPage() {
+  if (currentPage.value > 1) {
+    currentPage.value--
+  }
+}
+
+function goToPage(page: number) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
   }
 }
 
 // Get status badge class
 function getStatusClass(status: string): string {
   switch (status) {
-    case 'Pending':
+    case 'Waiting':
       return 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-900/30 dark:text-blue-400'
     case 'Notified':
       return 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400'
-    case 'Converted':
+    case 'Purchased':
       return 'bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/20 dark:bg-purple-900/30 dark:text-purple-400'
-    case 'Expired':
+    case 'Cancelled':
       return 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20 dark:bg-gray-900/30 dark:text-gray-400'
     default:
       return 'bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-600/20 dark:bg-gray-900/30 dark:text-gray-400'
@@ -275,25 +373,33 @@ function getPriorityClass(priority: number): string {
 }
 
 // Modal state for adding/editing waitlist entry
-const showEntryModal = ref(false)
-const isEditMode = ref(false)
+const showEntryModal = ref<boolean>(false)
+const isEditMode = ref<boolean>(false)
 const currentEntry = ref<WaitlistEntry | null>(null)
 
 // Calculate statistics
 const totalEntries = computed(() => waitlistEntries.value.length)
-const pendingEntries = computed(() => waitlistEntries.value.filter(e => e.status === 'Pending').length)
+const waitingEntries = computed(() => waitlistEntries.value.filter(e => e.status === 'Waiting').length)
 const notifiedEntries = computed(() => waitlistEntries.value.filter(e => e.status === 'Notified').length)
-const convertedEntries = computed(() => waitlistEntries.value.filter(e => e.status === 'Converted').length)
+const purchasedEntries = computed(() => waitlistEntries.value.filter(e => e.status === 'Purchased').length)
+const conversionRate = computed(() => {
+  const total = totalEntries.value
+  const purchased = purchasedEntries.value
+  return total > 0 ? Math.round((purchased / total) * 100) : 0
+})
 
 // Form state for entry fields
-const entryName = ref('')
-const entryEmail = ref('')
-const entryPhone = ref<string | null>('')
-const entryProduct = ref('')
-const entrySource = ref('Website')
-const entryStatus = ref('Pending')
-const entryNotes = ref<string | null>('')
-const entryPriority = ref(1)
+const entryName = ref<string>('')
+const entryEmail = ref<string>('')
+const entryPhone = ref<string | null>(null)
+const entryQuantity = ref<number>(2)
+const entryNotificationPreference = ref<'sms' | 'email' | 'both'>('sms')
+const entrySource = ref<string>('Website')
+const entryNotes = ref<string | null>(null)
+const entryPriority = ref<number>(1)
+
+// Add source filter with type
+const sourceFilter = ref<string>('all')
 
 // Initialize form fields when opening modal
 function openAddEntryModal(): void {
@@ -303,9 +409,9 @@ function openAddEntryModal(): void {
   entryName.value = ''
   entryEmail.value = ''
   entryPhone.value = ''
-  entryProduct.value = ''
+  entryQuantity.value = 2
+  entryNotificationPreference.value = 'sms'
   entrySource.value = 'Website'
-  entryStatus.value = 'Pending'
   entryNotes.value = ''
   entryPriority.value = 1
 
@@ -320,9 +426,9 @@ function openEditEntryModal(entry: WaitlistEntry): void {
   entryName.value = entry.name
   entryEmail.value = entry.email
   entryPhone.value = entry.phone
-  entryProduct.value = entry.product
+  entryQuantity.value = entry.quantity
+  entryNotificationPreference.value = entry.notificationPreference
   entrySource.value = entry.source
-  entryStatus.value = entry.status
   entryNotes.value = entry.notes
   entryPriority.value = entry.priority
 
@@ -330,32 +436,35 @@ function openEditEntryModal(entry: WaitlistEntry): void {
 }
 
 function saveEntry(): void {
-  // Create entry object from form fields
+  const now = new Date()
+  const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const entry: WaitlistEntry = {
     id: isEditMode.value && currentEntry.value ? currentEntry.value.id : Math.max(0, ...waitlistEntries.value.map(e => e.id)) + 1,
     name: entryName.value,
     email: entryEmail.value,
-    phone: entryPhone.value,
-    product: entryProduct.value,
-    source: entrySource.value,
-    status: entryStatus.value,
-    dateAdded: isEditMode.value && currentEntry.value ? currentEntry.value.dateAdded : new Date().toISOString().split('T')[0] || '',
-    notes: entryNotes.value,
-    notified: isEditMode.value && currentEntry.value ? currentEntry.value.notified : false,
-    priority: entryPriority.value
+    phone: entryPhone.value || null,
+    productId: Math.floor(Math.random() * 1000), // Generate random product ID for demo
+    quantity: entryQuantity.value,
+    notificationPreference: entryNotificationPreference.value,
+    notes: entryNotes.value || null,
+    status: 'Waiting',
+    dateAdded: formattedDate,
+    notified: false,
+    priority: entryPriority.value,
+    lastNotified: null,
+    source: entrySource.value
   }
 
   if (isEditMode.value && currentEntry.value) {
-    // Update existing entry
     const index = waitlistEntries.value.findIndex(e => e.id === currentEntry.value!.id)
     if (index !== -1) {
       waitlistEntries.value[index] = entry
     }
   } else {
-    // Add new entry
     waitlistEntries.value.push(entry)
   }
 
+  notifyCustomer(entry, `Thanks for joining the waitlist! We'll notify you when the product becomes available.`)
   showEntryModal.value = false
 }
 
@@ -370,28 +479,27 @@ function deleteEntry(entryId: number): void {
 }
 
 // Function to mark an entry as notified
-function markAsNotified(id: number): void {
-  const entry = waitlistEntries.value.find(e => e.id === id)
+function markAsNotified(entryId: number): void {
+  const entry = waitlistEntries.value.find(e => e.id === entryId)
   if (entry) {
-    entry.notified = true
-    // In a real app, this would trigger an email or notification to the customer
+    entry.status = 'Notified'
   }
 }
 
-// Function to mark an entry as converted
-function markAsConverted(entryId: number): void {
+// Function to mark an entry as purchased
+function markAsPurchased(entryId: number): void {
   const entry = waitlistEntries.value.find(e => e.id === entryId)
   if (entry) {
-    entry.status = 'Converted'
+    entry.status = 'Purchased'
   }
 }
 
 // Notification system
-const showNotificationModal = ref(false)
-const notificationSubject = ref('')
-const notificationMessage = ref('')
+const showNotificationModal = ref<boolean>(false)
+const notificationSubject = ref<string>('Product Now Available')
+const notificationMessage = ref<string>('Good news! The product you were waiting for is now available for purchase.')
 const selectedEntries = ref<number[]>([])
-const selectAll = ref(false)
+const selectAll = ref<boolean>(false)
 
 // Toggle select all entries
 function toggleSelectAll(): void {
@@ -520,20 +628,85 @@ const generateTrendData = () => {
 
 const trendData = ref(generateTrendData())
 
-// Chart colors
+// Chart colors with gradients
 const chartColors = {
-  blue: 'rgba(59, 130, 246, 0.8)',
-  green: 'rgba(16, 185, 129, 0.8)',
-  purple: 'rgba(139, 92, 246, 0.8)',
-  gray: 'rgba(156, 163, 175, 0.8)',
-  yellow: 'rgba(245, 158, 11, 0.8)',
-  red: 'rgba(239, 68, 68, 0.8)',
-  borderBlue: 'rgba(59, 130, 246, 1)',
-  borderGreen: 'rgba(16, 185, 129, 1)',
-  borderPurple: 'rgba(139, 92, 246, 1)',
-  borderGray: 'rgba(156, 163, 175, 1)',
-  borderYellow: 'rgba(245, 158, 11, 1)',
-  borderRed: 'rgba(239, 68, 68, 1)'
+  blue: {
+    fill: 'rgba(59, 130, 246, 0.2)',
+    stroke: 'rgba(59, 130, 246, 1)',
+    point: 'rgba(59, 130, 246, 1)',
+  },
+  green: {
+    fill: 'rgba(16, 185, 129, 0.2)',
+    stroke: 'rgba(16, 185, 129, 1)',
+    point: 'rgba(16, 185, 129, 1)',
+  },
+  purple: {
+    fill: 'rgba(139, 92, 246, 0.2)',
+    stroke: 'rgba(139, 92, 246, 1)',
+    point: 'rgba(139, 92, 246, 1)',
+  },
+  yellow: {
+    fill: 'rgba(245, 158, 11, 0.2)',
+    stroke: 'rgba(245, 158, 11, 1)',
+    point: 'rgba(245, 158, 11, 1)',
+  },
+  red: {
+    fill: 'rgba(239, 68, 68, 0.2)',
+    stroke: 'rgba(239, 68, 68, 1)',
+    point: 'rgba(239, 68, 68, 1)',
+  },
+}
+
+// Base chart options
+const baseChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: true,
+      position: 'bottom' as const,
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        font: {
+          size: 12
+        }
+      }
+    },
+    title: {
+      display: true,
+      font: {
+        size: 16,
+        weight: 'bold' as const
+      },
+      padding: {
+        top: 10,
+        bottom: 20
+      }
+    }
+  }
+}
+
+// Base chart options with scales (for bar and line charts)
+const baseChartOptionsWithScales = {
+  ...baseChartOptions,
+  scales: {
+    y: {
+      beginAtZero: true,
+      grid: {
+        display: true,
+        color: 'rgba(0, 0, 0, 0.05)',
+      },
+      ticks: {
+        precision: 0
+      }
+    },
+    x: {
+      grid: {
+        display: false
+      }
+    }
+  }
 }
 
 // Initialize charts
@@ -551,47 +724,41 @@ function initProductChart() {
   const ctx = productChartRef.value.getContext('2d')
   if (!ctx) return
 
-  const productData = products.value.map(p => p.count)
-  const productLabels = products.value.map(p => p.name)
-  const productColors = [
-    chartColors.blue,
-    chartColors.green,
-    chartColors.purple,
-    chartColors.yellow,
-    chartColors.red,
-    chartColors.gray
-  ]
+  const partySizes = [1, 2, 3, 4, 5, 6, '7+']
+  const partySizeCounts = partySizes.map(size => {
+    if (size === '7+') {
+      return waitlistEntries.value.filter(entry => entry.quantity >= 7).length
+    }
+    return waitlistEntries.value.filter(entry => entry.quantity === size).length
+  })
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400)
+  gradient.addColorStop(0, chartColors.blue.fill)
+  gradient.addColorStop(1, 'rgba(59, 130, 246, 0.05)')
 
   productChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: productLabels,
+      labels: partySizes.map(size => `${size} ${size === 1 ? 'unit' : 'units'}`),
       datasets: [{
-        label: 'Number of Waitlist Entries',
-        data: productData,
-        backgroundColor: productColors,
-        borderColor: productColors.map(color => color.replace('0.8', '1')),
-        borderWidth: 1
+        label: 'Number of Orders',
+        data: partySizeCounts,
+        backgroundColor: gradient,
+        borderColor: chartColors.blue.stroke,
+        borderWidth: 2,
+        borderRadius: 6,
+        maxBarThickness: 60,
+        barPercentage: 0.7
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      ...baseChartOptionsWithScales,
       plugins: {
         legend: {
           display: false
         },
         title: {
-          display: true,
-          text: 'Product Interest'
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            precision: 0
-          }
+          display: false
         }
       }
     }
@@ -606,39 +773,124 @@ function initSourceChart() {
   if (!ctx) return
 
   const sourceLabels = sources.slice(1)
-  const sourceData = sourceLabels.map((source: string) =>
-    waitlistEntries.value.filter(entry => entry.source === source).length
+  const sourceCounts = sourceLabels.map(source =>
+    waitlistEntries.value.filter(entry =>
+      entry.source ? entry.source === source : false
+    ).length
   )
-  const sourceColors = [
-    chartColors.blue,
-    chartColors.green,
-    chartColors.purple,
-    chartColors.yellow,
-    chartColors.red,
-    chartColors.gray
-  ]
 
   sourceChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
       labels: sourceLabels,
       datasets: [{
-        data: sourceData,
-        backgroundColor: sourceColors,
-        borderColor: sourceColors.map(color => color.replace('0.8', '1')),
-        borderWidth: 1
+        data: sourceCounts,
+        backgroundColor: [
+          chartColors.blue.fill,
+          chartColors.green.fill,
+          chartColors.purple.fill,
+          chartColors.yellow.fill,
+          chartColors.red.fill
+        ],
+        borderColor: [
+          chartColors.blue.stroke,
+          chartColors.green.stroke,
+          chartColors.purple.stroke,
+          chartColors.yellow.stroke,
+          chartColors.red.stroke
+        ],
+        borderWidth: 2,
+        hoverOffset: 4,
+        spacing: 2
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      ...baseChartOptions,
+      cutout: '75%',
+      scales: {
+        x: { display: false },
+        y: { display: false }
+      },
       plugins: {
         legend: {
-          position: 'right'
+          position: 'right' as const,
+          labels: {
+            usePointStyle: true,
+            padding: 20,
+            font: {
+              size: 11
+            }
+          }
         },
         title: {
-          display: true,
-          text: 'Source Breakdown'
+          display: false
+        }
+      }
+    }
+  })
+}
+
+// Initialize trend chart
+function initTrendChart() {
+  if (!trendChartRef.value) return
+
+  const ctx = trendChartRef.value.getContext('2d')
+  if (!ctx) return
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400)
+  gradient.addColorStop(0, chartColors.blue.fill)
+  gradient.addColorStop(1, 'rgba(59, 130, 246, 0)')
+
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: trendData.value.map(d => d.date),
+      datasets: [{
+        label: 'New Waitlist Entries',
+        data: trendData.value.map(d => d.count),
+        backgroundColor: gradient,
+        borderColor: chartColors.blue.stroke,
+        borderWidth: 2,
+        pointBackgroundColor: chartColors.blue.point,
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: chartColors.blue.stroke,
+        tension: 0.4,
+        fill: true,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      ...baseChartOptionsWithScales,
+      plugins: {
+        legend: {
+          display: false
+        },
+        title: {
+          display: false
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 7
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.05)',
+          },
+          ticks: {
+            precision: 0,
+            maxTicksLimit: 5
+          }
         }
       }
     }
@@ -653,15 +905,9 @@ function initStatusChart() {
   if (!ctx) return
 
   const statusLabels = statuses.slice(1)
-  const statusData = statusLabels.map((status: string) =>
+  const statusData = statusLabels.map(status =>
     waitlistEntries.value.filter(entry => entry.status === status).length
   )
-  const statusColors = [
-    chartColors.blue,
-    chartColors.green,
-    chartColors.purple,
-    chartColors.gray
-  ]
 
   statusChart = new Chart(ctx, {
     type: 'pie',
@@ -669,66 +915,42 @@ function initStatusChart() {
       labels: statusLabels,
       datasets: [{
         data: statusData,
-        backgroundColor: statusColors,
-        borderColor: statusColors.map(color => color.replace('0.8', '1')),
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'right'
-        },
-        title: {
-          display: true,
-          text: 'Status Breakdown'
-        }
-      }
-    }
-  })
-}
-
-// Initialize trend chart
-function initTrendChart() {
-  if (!trendChartRef.value) return
-
-  const ctx = trendChartRef.value.getContext('2d')
-  if (!ctx) return
-
-  trendChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: trendData.value.map(d => d.date),
-      datasets: [{
-        label: 'New Waitlist Entries',
-        data: trendData.value.map(d => d.count),
-        backgroundColor: chartColors.blue,
-        borderColor: chartColors.borderBlue,
+        backgroundColor: [
+          chartColors.blue.fill,
+          chartColors.green.fill,
+          chartColors.purple.fill,
+          chartColors.red.fill
+        ],
+        borderColor: [
+          chartColors.blue.stroke,
+          chartColors.green.stroke,
+          chartColors.purple.stroke,
+          chartColors.red.stroke
+        ],
         borderWidth: 2,
-        tension: 0.3,
-        fill: true
+        hoverOffset: 4,
+        spacing: 2
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      ...baseChartOptions,
+      scales: {
+        x: { display: false },
+        y: { display: false }
+      },
       plugins: {
         legend: {
-          display: false
+          position: 'right' as const,
+          labels: {
+            usePointStyle: true,
+            padding: 20,
+            font: {
+              size: 11
+            }
+          }
         },
         title: {
-          display: true,
-          text: '30-Day Trend'
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            precision: 0
-          }
+          display: false
         }
       }
     }
@@ -739,9 +961,17 @@ function initTrendChart() {
 function updateCharts(): void {
   if (productChart && productChart.data) {
     const chart = productChart as Chart<'bar'>
-    chart.data.labels = products.value.map(p => p.name)
-    if (chart.data.datasets && chart.data.datasets.length > 0) {
-      chart.data.datasets[0].data = products.value.map(p => p.count)
+    const partySizes = [1, 2, 3, 4, 5, 6, '7+']
+    const partySizeCounts = partySizes.map(size => {
+      if (size === '7+') {
+        return waitlistEntries.value.filter(entry => entry.quantity >= 7).length
+      }
+      return waitlistEntries.value.filter(entry => entry.quantity === size).length
+    })
+
+    chart.data.labels = partySizes.map(size => `${size} ${size === 1 ? 'unit' : 'units'}`)
+    if (chart.data.datasets?.[0]) {
+      chart.data.datasets[0].data = partySizeCounts
     }
     chart.update()
   }
@@ -750,9 +980,11 @@ function updateCharts(): void {
     const chart = sourceChart as Chart<'doughnut'>
     const sourceLabels = sources.slice(1)
     chart.data.labels = sourceLabels
-    if (chart.data.datasets && chart.data.datasets.length > 0) {
-      chart.data.datasets[0].data = sourceLabels.map((source: string) =>
-        waitlistEntries.value.filter(entry => entry.source === source).length
+    if (chart.data.datasets?.[0]) {
+      chart.data.datasets[0].data = sourceLabels.map(source =>
+        waitlistEntries.value.filter(entry =>
+          entry.source ? entry.source === source : false
+        ).length
       )
     }
     chart.update()
@@ -762,10 +994,20 @@ function updateCharts(): void {
     const chart = statusChart as Chart<'pie'>
     const statusLabels = statuses.slice(1)
     chart.data.labels = statusLabels
-    if (chart.data.datasets && chart.data.datasets.length > 0) {
-      chart.data.datasets[0].data = statusLabels.map((status: string) =>
+    if (chart.data.datasets?.[0]) {
+      chart.data.datasets[0].data = statusLabels.map(status =>
         waitlistEntries.value.filter(entry => entry.status === status).length
       )
+    }
+    chart.update()
+  }
+
+  if (trendChart && trendChart.data) {
+    const chart = trendChart as Chart<'line'>
+    const dates = trendData.value.map(d => d.date)
+    chart.data.labels = dates
+    if (chart.data.datasets?.[0]) {
+      chart.data.datasets[0].data = trendData.value.map(d => d.count)
     }
     chart.update()
   }
@@ -809,139 +1051,87 @@ watch(waitlistEntries, () => {
           </div>
         </div>
 
-        <!-- Analytics section with Chart.js -->
-        <div class="mt-8 bg-white p-6 shadow rounded-lg dark:bg-blue-gray-800">
-          <h2 class="text-lg font-medium text-gray-900 dark:text-white">Waitlist Analytics</h2>
+        <!-- Stats Cards -->
+        <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6 dark:bg-blue-gray-800">
+            <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-300">Total Waitlist</dt>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">
+              {{ totalEntries }}
+            </dd>
+            <dd class="mt-2 flex items-center text-sm text-blue-600 dark:text-blue-400">
+              <div class="i-hugeicons-hourglass h-4 w-4 mr-1"></div>
+              <span>{{ waitingEntries }} waiting</span>
+            </dd>
+          </div>
 
-          <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <!-- Product interest chart -->
-            <div class="bg-gray-50 rounded-lg p-4 dark:bg-blue-gray-700">
-              <div class="h-64">
-                <canvas ref="productChartRef"></canvas>
-              </div>
-            </div>
+          <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6 dark:bg-blue-gray-800">
+            <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-300">Notified</dt>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">{{ notifiedEntries }}</dd>
+            <dd class="mt-2 flex items-center text-sm text-green-600 dark:text-green-400">
+              <div class="i-hugeicons-notification-square h-4 w-4 mr-1"></div>
+              <span>Customers notified</span>
+            </dd>
+          </div>
 
-            <!-- Source breakdown chart -->
-            <div class="bg-gray-50 rounded-lg p-4 dark:bg-blue-gray-700">
-              <div class="h-64">
-                <canvas ref="sourceChartRef"></canvas>
-              </div>
-            </div>
+          <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6 dark:bg-blue-gray-800">
+            <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-300">Purchased</dt>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">{{ purchasedEntries }}</dd>
+            <dd class="mt-2 flex items-center text-sm text-purple-600 dark:text-purple-400">
+              <div class="i-hugeicons-shopping-cart-02 h-4 w-4 mr-1"></div>
+              <span>Completed purchases</span>
+            </dd>
+          </div>
 
-            <!-- Status breakdown chart -->
-            <div class="bg-gray-50 rounded-lg p-4 dark:bg-blue-gray-700">
-              <div class="h-64">
-                <canvas ref="statusChartRef"></canvas>
-              </div>
-            </div>
+          <div class="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6 dark:bg-blue-gray-800">
+            <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-300">Conversion Rate</dt>
+            <dd class="mt-1 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">
+              {{ conversionRate }}%
+            </dd>
+            <dd class="mt-2 flex items-center text-sm text-yellow-600 dark:text-yellow-400">
+              <div class="i-hugeicons-analytics-up h-4 w-4 mr-1"></div>
+              <span>Purchase rate</span>
+            </dd>
+          </div>
+        </dl>
 
-            <!-- 30-day trend chart -->
-            <div class="bg-gray-50 rounded-lg p-4 dark:bg-blue-gray-700">
-              <div class="h-64">
+        <!-- Charts -->
+        <div class="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <!-- Wait Time Trend Chart -->
+          <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-blue-gray-800">
+            <div class="p-6">
+              <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Waitlist Entries</h3>
+              <div class="mt-2 h-80">
                 <canvas ref="trendChartRef"></canvas>
               </div>
             </div>
           </div>
 
-          <!-- Conversion rate -->
-          <div class="mt-6">
-            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Conversion Rate</h3>
-            <div class="mt-2 flex items-center">
-              <div class="flex-1 bg-gray-200 rounded-full h-4 dark:bg-gray-700">
-                <div
-                  class="bg-green-600 h-4 rounded-full dark:bg-green-500"
-                  :style="{ width: `${(convertedEntries / (totalEntries || 1)) * 100}%` }"
-                ></div>
-              </div>
-              <span class="ml-3 text-sm font-medium text-gray-900 dark:text-white">
-                {{ Math.round((convertedEntries / (totalEntries || 1)) * 100) }}%
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Summary cards -->
-        <div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <!-- Total entries card -->
+          <!-- Party Size Distribution Chart -->
           <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-blue-gray-800">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="h-10 w-10 rounded-md bg-blue-100 p-2 dark:bg-blue-900">
-                    <div class="i-hugeicons-user-account h-6 w-6 text-blue-600 dark:text-blue-300"></div>
-                  </div>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Total Entries</dt>
-                    <dd>
-                      <div class="text-lg font-medium text-gray-900 dark:text-white">{{ totalEntries }}</div>
-                    </dd>
-                  </dl>
-                </div>
+            <div class="p-6">
+              <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Order Quantities</h3>
+              <div class="mt-2 h-80">
+                <canvas ref="productChartRef"></canvas>
               </div>
             </div>
           </div>
 
-          <!-- Pending entries card -->
+          <!-- Source Distribution Chart -->
           <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-blue-gray-800">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="h-10 w-10 rounded-md bg-blue-100 p-2 dark:bg-blue-900">
-                    <div class="i-hugeicons-hourglass h-6 w-6 text-blue-600 dark:text-blue-300"></div>
-                  </div>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Pending</dt>
-                    <dd>
-                      <div class="text-lg font-medium text-gray-900 dark:text-white">{{ pendingEntries }}</div>
-                    </dd>
-                  </dl>
-                </div>
+            <div class="p-6">
+              <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Source Distribution</h3>
+              <div class="mt-2 h-80">
+                <canvas ref="sourceChartRef"></canvas>
               </div>
             </div>
           </div>
 
-          <!-- Notified entries card -->
+          <!-- Status Distribution Chart -->
           <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-blue-gray-800">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="h-10 w-10 rounded-md bg-green-100 p-2 dark:bg-green-900">
-                    <div class="i-hugeicons-notification-square h-6 w-6 text-green-600 dark:text-green-300"></div>
-                  </div>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Notified</dt>
-                    <dd>
-                      <div class="text-lg font-medium text-gray-900 dark:text-white">{{ notifiedEntries }}</div>
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Converted entries card -->
-          <div class="overflow-hidden rounded-lg bg-white shadow dark:bg-blue-gray-800">
-            <div class="p-5">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <div class="h-10 w-10 rounded-md bg-purple-100 p-2 dark:bg-purple-900">
-                    <div class="i-hugeicons-shopping-cart-01 h-6 w-6 text-purple-600 dark:text-purple-300"></div>
-                  </div>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt class="truncate text-sm font-medium text-gray-500 dark:text-gray-400">Converted</dt>
-                    <dd>
-                      <div class="text-lg font-medium text-gray-900 dark:text-white">{{ convertedEntries }}</div>
-                    </dd>
-                  </dl>
-                </div>
+            <div class="p-6">
+              <h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-white">Current Status</h3>
+              <div class="mt-2 h-80">
+                <canvas ref="statusChartRef"></canvas>
               </div>
             </div>
           </div>
@@ -962,15 +1152,16 @@ watch(waitlistEntries, () => {
           </div>
 
           <div class="flex flex-col sm:flex-row gap-4">
-            <!-- Product filter -->
+            <!-- Party Size filter -->
             <select
-              v-model="productFilter"
+              v-model="partySizeFilter"
               class="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-blue-gray-800 dark:text-white dark:ring-gray-700"
             >
-              <option value="all">All Products</option>
-              <option v-for="product in products" :key="product.id" :value="product.name">
-                {{ product.name }} ({{ product.count }})
-              </option>
+              <option value="all">All Party Sizes</option>
+              <option value="1-2">1-2 People</option>
+              <option value="3-4">3-4 People</option>
+              <option value="5-6">5-6 People</option>
+              <option value="7+">7+ People</option>
             </select>
 
             <!-- Status filter -->
@@ -984,14 +1175,14 @@ watch(waitlistEntries, () => {
               </option>
             </select>
 
-            <!-- Source filter -->
+            <!-- Table Preference filter -->
             <select
-              v-model="sourceFilter"
+              v-model="tablePreferenceFilter"
               class="block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6 dark:bg-blue-gray-800 dark:text-white dark:ring-gray-700"
             >
-              <option value="all">All Sources</option>
-              <option v-for="source in sources.slice(1)" :key="source" :value="source">
-                {{ source }}
+              <option value="all">All Table Types</option>
+              <option v-for="preference in tablePreferences.slice(1)" :key="preference" :value="preference">
+                {{ preference }}
               </option>
             </select>
           </div>
@@ -1008,7 +1199,7 @@ watch(waitlistEntries, () => {
             Name
             <span v-if="sortBy === 'name'" class="ml-1">
               <div v-if="sortOrder === 'asc'" class="i-hugeicons-arrow-up-01 h-4 w-4"></div>
-              <div v-else class="i-hugeicons-arrow-down-01 h-4 w-4"></div>
+              <div v-else class="i-hugeicons-arrow-down-02-01 h-4 w-4"></div>
             </span>
           </button>
           <button
@@ -1019,18 +1210,18 @@ watch(waitlistEntries, () => {
             Date Added
             <span v-if="sortBy === 'dateAdded'" class="ml-1">
               <div v-if="sortOrder === 'asc'" class="i-hugeicons-arrow-up-01 h-4 w-4"></div>
-              <div v-else class="i-hugeicons-arrow-down-01 h-4 w-4"></div>
+              <div v-else class="i-hugeicons-arrow-down-02-01 h-4 w-4"></div>
             </span>
           </button>
           <button
-            @click="toggleSort('priority')"
+            @click="toggleSort('quantity')"
             class="flex items-center hover:text-gray-700 dark:hover:text-gray-300"
-            :class="{ 'font-semibold text-blue-600 dark:text-blue-400': sortBy === 'priority' }"
+            :class="{ 'font-semibold text-blue-600 dark:text-blue-400': sortBy === 'quantity' }"
           >
-            Priority
-            <span v-if="sortBy === 'priority'" class="ml-1">
+            Quantity
+            <span v-if="sortBy === 'quantity'" class="ml-1">
               <div v-if="sortOrder === 'asc'" class="i-hugeicons-arrow-up-01 h-4 w-4"></div>
-              <div v-else class="i-hugeicons-arrow-down-01 h-4 w-4"></div>
+              <div v-else class="i-hugeicons-arrow-down-02-01 h-4 w-4"></div>
             </span>
           </button>
         </div>
@@ -1039,7 +1230,7 @@ watch(waitlistEntries, () => {
         <div v-if="selectedEntries.length > 0" class="mt-4 bg-blue-50 p-4 rounded-md dark:bg-blue-900/30">
           <div class="flex items-center justify-between">
             <div class="flex items-center">
-              <span class="text-sm font-medium text-blue-700 dark:text-blue-300">{{ selectedEntries.length }} entries selected</span>
+              <span class="text-sm font-medium text-blue-700 dark:text-blue-300">{{ selectedEntries.length }} parties selected</span>
             </div>
             <div class="flex space-x-3">
               <button
@@ -1047,27 +1238,27 @@ watch(waitlistEntries, () => {
                 class="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
               >
                 <div class="i-hugeicons-notification-square h-4 w-4 mr-1"></div>
-                Notify Selected
+                Send Updates
               </button>
               <button
-                @click="bulkChangeStatus('Converted')"
+                @click="bulkChangeStatus('Notified')"
+                class="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500"
+              >
+                <div class="i-hugeicons-checkmark-circle-02 h-4 w-4 mr-1"></div>
+                Mark as Notified
+              </button>
+              <button
+                @click="bulkChangeStatus('Purchased')"
                 class="inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500"
               >
-                <div class="i-hugeicons-check-circle h-4 w-4 mr-1"></div>
-                Mark as Converted
-              </button>
-              <button
-                @click="bulkDelete"
-                class="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500"
-              >
-                <div class="i-hugeicons-waste h-4 w-4 mr-1"></div>
-                Delete Selected
+                <div class="i-hugeicons-shopping-cart-02 h-4 w-4 mr-1"></div>
+                Mark as Purchased
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Waitlist table with selection checkboxes -->
+        <!-- Waitlist table -->
         <div class="mt-6 overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
           <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-blue-gray-900">
@@ -1081,10 +1272,10 @@ watch(waitlistEntries, () => {
                   />
                 </th>
                 <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-white sm:pl-6">
-                  Name
+                  Customer Details
                 </th>
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                  Product
+                  Quantity
                 </th>
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">
                   Status
@@ -1095,9 +1286,6 @@ watch(waitlistEntries, () => {
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">
                   Source
                 </th>
-                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">
-                  Priority
-                </th>
                 <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
                   <span class="sr-only">Actions</span>
                 </th>
@@ -1105,8 +1293,8 @@ watch(waitlistEntries, () => {
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-blue-gray-800">
               <tr v-if="paginatedEntries.length === 0" class="text-center">
-                <td colspan="8" class="py-10 text-gray-500 dark:text-gray-400">
-                  No waitlist entries found. Add your first entry to get started.
+                <td colspan="7" class="py-10 text-gray-500 dark:text-gray-400">
+                  No entries in the waitlist.
                 </td>
               </tr>
               <tr v-for="entry in paginatedEntries" :key="entry.id" class="hover:bg-gray-50 dark:hover:bg-blue-gray-700">
@@ -1121,13 +1309,19 @@ watch(waitlistEntries, () => {
                 <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
                   <div class="flex items-center">
                     <div>
-                      <div class="font-medium text-gray-900 dark:text-white">{{ entry.name }}</div>
-                      <div class="text-gray-500 dark:text-gray-400">{{ entry.email }}</div>
+                      <div class="font-medium text-gray-900 dark:text-white">
+                        {{ entry.name }} ({{ entry.quantity }} {{ entry.quantity === 1 ? 'unit' : 'units' }})
+                      </div>
+                      <div class="text-gray-500 dark:text-gray-400">
+                        {{ entry.phone || entry.email }}
+                      </div>
                     </div>
                   </div>
                 </td>
-                <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                  {{ entry.product }}
+                <td class="whitespace-nowrap px-3 py-4 text-sm">
+                  <div class="font-medium text-gray-900 dark:text-white">
+                    {{ entry.quantity }}
+                  </div>
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm">
                   <span :class="getStatusClass(entry.status)" class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
@@ -1135,15 +1329,10 @@ watch(waitlistEntries, () => {
                   </span>
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                  {{ entry.dateAdded }}
+                  {{ new Date(entry.dateAdded).toLocaleDateString() }}
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
                   {{ entry.source }}
-                </td>
-                <td class="whitespace-nowrap px-3 py-4 text-sm">
-                  <span :class="getPriorityClass(entry.priority)" class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium">
-                    {{ entry.priority === 3 ? 'High' : entry.priority === 2 ? 'Medium' : 'Low' }}
-                  </span>
                 </td>
                 <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                   <div class="flex justify-end space-x-2">
@@ -1155,7 +1344,7 @@ watch(waitlistEntries, () => {
                       <span class="sr-only">Edit</span>
                     </button>
                     <button
-                      v-if="!entry.notified && entry.status !== 'Converted'"
+                      v-if="entry.status === 'Waiting'"
                       @click="markAsNotified(entry.id)"
                       class="text-gray-400 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-colors"
                     >
@@ -1163,11 +1352,12 @@ watch(waitlistEntries, () => {
                       <span class="sr-only">Notify</span>
                     </button>
                     <button
-                      @click="deleteEntry(entry.id)"
-                      class="text-gray-400 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                      v-if="entry.status === 'Notified'"
+                      @click="markAsPurchased(entry.id)"
+                      class="text-gray-400 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 transition-colors"
                     >
-                      <div class="i-hugeicons-waste h-5 w-5"></div>
-                      <span class="sr-only">Delete</span>
+                      <div class="i-hugeicons-shopping-cart-02 h-5 w-5"></div>
+                      <span class="sr-only">Purchase</span>
                     </button>
                   </div>
                 </td>
@@ -1180,7 +1370,7 @@ watch(waitlistEntries, () => {
         <div class="mt-5 flex items-center justify-between">
           <div class="flex flex-1 justify-between sm:hidden">
             <button
-              @click="changePage(currentPage - 1)"
+              @click="prevPage"
               :disabled="currentPage === 1"
               :class="[
                 currentPage === 1 ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-50 dark:hover:bg-blue-gray-700',
@@ -1190,7 +1380,7 @@ watch(waitlistEntries, () => {
               Previous
             </button>
             <button
-              @click="changePage(currentPage + 1)"
+              @click="nextPage"
               :disabled="currentPage === totalPages"
               :class="[
                 currentPage === totalPages ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-50 dark:hover:bg-blue-gray-700',
@@ -1211,7 +1401,7 @@ watch(waitlistEntries, () => {
             <div>
               <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                 <button
-                  @click="changePage(currentPage - 1)"
+                  @click="goToPage(currentPage - 1)"
                   :disabled="currentPage === 1"
                   :class="[
                     currentPage === 1 ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-50 dark:hover:bg-blue-gray-700',
@@ -1219,12 +1409,12 @@ watch(waitlistEntries, () => {
                   ]"
                 >
                   <span class="sr-only">Previous</span>
-                  <div class="i-hugeicons-chevron-left h-5 w-5"></div>
+                  <div class="i-hugeicons-arrow-left-01 h-5 w-5"></div>
                 </button>
                 <button
                   v-for="page in totalPages"
                   :key="page"
-                  @click="changePage(page)"
+                  @click="goToPage(page)"
                   :class="[
                     page === currentPage
                       ? 'relative z-10 inline-flex items-center bg-blue-600 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
@@ -1235,7 +1425,7 @@ watch(waitlistEntries, () => {
                   {{ page }}
                 </button>
                 <button
-                  @click="changePage(currentPage + 1)"
+                  @click="goToPage(currentPage + 1)"
                   :disabled="currentPage === totalPages"
                   :class="[
                     currentPage === totalPages ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-50 dark:hover:bg-blue-gray-700',
@@ -1243,7 +1433,7 @@ watch(waitlistEntries, () => {
                   ]"
                 >
                   <span class="sr-only">Next</span>
-                  <div class="i-hugeicons-chevron-right h-5 w-5"></div>
+                  <div class="i-hugeicons-arrow-right-01 h-5 w-5"></div>
                 </button>
               </nav>
             </div>
@@ -1320,19 +1510,36 @@ watch(waitlistEntries, () => {
                   </div>
                 </div>
 
-                <!-- Product field -->
+                <!-- Party Size field -->
                 <div class="sm:col-span-3">
-                  <label for="product" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Product
+                  <label for="quantity" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Party Size
                   </label>
                   <div class="mt-1">
                     <input
-                      id="product"
-                      v-model="entryProduct"
-                      type="text"
-                      required
+                      id="quantity"
+                      v-model="entryQuantity"
+                      type="number"
                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white"
                     />
+                  </div>
+                </div>
+
+                <!-- Notification Preference field -->
+                <div class="sm:col-span-3">
+                  <label for="notificationPreference" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Notification Preference
+                  </label>
+                  <div class="mt-1">
+                    <select
+                      id="notificationPreference"
+                      v-model="entryNotificationPreference"
+                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white"
+                    >
+                      <option v-for="preference in notificationPreferences" :key="preference" :value="preference">
+                        {{ preference }}
+                      </option>
+                    </select>
                   </div>
                 </div>
 
@@ -1342,51 +1549,12 @@ watch(waitlistEntries, () => {
                     Source
                   </label>
                   <div class="mt-1">
-                    <select
+                    <input
                       id="source"
                       v-model="entrySource"
+                      type="text"
                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white"
-                    >
-                      <option v-for="source in sources" :key="source" :value="source">
-                        {{ source }}
-                      </option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Status field -->
-                <div class="sm:col-span-3">
-                  <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Status
-                  </label>
-                  <div class="mt-1">
-                    <select
-                      id="status"
-                      v-model="entryStatus"
-                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white"
-                    >
-                      <option v-for="status in statuses" :key="status" :value="status">
-                        {{ status }}
-                      </option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Priority field -->
-                <div class="sm:col-span-3">
-                  <label for="priority" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Priority
-                  </label>
-                  <div class="mt-1">
-                    <select
-                      id="priority"
-                      v-model="entryPriority"
-                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white"
-                    >
-                      <option :value="1">Low</option>
-                      <option :value="2">Medium</option>
-                      <option :value="3">High</option>
-                    </select>
+                    />
                   </div>
                 </div>
 

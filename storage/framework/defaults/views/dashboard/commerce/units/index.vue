@@ -335,7 +335,7 @@ function addUnit(): void {
                       </td>
                       <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-300">
                         <div v-if="unit.isDefault" class="i-hugeicons-checkmark-circle-02 h-5 w-5 text-green-500"></div>
-                        <div v-else class="i-hugeicons-close-circle h-5 w-5 text-gray-400"></div>
+                        <div v-else class="i-hugeicons-cancel-circle h-5 w-5 text-gray-400"></div>
                       </td>
                       <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-300 text-right">
                         {{ unit.createdAt }}
@@ -343,7 +343,7 @@ function addUnit(): void {
                       <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                         <div class="flex items-center justify-end space-x-2">
                           <button type="button" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
-                            <div class="i-hugeicons-license-draft h-5 w-5"></div>
+                            <div class="i-hugeicons-edit-01 h-5 w-5"></div>
                           </button>
                           <button type="button" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
                             <div class="i-hugeicons-waste h-5 w-5"></div>

@@ -1,6 +1,4 @@
-import { handleError } from '@stacksjs/error-handling'
 import type {
-  OrderJsonResponse,
   OrderResponse,
   OrderStats,
   OrderType,
@@ -23,13 +21,27 @@ export interface FetchOrdersOptions {
 }
 
 /**
- * Fetch all orders from the database
+ * Fetch all orders from the database with their items
  */
 export async function fetchAll(): Promise<OrderType[]> {
-  return await db
+  const orders = await db
     .selectFrom('orders')
     .selectAll()
     .execute()
+
+  // Fetch items for each order
+  return await Promise.all(orders.map(async (order) => {
+    const items = await db
+      .selectFrom('order_items')
+      .where('order_id', '=', order.id)
+      .selectAll()
+      .execute()
+
+    return {
+      ...order,
+      items,
+    }
+  }))
 }
 
 /**
@@ -39,9 +51,6 @@ export async function fetchPaginated(options: FetchOrdersOptions = {}): Promise<
   // Set default values
   const page = options.page || 1
   const limit = options.limit || 10
-  const offset = (page - 1) * limit
-  const sortBy = options.sortBy || 'created_at'
-  const sortOrder = options.sortOrder || 'desc'
 
   // Start building the query
   let query = db.selectFrom('orders')
@@ -50,44 +59,15 @@ export async function fetchPaginated(options: FetchOrdersOptions = {}): Promise<
   // Apply search filter if provided
   if (options.search) {
     const searchTerm = `%${options.search}%`
-    const searchFilter = eb => eb.or([
+    const searchFilter = (eb: any) => eb.or([
       eb('id', 'like', searchTerm),
-      eb('customer_id', '=', Number(options.search)),
+      eb('customer_id', '=', Number(options.search) || 0),
       eb('status', 'like', searchTerm),
       eb('order_type', 'like', searchTerm),
     ])
 
     query = query.where(searchFilter)
     countQuery = countQuery.where(searchFilter)
-  }
-
-  // Apply status filter if provided
-  if (options.status) {
-    query = query.where('status', '=', options.status)
-    countQuery = countQuery.where('status', '=', options.status)
-  }
-
-  // Apply order type filter if provided
-  if (options.order_type) {
-    query = query.where('order_type', '=', options.order_type)
-    countQuery = countQuery.where('order_type', '=', options.order_type)
-  }
-
-  // Apply customer filter if provided
-  if (options.customer_id) {
-    query = query.where('customer_id', '=', options.customer_id)
-    countQuery = countQuery.where('customer_id', '=', options.customer_id)
-  }
-
-  // Apply date range filter if provided
-  if (options.from_date) {
-    query = query.where('created_at', '>=', options.from_date)
-    countQuery = countQuery.where('created_at', '>=', options.from_date)
-  }
-
-  if (options.to_date) {
-    query = query.where('created_at', '<=', options.to_date)
-    countQuery = countQuery.where('created_at', '<=', options.to_date)
   }
 
   // Get total count for pagination
@@ -97,51 +77,32 @@ export async function fetchPaginated(options: FetchOrdersOptions = {}): Promise<
 
   const total = Number(countResult?.total || 0)
 
-  // Apply sorting
-  // Note: Ensure the column is valid to prevent SQL injection
-  const validColumns = [
-    'id',
-    'customer_id',
-    'status',
-    'total_amount',
-    'order_type',
-    'created_at',
-    'updated_at',
-    'estimated_delivery_time',
-  ]
-  const validSortBy = validColumns.includes(sortBy) ? sortBy : 'created_at'
-
-  query = query.orderBy(validSortBy, sortOrder)
-
   // Apply pagination
-  query = query.limit(limit).offset(offset)
+  const orders = await query
+    .selectAll()
+    .limit(limit)
+    .offset((page - 1) * limit)
+    .execute()
 
-  // Execute the query
-  const orders = await query.selectAll().execute()
+  // Fetch items for each order
+  const ordersWithItems = await Promise.all(orders.map(async (order) => {
+    const items = await db
+      .selectFrom('order_items')
+      .where('order_id', '=', order.id)
+      .selectAll()
+      .execute()
 
-  // Parse order_items JSON if present
-  const ordersWithParsedItems = orders.map((order) => {
-    if (order.order_items && typeof order.order_items === 'string') {
-      try {
-        return {
-          ...order,
-          order_items: JSON.parse(order.order_items),
-        }
-      }
-      catch (e) {
-        handleError('Error', e)
-
-        return order
-      }
+    return {
+      ...order,
+      items,
     }
-    return order
-  })
+  }))
 
   // Calculate pagination info
   const totalPages = Math.ceil(total / limit)
 
   return {
-    data: ordersWithParsedItems as OrderJsonResponse[],
+    data: ordersWithItems,
     paging: {
       total_records: total,
       page,
@@ -154,25 +115,12 @@ export async function fetchPaginated(options: FetchOrdersOptions = {}): Promise<
 /**
  * Fetch an order by ID
  */
-export async function fetchById(id: string): Promise<OrderType | undefined> {
+export async function fetchById(id: number): Promise<OrderType | undefined> {
   const order = await db
     .selectFrom('orders')
     .where('id', '=', id)
     .selectAll()
     .executeTakeFirst()
-
-  if (order && order.order_items && typeof order.order_items === 'string') {
-    try {
-      return {
-        ...order,
-        order_items: JSON.parse(order.order_items),
-      }
-    }
-    catch (e) {
-      // If JSON parsing fails, return as is
-      return order
-    }
-  }
 
   return order
 }
@@ -221,13 +169,27 @@ export async function fetchStats(): Promise<OrderStats> {
     .groupBy('order_type')
     .execute() as OrderTypeCount[]
 
-  // Recent orders
-  const recentOrders = await db
+  // Recent orders with their items
+  const recentOrdersRaw = await db
     .selectFrom('orders')
     .selectAll()
     .orderBy('created_at', 'desc')
     .limit(5)
     .execute()
+
+  // Fetch items for each recent order
+  const recentOrders = await Promise.all(recentOrdersRaw.map(async (order) => {
+    const items = await db
+      .selectFrom('order_items')
+      .where('order_id', '=', order.id)
+      .selectAll()
+      .execute()
+
+    return {
+      ...order,
+      items,
+    }
+  }))
 
   // Total revenue
   const revenue = await db

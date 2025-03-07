@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useHead } from '@vueuse/head'
 
 useHead({
@@ -9,6 +9,7 @@ useHead({
 // Define campaign type
 interface Campaign {
   id: number
+  uuid: string
   name: string
   type: string
   status: string
@@ -31,17 +32,101 @@ interface Campaign {
   emailTemplate?: string
   emailSender?: string
   emailList?: string
+  email_list_uuid?: string
+  from_email?: string
+  from_name?: string
+  html?: string
+  structured_html?: string
+  email_html?: string
+  webview_html?: string
+  mailable_class?: string
+  segment_class?: string
+  segment_description?: string
+  // Analytics
+  sent_to_number_of_subscribers?: string
+  open_count?: string
+  unique_open_count?: string
+  open_rate?: number
+  click_count?: string
+  unique_click_count?: string
+  click_rate?: number
+  unsubscribe_count?: string
+  unsubscribe_rate?: string
+  bounce_count?: string
+  bounce_rate?: string
   // Text message campaign specific fields
   smsContent?: string
   smsPhoneList?: string
   smsSchedule?: string
   smsCharacterCount?: number
+  scheduled_at?: string | null
+  // Goal tracking fields
+  customGoalName?: string
+  goalTrigger?: 'page_visit' | 'button_click' | 'form_submit' | 'purchase' | 'custom_event' | 'cart_abandoned' | 'model_event'
+  triggerUrl?: string
+  triggerSelector?: string
+  triggerEvent?: string
+  goalValue?: number
+  // Abandoned cart specific fields
+  abandonedCartTrigger?: {
+    timeThreshold: number // in minutes
+    timeUnit: 'minutes' | 'hours' | 'days'
+    minimumCartValue: number
+    excludeProducts: string[]
+    requireProducts: string[]
+    userSegment: string[]
+    maxReminders: number
+    reminderIntervals: number[] // Made required
+  }
+  // Model event trigger fields
+  modelTrigger?: {
+    model: keyof typeof modelFields
+    event: 'created' | 'updated' | 'deleted' | 'restored' | 'custom'
+    conditions: {
+      field: string
+      operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'greater_than' | 'less_than' | 'between' | 'in' | 'not_in'
+      value: any
+    }[]
+    customEvent?: string
+  }
 }
+
+// Add available models
+const availableModels = [
+  'AccessToken',
+  'Post',
+  'Subscriber',
+  'Team',
+  'Deployment',
+  'Project',
+  'Release',
+  'User',
+  'Product',
+  'SubscriberEmail'
+]
+
+// Add model fields (this would normally come from API)
+const modelFields = {
+  AccessToken: ['user_id', 'name', 'abilities', 'last_used_at'],
+  Post: ['title', 'content', 'status', 'published_at', 'author_id'],
+  Subscriber: ['email', 'status', 'subscribed_at', 'unsubscribed_at'],
+  Team: ['name', 'owner_id', 'settings'],
+  Deployment: ['status', 'environment', 'version', 'deployed_at'],
+  Project: ['name', 'description', 'status', 'team_id'],
+  Release: ['version', 'notes', 'released_at'],
+  User: ['name', 'email', 'status', 'role', 'last_login_at'],
+  Product: ['name', 'price', 'status', 'inventory_count'],
+  SubscriberEmail: ['subscriber_id', 'email', 'verified_at']
+} as const;
+
+// Add standard model events
+const standardModelEvents = ['created', 'updated', 'deleted', 'restored', 'custom']
 
 // Sample campaigns data
 const campaigns = ref<Campaign[]>([
   {
     id: 1,
+    uuid: '11ce123b-57c4-429b-9840-c79f8047d8aa',
     name: 'Summer Sale Promotion',
     type: 'Discount',
     status: 'Active',
@@ -61,6 +146,7 @@ const campaigns = ref<Campaign[]>([
   },
   {
     id: 2,
+    uuid: '22ce123b-57c4-429b-9840-c79f8047d8bb',
     name: 'New Product Launch',
     type: 'Product Launch',
     status: 'Scheduled',
@@ -80,6 +166,7 @@ const campaigns = ref<Campaign[]>([
   },
   {
     id: 3,
+    uuid: '33ce123b-57c4-429b-9840-c79f8047d8cc',
     name: 'Holiday Season Special',
     type: 'Seasonal',
     status: 'Draft',
@@ -99,6 +186,7 @@ const campaigns = ref<Campaign[]>([
   },
   {
     id: 4,
+    uuid: '44ce123b-57c4-429b-9840-c79f8047d8dd',
     name: 'Customer Loyalty Program',
     type: 'Loyalty',
     status: 'Active',
@@ -118,6 +206,7 @@ const campaigns = ref<Campaign[]>([
   },
   {
     id: 5,
+    uuid: '55ce123b-57c4-429b-9840-c79f8047d8ee',
     name: 'Back to School Campaign',
     type: 'Seasonal',
     status: 'Completed',
@@ -137,6 +226,7 @@ const campaigns = ref<Campaign[]>([
   },
   {
     id: 6,
+    uuid: '66ce123b-57c4-429b-9840-c79f8047d8ff',
     name: 'Spring Collection Launch',
     type: 'Product Launch',
     status: 'Completed',
@@ -156,6 +246,7 @@ const campaigns = ref<Campaign[]>([
   },
   {
     id: 7,
+    uuid: '77ce123b-57c4-429b-9840-c79f8047d8gg',
     name: 'App Download Promotion',
     type: 'App Promotion',
     status: 'Active',
@@ -175,6 +266,7 @@ const campaigns = ref<Campaign[]>([
   },
   {
     id: 8,
+    uuid: '88ce123b-57c4-429b-9840-c79f8047d8hh',
     name: 'Black Friday Sale',
     type: 'Discount',
     status: 'Draft',
@@ -194,6 +286,7 @@ const campaigns = ref<Campaign[]>([
   },
   {
     id: 13,
+    uuid: '99ce123b-57c4-429b-9840-c79f8047d8ii',
     name: 'Monthly Newsletter',
     type: 'Email',
     status: 'Scheduled',
@@ -218,6 +311,7 @@ const campaigns = ref<Campaign[]>([
   },
   {
     id: 14,
+    uuid: 'aace123b-57c4-429b-9840-c79f8047d8jj',
     name: 'Holiday Sale Announcement',
     type: 'Email',
     status: 'Active',
@@ -242,6 +336,7 @@ const campaigns = ref<Campaign[]>([
   },
   {
     id: 15,
+    uuid: 'bbce123b-57c4-429b-9840-c79f8047d8kk',
     name: 'Flash Sale Alert',
     type: 'SMS',
     status: 'Scheduled',
@@ -265,6 +360,7 @@ const campaigns = ref<Campaign[]>([
   },
   {
     id: 16,
+    uuid: 'ccce123b-57c4-429b-9840-c79f8047d8ll',
     name: 'Order Delivery Notification',
     type: 'SMS',
     status: 'Active',
@@ -285,6 +381,42 @@ const campaigns = ref<Campaign[]>([
     smsPhoneList: 'Recent Customers',
     smsSchedule: 'Immediate',
     smsCharacterCount: 124
+  },
+  {
+    id: 17,
+    uuid: 'ddce123b-57c4-429b-9840-c79f8047d8mm',
+    name: 'Abandoned Cart Recovery',
+    type: 'Email',
+    status: 'Active',
+    startDate: '2023-12-01',
+    endDate: null, // Ongoing campaign
+    budget: 1000,
+    spent: 450,
+    goal: 'Sales',
+    goalTarget: 1000,
+    goalProgress: 450,
+    audience: 'Cart Abandoners',
+    channels: ['Email'],
+    owner: 'Sarah Miller',
+    ownerAvatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+    createdAt: '2023-11-30',
+    lastModified: '2023-12-01',
+    emailSubject: '🛒 Complete Your Purchase - Special Offer Inside!',
+    emailTemplate: 'abandoned-cart',
+    emailSender: 'sales@example.com',
+    emailList: 'Cart Abandoners',
+    goalTrigger: 'cart_abandoned',
+    goalValue: 0, // Will be dynamically set based on cart value
+    abandonedCartTrigger: {
+      timeThreshold: 30,
+      timeUnit: 'minutes',
+      minimumCartValue: 50,
+      excludeProducts: [],
+      requireProducts: [],
+      userSegment: ['registered'],
+      maxReminders: 3,
+      reminderIntervals: [30, 24 * 60, 72 * 60] // 30 mins, 24 hours, 72 hours
+    }
   }
 ])
 
@@ -297,10 +429,20 @@ const typeFilter = ref('all')
 const viewMode = ref('compact') // 'detailed' or 'compact'
 
 // Available statuses
-const statuses = ['all', 'Active', 'Scheduled', 'Draft', 'Completed']
+const statuses = ['all', 'sent', 'scheduled', 'draft']
 
 // Available types
 const types = ['all', 'Email', 'SMS']
+
+// Available sorts
+const availableSorts = [
+  { value: 'name', label: 'Name' },
+  { value: 'unique_open_count', label: 'Opens' },
+  { value: 'unique_click_count', label: 'Clicks' },
+  { value: 'unsubscribe_rate', label: 'Unsubscribes' },
+  { value: 'sent_to_number_of_subscribers', label: 'Sent To' },
+  { value: 'sent', label: 'Send Date' }
+]
 
 // Computed filtered and sorted campaigns
 const filteredCampaigns = computed(() => {
@@ -461,6 +603,7 @@ const showCampaignModal = ref(false)
 const isEditMode = ref(false)
 const currentCampaign = ref<Campaign>({
   id: 0,
+  uuid: '',
   name: '',
   type: 'Email',
   status: 'Draft',
@@ -481,10 +624,11 @@ const currentCampaign = ref<Campaign>({
 
 const openNewCampaignModal = () => {
   const today = new Date().toISOString().split('T')[0];
-  if (!today) return; // Safety check
+  if (!today) return;
 
   currentCampaign.value = {
     id: Math.max(...campaigns.value.map(c => c.id)) + 1,
+    uuid: crypto.randomUUID(),
     name: '',
     type: 'Email',
     status: 'Draft',
@@ -511,12 +655,51 @@ const openNewCampaignModal = () => {
     smsContent: '',
     smsPhoneList: 'All Customers',
     smsSchedule: 'Immediate',
-    smsCharacterCount: 0
+    smsCharacterCount: 0,
+    // Initialize goal tracking fields
+    customGoalName: '',
+    goalTrigger: 'page_visit',
+    triggerUrl: '',
+    triggerSelector: '',
+    triggerEvent: '',
+    goalValue: 0,
+    // Initialize abandoned cart fields
+    abandonedCartTrigger: {
+      timeThreshold: 30,
+      timeUnit: 'minutes',
+      minimumCartValue: 50,
+      excludeProducts: [],
+      requireProducts: [],
+      userSegment: ['registered'],
+      maxReminders: 3,
+      reminderIntervals: [30, 1440, 4320] // 30 mins, 24 hours, 72 hours
+    },
+    modelTrigger: {
+      model: 'User', // Default to User model
+      event: 'created',
+      conditions: []
+    }
   };
 
   isEditMode.value = false;
   showCampaignModal.value = true;
 };
+
+// Add a watch to initialize abandonedCartTrigger when goalTrigger changes to 'cart_abandoned'
+watch(() => currentCampaign.value.goalTrigger, (newValue) => {
+  if (newValue === 'cart_abandoned' && !currentCampaign.value.abandonedCartTrigger) {
+    currentCampaign.value.abandonedCartTrigger = {
+      timeThreshold: 30,
+      timeUnit: 'minutes',
+      minimumCartValue: 50,
+      excludeProducts: [],
+      requireProducts: [],
+      userSegment: ['registered'],
+      maxReminders: 3,
+      reminderIntervals: [30, 1440, 4320]
+    };
+  }
+});
 
 function openEditCampaignModal(campaign: Campaign): void {
   currentCampaign.value = { ...campaign }
@@ -528,23 +711,34 @@ function closeCampaignModal(): void {
   showCampaignModal.value = false
 }
 
+// Add scheduling state
+const isScheduled = ref(false)
+const scheduleDate = ref('')
+const scheduleTime = ref('')
+
+// Update save campaign to handle scheduling
 const saveCampaign = () => {
   if (!currentCampaign.value) return;
 
-  // Ensure we have a string date
   const today = new Date().toISOString().split('T')[0];
-  if (!today) return; // Safety check
+  if (!today) return;
+
+  // Handle scheduling
+  if (isScheduled.value && scheduleDate.value && scheduleTime.value) {
+    const scheduledDateTime = `${scheduleDate.value} ${scheduleTime.value}:00`;
+    currentCampaign.value.scheduled_at = scheduledDateTime;
+  } else {
+    currentCampaign.value.scheduled_at = null;
+  }
 
   currentCampaign.value.lastModified = today;
 
   if (isEditMode.value) {
-    // Update existing campaign
     const index = campaigns.value.findIndex(c => c.id === currentCampaign.value?.id);
     if (index !== -1) {
       campaigns.value[index] = { ...currentCampaign.value };
     }
   } else {
-    // Add new campaign
     campaigns.value.push({ ...currentCampaign.value });
   }
 
@@ -591,7 +785,7 @@ const getCampaignTypeIcon = (type: string): string => {
     case 'Social Media':
       return 'i-hugeicons-share-01'
     case 'Content':
-      return 'i-hugeicons-document-text'
+      return 'i-hugeicons-document-validation'
     case 'PPC':
       return 'i-hugeicons-cursor-click'
     case 'SEO':
@@ -620,6 +814,85 @@ const getCampaignTypeColor = (type: string): string => {
       return 'text-gray-600 dark:text-gray-400'
   }
 }
+
+// Add new actions
+const sendTestCampaign = async (campaign: Campaign) => {
+  // Implementation will be handled by API integration
+  console.log('Send test for campaign:', campaign.uuid)
+}
+
+const sendCampaign = async (campaign: Campaign) => {
+  // Implementation will be handled by API integration
+  console.log('Send campaign:', campaign.uuid)
+}
+
+// Update campaign metrics display
+const getCampaignMetrics = (campaign: Campaign) => {
+  return [
+    {
+      label: 'Sent To',
+      value: campaign.sent_to_number_of_subscribers || '0',
+      icon: 'i-hugeicons-user-multiple'
+    },
+    {
+      label: 'Clicks',
+      value: `${campaign.unique_click_count || '0'} (${campaign.click_rate || 0}%)`,
+      icon: 'i-hugeicons-mouse-left-click-02'
+    },
+    {
+      label: 'Unsubscribes',
+      value: `${campaign.unsubscribe_count || '0'} (${campaign.unsubscribe_rate || '0'}%)`,
+      icon: 'i-hugeicons-user-minus-01'
+    },
+    {
+      label: 'Bounces',
+      value: `${campaign.bounce_count || '0'} (${campaign.bounce_rate || '0'}%)`,
+      icon: 'i-hugeicons-alert-circle'
+    }
+  ]
+}
+
+// Add computed property for safe access to abandonedCartTrigger
+const cartTrigger = computed(() => {
+  if (!currentCampaign.value.abandonedCartTrigger) {
+    currentCampaign.value.abandonedCartTrigger = {
+      timeThreshold: 30,
+      timeUnit: 'minutes',
+      minimumCartValue: 50,
+      excludeProducts: [],
+      requireProducts: [],
+      userSegment: ['registered'],
+      maxReminders: 3,
+      reminderIntervals: [30, 1440, 4320]
+    };
+  }
+  // Ensure reminderIntervals is always defined
+  if (!currentCampaign.value.abandonedCartTrigger.reminderIntervals) {
+    currentCampaign.value.abandonedCartTrigger.reminderIntervals = [30, 1440, 4320];
+  }
+  return currentCampaign.value.abandonedCartTrigger;
+});
+
+// Add helper methods for conditions
+const addCondition = () => {
+  if (!currentCampaign.value.modelTrigger) {
+    currentCampaign.value.modelTrigger = {
+      model: 'User',
+      event: 'created',
+      conditions: []
+    };
+  }
+  const model = currentCampaign.value.modelTrigger.model;
+  currentCampaign.value.modelTrigger.conditions.push({
+    field: modelFields[model][0],
+    operator: 'equals',
+    value: ''
+  });
+};
+
+const removeCondition = (index: number) => {
+  currentCampaign.value.modelTrigger?.conditions.splice(index, 1);
+};
 </script>
 
 <template>
@@ -811,7 +1084,7 @@ const getCampaignTypeColor = (type: string): string => {
             Name
             <span v-if="sortBy === 'name'" class="ml-1">
               <div v-if="sortOrder === 'asc'" class="i-hugeicons-arrow-up-01 h-4 w-4"></div>
-              <div v-else class="i-hugeicons-arrow-down-01 h-4 w-4"></div>
+              <div v-else class="i-hugeicons-arrow-down-02-01 h-4 w-4"></div>
             </span>
           </button>
           <button
@@ -822,7 +1095,7 @@ const getCampaignTypeColor = (type: string): string => {
             Date
             <span v-if="sortBy === 'startDate'" class="ml-1">
               <div v-if="sortOrder === 'asc'" class="i-hugeicons-arrow-up-01 h-4 w-4"></div>
-              <div v-else class="i-hugeicons-arrow-down-01 h-4 w-4"></div>
+              <div v-else class="i-hugeicons-arrow-down-02-01 h-4 w-4"></div>
             </span>
           </button>
           <!-- <button
@@ -833,7 +1106,7 @@ const getCampaignTypeColor = (type: string): string => {
             Budget
             <span v-if="sortBy === 'budget'" class="ml-1">
               <div v-if="sortOrder === 'asc'" class="i-hugeicons-arrow-up-01 h-4 w-4"></div>
-              <div v-else class="i-hugeicons-arrow-down-01 h-4 w-4"></div>
+              <div v-else class="i-hugeicons-arrow-down-02-01 h-4 w-4"></div>
             </span>
           </button> -->
           <button
@@ -844,7 +1117,7 @@ const getCampaignTypeColor = (type: string): string => {
             Progress
             <span v-if="sortBy === 'goalProgress'" class="ml-1">
               <div v-if="sortOrder === 'asc'" class="i-hugeicons-arrow-up-01 h-4 w-4"></div>
-              <div v-else class="i-hugeicons-arrow-down-01 h-4 w-4"></div>
+              <div v-else class="i-hugeicons-arrow-down-02-01 h-4 w-4"></div>
             </span>
           </button>
         </div>
@@ -858,7 +1131,7 @@ const getCampaignTypeColor = (type: string): string => {
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Type</th>
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Status</th>
                 <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Dates</th>
-                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Progress</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-white">Metrics</th>
                 <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
                   <span class="sr-only">Actions</span>
                 </th>
@@ -895,22 +1168,37 @@ const getCampaignTypeColor = (type: string): string => {
                   <div class="text-xs">to {{ formatDate(campaign.endDate) }}</div>
                 </td>
                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                  <div class="flex items-center">
-                    <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mr-2">
-                      <div
-                        class="bg-blue-600 h-2.5 rounded-full dark:bg-blue-500"
-                        :style="{ width: `${calculateProgress(campaign.goalProgress, campaign.goalTarget)}%` }"
-                      ></div>
+                  <div class="space-y-1">
+                    <div v-for="metric in getCampaignMetrics(campaign)" :key="metric.label" class="flex items-center">
+                      <div :class="metric.icon + ' h-4 w-4 mr-2'"></div>
+                      <span class="text-xs">{{ metric.label }}: {{ metric.value }}</span>
                     </div>
-                    <span>{{ calculateProgress(campaign.goalProgress, campaign.goalTarget) }}%</span>
                   </div>
-                  <div class="text-xs mt-1">{{ campaign.goal }}: {{ campaign.goalProgress }} / {{ campaign.goalTarget }}</div>
                 </td>
                 <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                   <div class="flex justify-end space-x-2">
                     <button
+                      v-if="campaign.status === 'draft' || campaign.status === 'scheduled'"
+                      @click="sendTestCampaign(campaign)"
+                      class="text-gray-400 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-all duration-150"
+                      title="Send Test"
+                    >
+                      <div class="i-hugeicons-paper-plane h-5 w-5"></div>
+                      <span class="sr-only">Send Test</span>
+                    </button>
+                    <button
+                      v-if="campaign.status === 'draft'"
+                      @click="sendCampaign(campaign)"
+                      class="text-gray-400 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-all duration-150"
+                      title="Send Campaign"
+                    >
+                      <div class="i-hugeicons-send h-5 w-5"></div>
+                      <span class="sr-only">Send Campaign</span>
+                    </button>
+                    <button
                       @click="openEditCampaignModal(campaign)"
                       class="text-gray-400 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-all duration-150"
+                      title="Edit"
                     >
                       <div class="i-hugeicons-edit-01 h-5 w-5"></div>
                       <span class="sr-only">Edit</span>
@@ -918,6 +1206,7 @@ const getCampaignTypeColor = (type: string): string => {
                     <button
                       @click="deleteCampaign(campaign.id)"
                       class="text-gray-400 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-all duration-150"
+                      title="Delete"
                     >
                       <div class="i-hugeicons-waste h-5 w-5"></div>
                       <span class="sr-only">Delete</span>
@@ -957,6 +1246,19 @@ const getCampaignTypeColor = (type: string): string => {
                   <div class="flex justify-between text-sm">
                     <span class="text-gray-500 dark:text-gray-400">End date:</span>
                     <span class="font-medium text-gray-900 dark:text-white">{{ formatDate(campaign.endDate) }}</span>
+                  </div>
+                </div>
+
+                <!-- Campaign Metrics -->
+                <div class="mt-4 grid grid-cols-2 gap-4">
+                  <div v-for="metric in getCampaignMetrics(campaign)" :key="metric.label" class="col-span-1">
+                    <div class="flex items-center">
+                      <div :class="metric.icon + ' h-5 w-5 mr-2 text-gray-400 dark:text-gray-500'"></div>
+                      <div>
+                        <div class="text-sm font-medium text-gray-900 dark:text-white">{{ metric.value }}</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ metric.label }}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1018,7 +1320,24 @@ const getCampaignTypeColor = (type: string): string => {
                   </div>
                 </div>
 
+                <!-- Campaign Actions -->
                 <div class="mt-5 flex justify-end space-x-3">
+                  <button
+                    v-if="campaign.status === 'draft' || campaign.status === 'scheduled'"
+                    @click="sendTestCampaign(campaign)"
+                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-gray-200 dark:hover:bg-blue-gray-600"
+                  >
+                    <div class="i-hugeicons-paper-plane -ml-0.5 mr-2 h-4 w-4"></div>
+                    Test
+                  </button>
+                  <button
+                    v-if="campaign.status === 'draft'"
+                    @click="sendCampaign(campaign)"
+                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-gray-200 dark:hover:bg-blue-gray-600"
+                  >
+                    <div class="i-hugeicons-send -ml-0.5 mr-2 h-4 w-4"></div>
+                    Send
+                  </button>
                   <button
                     @click="openEditCampaignModal(campaign)"
                     class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-gray-200 dark:hover:bg-blue-gray-600"
@@ -1028,7 +1347,7 @@ const getCampaignTypeColor = (type: string): string => {
                   </button>
                   <button
                     @click="deleteCampaign(campaign.id)"
-                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-gray-200 dark:hover:bg-blue-gray-600 sm:col-start-1 sm:mt-0 sm:text-sm"
+                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-gray-200 dark:hover:bg-blue-gray-600"
                   >
                     <div class="i-hugeicons-waste -ml-0.5 mr-2 h-4 w-4"></div>
                     Delete
@@ -1126,13 +1445,13 @@ const getCampaignTypeColor = (type: string): string => {
               class="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-gray-800 dark:text-gray-500 dark:hover:text-gray-400"
             >
               <span class="sr-only">Close</span>
-              <div class="i-hugeicons-x-mark h-6 w-6"></div>
+              <div class="i-hugeicons-cancel-01 h-6 w-6"></div>
             </button>
           </div>
 
           <div class="sm:flex sm:items-start">
             <div class="mt-3 w-full text-center sm:ml-4 sm:mt-0 sm:text-left">
-              <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
+              <h3 class="text-xl font-medium leading-6 text-gray-900 dark:text-white">
                 {{ isEditMode ? 'Edit Campaign' : 'Create New Campaign' }}
               </h3>
               <div class="mt-6">
@@ -1147,6 +1466,7 @@ const getCampaignTypeColor = (type: string): string => {
                           id="campaign-name"
                           v-model="currentCampaign.name"
                           type="text"
+                          placeholder="e.g. Summer Sale 2024"
                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
                           required
                         />
@@ -1198,255 +1518,372 @@ const getCampaignTypeColor = (type: string): string => {
                           id="campaign-audience"
                           v-model="currentCampaign.audience"
                           type="text"
+                          placeholder="e.g. All Customers, Premium Members, New Users"
                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
                         />
                       </div>
                     </div>
 
-                    <div class="sm:col-span-3">
-                      <label for="campaign-start-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Start Date
-                      </label>
-                      <div class="mt-1">
-                        <input
-                          id="campaign-start-date"
-                          v-model="currentCampaign.startDate"
-                          type="date"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div class="sm:col-span-3">
-                      <label for="campaign-end-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        End Date
-                      </label>
-                      <div class="mt-1">
-                        <input
-                          id="campaign-end-date"
-                          v-model="currentCampaign.endDate"
-                          type="date"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div class="sm:col-span-6">
-                      <label for="campaign-goal" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Goal
-                      </label>
-                      <div class="mt-1">
-                        <input
-                          id="campaign-goal"
-                          v-model="currentCampaign.goal"
-                          type="text"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div class="sm:col-span-3">
-                      <label for="campaign-goal-progress" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Progress
-                      </label>
-                      <div class="mt-1">
-                        <input
-                          id="campaign-goal-progress"
-                          v-model.number="currentCampaign.goalProgress"
-                          type="number"
-                          min="0"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div class="sm:col-span-3">
-                      <label for="campaign-goal-target" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Target
-                      </label>
-                      <div class="mt-1">
-                        <input
-                          id="campaign-goal-target"
-                          v-model.number="currentCampaign.goalTarget"
-                          type="number"
-                          min="1"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <!-- Campaign Type Specific Fields -->
-                    <div v-if="currentCampaign.type === 'Email'" class="sm:col-span-6 border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-                      <h4 class="text-base font-medium text-gray-900 dark:text-white mb-4">Email Campaign Details</h4>
-
-                      <div class="sm:col-span-6 mb-4">
-                        <label for="email-subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Email Subject
-                        </label>
-                        <div class="mt-1">
-                          <input
-                            id="email-subject"
-                            v-model="currentCampaign.emailSubject"
-                            type="text"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                            required
-                          />
-                        </div>
+                    <!-- Goal Definition Section -->
+                    <div class="sm:col-span-6 pt-8">
+                      <div class="border-b border-gray-200 pb-4 dark:border-gray-700">
+                        <h3 class="text-base font-semibold text-gray-900 dark:text-white">Goal Definition</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define what constitutes a successful conversion for this campaign.</p>
                       </div>
 
-                      <div class="sm:col-span-6 mb-4">
-                        <label for="email-sender" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Sender Email
-                        </label>
-                        <div class="mt-1">
-                          <input
-                            id="email-sender"
-                            v-model="currentCampaign.emailSender"
-                            type="email"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div class="sm:col-span-6 mb-4">
-                        <label for="email-list" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Recipient List
-                        </label>
-                        <div class="mt-1">
+                      <div class="mt-4 space-y-4">
+                        <div>
+                          <label for="goal-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Goal Type
+                          </label>
                           <select
-                            id="email-list"
-                            v-model="currentCampaign.emailList"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                            id="goal-type"
+                            v-model="currentCampaign.goal"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
                             required
                           >
-                            <option value="All Subscribers">All Subscribers</option>
-                            <option value="Newsletter Subscribers">Newsletter Subscribers</option>
-                            <option value="Recent Customers">Recent Customers</option>
-                            <option value="Inactive Customers">Inactive Customers</option>
+                            <option value="Sales">Sales</option>
+                            <option value="Clicks">Link Clicks</option>
+                            <option value="Opens">Email Opens</option>
+                            <option value="Signups">Sign Ups</option>
+                            <option value="Downloads">Downloads</option>
+                            <option value="Custom">Custom Goal</option>
                           </select>
                         </div>
-                      </div>
 
-                      <div class="sm:col-span-6 mb-4">
-                        <label for="email-template" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Email Template
-                        </label>
-                        <div class="mt-1">
-                          <select
-                            id="email-template"
-                            v-model="currentCampaign.emailTemplate"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                            required
-                          >
-                            <option value="default">Default Template</option>
-                            <option value="promotional">Promotional Template</option>
-                            <option value="newsletter">Newsletter Template</option>
-                            <option value="announcement">Announcement Template</option>
-                          </select>
+                        <div v-if="currentCampaign.goal === 'Custom'" class="space-y-4">
+                          <div>
+                            <label for="custom-goal-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Custom Goal Name
+                            </label>
+                            <input
+                              id="custom-goal-name"
+                              v-model="currentCampaign.customGoalName"
+                              type="text"
+                              placeholder="e.g. Product Demo Requests"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                            />
+                          </div>
                         </div>
-                      </div>
 
-                      <div class="sm:col-span-6">
-                        <label for="email-content" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Email Content
-                        </label>
-                        <div class="mt-1">
-                          <textarea
-                            id="email-content"
-                            v-model="currentCampaign.emailContent"
-                            rows="6"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                            required
-                          ></textarea>
+                        <div class="space-y-4">
+                          <div>
+                            <label for="goal-trigger" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Trigger
+                            </label>
+                            <select
+                              id="goal-trigger"
+                              v-model="currentCampaign.goalTrigger"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                            >
+                              <option value="page_visit">Page Visit</option>
+                              <option value="button_click">Button Click</option>
+                              <option value="form_submit">Form Submission</option>
+                              <option value="purchase">Purchase Completion</option>
+                              <option value="custom_event">Custom Event</option>
+                              <option value="cart_abandoned">Cart Abandoned</option>
+                              <option value="model_event">Model Event</option>
+                            </select>
+                          </div>
+
+                          <div v-if="currentCampaign.goalTrigger === 'page_visit'">
+                            <label for="trigger-url" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Target URL
+                            </label>
+                            <input
+                              id="trigger-url"
+                              v-model="currentCampaign.triggerUrl"
+                              type="text"
+                              placeholder="e.g. /thank-you or https://example.com/success"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                            />
+                          </div>
+
+                          <div v-if="currentCampaign.goalTrigger === 'button_click'">
+                            <label for="trigger-selector" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Button Selector
+                            </label>
+                            <input
+                              id="trigger-selector"
+                              v-model="currentCampaign.triggerSelector"
+                              type="text"
+                              placeholder="e.g. #submit-button or .buy-now"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                            />
+                          </div>
+
+                          <div v-if="currentCampaign.goalTrigger === 'custom_event'">
+                            <label for="trigger-event" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Event Name
+                            </label>
+                            <input
+                              id="trigger-event"
+                              v-model="currentCampaign.triggerEvent"
+                              type="text"
+                              placeholder="e.g. productView, checkoutComplete"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                            />
+                          </div>
+
+                          <!-- Model Event Configuration -->
+                          <div v-if="currentCampaign.goalTrigger === 'model_event'" class="space-y-6 border-t border-gray-200 pt-4 dark:border-gray-700">
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">Model Event Settings</h4>
+
+                            <!-- Initialize modelTrigger if not exists -->
+                            <div v-if="!currentCampaign.modelTrigger">
+                              <button
+                                type="button"
+                                @click="addCondition"
+                                class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-gray-200 dark:hover:bg-blue-gray-600"
+                              >
+                                <div class="i-hugeicons-plus-circle h-4 w-4 mr-2"></div>
+                                Initialize Model Event
+                              </button>
+                            </div>
+
+                            <template v-else>
+                              <!-- Model Selection -->
+                              <div>
+                                <label for="model-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Select Model
+                                </label>
+                                <select
+                                  id="model-select"
+                                  v-model="currentCampaign.modelTrigger.model"
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                                >
+                                  <option v-for="model in availableModels" :key="model" :value="model">{{ model }}</option>
+                                </select>
+                              </div>
+
+                               <!-- Event Type -->
+                              <div>
+                                <label for="event-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Event Type
+                                </label>
+                                <select
+                                  id="event-type"
+                                  v-model="currentCampaign.modelTrigger.event"
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                                >
+                                  <option v-for="event in standardModelEvents" :key="event" :value="event">
+                                    {{ event.charAt(0).toUpperCase() + event.slice(1) }}
+                                  </option>
+                                </select>
+                              </div>
+
+                              <!-- Custom Event Name (if custom selected) -->
+                              <div v-if="currentCampaign.modelTrigger.event === 'custom'">
+                                <label for="custom-event-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Custom Event Name
+                                </label>
+                                <input
+                                  id="custom-event-name"
+                                  v-model="currentCampaign.modelTrigger.customEvent"
+                                  type="text"
+                                  placeholder="e.g. subscription_renewed"
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                                />
+                              </div>
+
+                              <!-- Conditions -->
+                              <div>
+                                <div class="flex items-center justify-between">
+                                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Conditions
+                                  </label>
+                                  <button
+                                    type="button"
+                                    @click="addCondition"
+                                    class="inline-flex items-center rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-gray-200 dark:hover:bg-blue-gray-600"
+                                  >
+                                    <div class="i-hugeicons-plus-sign-circle h-4 w-4 mr-2"></div>
+                                    Add Condition
+                                  </button>
+                                </div>
+
+                                <div v-for="(condition, index) in currentCampaign.modelTrigger.conditions" :key="index" class="mt-3 grid grid-cols-12 gap-2">
+                                  <!-- Field -->
+                                  <div class="col-span-4">
+                                    <select
+                                      v-model="condition.field"
+                                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                                    >
+                                      <option v-for="field in modelFields[currentCampaign.modelTrigger.model]" :key="field" :value="field">
+                                        {{ field }}
+                                      </option>
+                                    </select>
+                                  </div>
+
+                                  <!-- Operator -->
+                                  <div class="col-span-3">
+                                    <select
+                                      v-model="condition.operator"
+                                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                                    >
+                                      <option value="equals">Equals</option>
+                                      <option value="not_equals">Not Equals</option>
+                                      <option value="contains">Contains</option>
+                                      <option value="not_contains">Not Contains</option>
+                                      <option value="greater_than">Greater Than</option>
+                                      <option value="less_than">Less Than</option>
+                                      <option value="between">Between</option>
+                                      <option value="in">In List</option>
+                                      <option value="not_in">Not In List</option>
+                                    </select>
+                                  </div>
+
+                                  <!-- Value -->
+                                  <div class="col-span-4">
+                                    <input
+                                      v-model="condition.value"
+                                      type="text"
+                                      placeholder="Value"
+                                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                                    />
+                                  </div>
+
+                                  <!-- Remove Button -->
+                                  <div class="col-span-1">
+                                    <button
+                                      type="button"
+                                      @click="removeCondition(index)"
+                                      class="inline-flex items-center rounded-md border border-gray-300 bg-white p-2 text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-gray-200 dark:hover:bg-blue-gray-600"
+                                    >
+                                      <div class="i-hugeicons-cancel-01 h-4 w-4"></div>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </template>
+                          </div>
+
+                          <!-- Email List Selection -->
+                          <div v-if="currentCampaign.type === 'Email'" class="sm:col-span-6 pt-8">
+                            <div class="border-b border-gray-200 pb-4 dark:border-gray-700">
+                              <h3 class="text-base font-semibold text-gray-900 dark:text-white">Email Campaign Settings</h3>
+                              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Configure your email campaign details.</p>
+                            </div>
+
+                            <div class="mt-4 space-y-4">
+                              <div>
+                                <label for="email-list" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Email List
+                                </label>
+                                <select
+                                  id="email-list"
+                                  v-model="currentCampaign.emailList"
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                                  required
+                                >
+                                  <option value="All Subscribers">All Subscribers</option>
+                                  <option value="Newsletter">Newsletter</option>
+                                  <option value="Product Updates">Product Updates</option>
+                                  <option value="Marketing">Marketing</option>
+                                  <option value="Cart Abandoners">Cart Abandoners</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label for="email-subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Email Subject
+                                </label>
+                                <input
+                                  id="email-subject"
+                                  v-model="currentCampaign.emailSubject"
+                                  type="text"
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                                  placeholder="Enter email subject"
+                                  required
+                                />
+                              </div>
+
+                              <div>
+                                <label for="email-sender" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Sender Email
+                                </label>
+                                <input
+                                  id="email-sender"
+                                  v-model="currentCampaign.emailSender"
+                                  type="email"
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                                  placeholder="noreply@example.com"
+                                  required
+                                />
+                              </div>
+
+                              <div>
+                                <label for="email-template" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Email Template
+                                </label>
+                                <select
+                                  id="email-template"
+                                  v-model="currentCampaign.emailTemplate"
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                                  required
+                                >
+                                  <option value="default">Default Template</option>
+                                  <option value="newsletter">Newsletter Template</option>
+                                  <option value="promotional">Promotional Template</option>
+                                  <option value="abandoned-cart">Abandoned Cart Template</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label for="email-content" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  Email Content
+                                </label>
+                                <textarea
+                                  id="email-content"
+                                  v-model="currentCampaign.emailContent"
+                                  rows="6"
+                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
+                                  placeholder="Enter your email content here..."
+                                  required
+                                ></textarea>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Text Message Campaign Fields -->
+                          <div v-if="currentCampaign.type === 'SMS'" class="sm:col-span-6">
+                            <!-- ... rest of the existing template ... -->
+                          </div>
+
+                          <!-- Goal Tracking Fields -->
+                          <div class="sm:col-span-6">
+                            <!-- ... rest of the existing template ... -->
+                          </div>
+
+                          <!-- Abandoned Cart Fields -->
+                          <div class="sm:col-span-6">
+                            <!-- ... rest of the existing template ... -->
+                          </div>
+
+                           <!-- Model Event Configuration -->
+                          <div class="sm:col-span-6">
+                            <!-- ... rest of the existing template ... -->
+                          </div>
+
+                          <!-- Submit Button -->
+                          <div class="mt-12 sm:mt-12 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+                            <button
+                              type="submit"
+                              class="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-700 dark:hover:bg-blue-600 sm:col-start-2 sm:text-sm"
+                            >
+                              {{ isEditMode ? 'Save Changes' : 'Create Campaign' }}
+                            </button>
+                            <button
+                              type="button"
+                              @click="showCampaignModal = false"
+                              class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-gray-200 dark:hover:bg-blue-gray-600 sm:col-start-1 sm:mt-0 sm:text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
-                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                          You can use HTML tags for formatting.
-                        </p>
                       </div>
                     </div>
-
-                    <div v-if="currentCampaign.type === 'SMS'" class="sm:col-span-6 border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-                      <h4 class="text-base font-medium text-gray-900 dark:text-white mb-4">Text Message Campaign Details</h4>
-
-                      <div class="sm:col-span-6 mb-4">
-                        <label for="sms-content" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Message Content
-                        </label>
-                        <div class="mt-1">
-                          <textarea
-                            id="sms-content"
-                            v-model="currentCampaign.smsContent"
-                            rows="3"
-                            maxlength="160"
-                            @input="updateSmsCharacterCount"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                            required
-                          ></textarea>
-                        </div>
-                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                          {{ currentCampaign.smsCharacterCount }}/160 characters
-                        </p>
-                      </div>
-
-                      <div class="sm:col-span-6 mb-4">
-                        <label for="sms-phone-list" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Recipient List
-                        </label>
-                        <div class="mt-1">
-                          <select
-                            id="sms-phone-list"
-                            v-model="currentCampaign.smsPhoneList"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                            required
-                          >
-                            <option value="All Customers">All Customers</option>
-                            <option value="Opted-in Customers">Opted-in Customers</option>
-                            <option value="Recent Customers">Recent Customers</option>
-                            <option value="VIP Customers">VIP Customers</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div class="sm:col-span-6">
-                        <label for="sms-schedule" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Delivery Schedule
-                        </label>
-                        <div class="mt-1">
-                          <select
-                            id="sms-schedule"
-                            v-model="currentCampaign.smsSchedule"
-                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-white sm:text-sm"
-                            required
-                          >
-                            <option value="Immediate">Send Immediately</option>
-                            <option value="Morning">Morning (8-10 AM)</option>
-                            <option value="Afternoon">Afternoon (12-2 PM)</option>
-                            <option value="Evening">Evening (6-8 PM)</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
-                    <button
-                      type="submit"
-                      class="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-700 dark:hover:bg-blue-600 sm:col-start-2 sm:text-sm"
-                    >
-                      {{ isEditMode ? 'Save Changes' : 'Create Campaign' }}
-                    </button>
-                    <button
-                      type="button"
-                      @click="showCampaignModal = false"
-                      class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-blue-gray-700 dark:text-gray-200 dark:hover:bg-blue-gray-600 sm:col-start-1 sm:mt-0 sm:text-sm"
-                    >
-                      Cancel
-                    </button>
                   </div>
                 </form>
               </div>

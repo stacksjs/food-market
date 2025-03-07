@@ -693,7 +693,7 @@ function truncateText(text: string, maxLength: number): string {
             Date
             <span v-if="sortBy === 'scheduledDate'" class="ml-1">
               <div v-if="sortOrder === 'asc'" class="i-hugeicons-arrow-up-01 h-4 w-4"></div>
-              <div v-else class="i-hugeicons-arrow-down-01 h-4 w-4"></div>
+              <div v-else class="i-hugeicons-arrow-down-02-01 h-4 w-4"></div>
             </span>
           </button>
           <button
@@ -704,7 +704,7 @@ function truncateText(text: string, maxLength: number): string {
             Engagement
             <span v-if="sortBy === 'engagement'" class="ml-1">
               <div v-if="sortOrder === 'asc'" class="i-hugeicons-arrow-up-01 h-4 w-4"></div>
-              <div v-else class="i-hugeicons-arrow-down-01 h-4 w-4"></div>
+              <div v-else class="i-hugeicons-arrow-down-02-01 h-4 w-4"></div>
             </span>
           </button>
           <button
@@ -715,7 +715,7 @@ function truncateText(text: string, maxLength: number): string {
             Author
             <span v-if="sortBy === 'author'" class="ml-1">
               <div v-if="sortOrder === 'asc'" class="i-hugeicons-arrow-up-01 h-4 w-4"></div>
-              <div v-else class="i-hugeicons-arrow-down-01 h-4 w-4"></div>
+              <div v-else class="i-hugeicons-arrow-down-02-01 h-4 w-4"></div>
             </span>
           </button>
         </div>
@@ -723,7 +723,7 @@ function truncateText(text: string, maxLength: number): string {
         <!-- Detailed view -->
         <div v-if="viewMode === 'detailed'" class="mt-6">
           <div v-if="paginatedPosts.length === 0" class="py-12 text-center">
-            <div class="i-hugeicons-document-text mx-auto h-12 w-12 text-gray-400"></div>
+            <div class="i-hugeicons-document-validation mx-auto h-12 w-12 text-gray-400"></div>
             <h3 class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">No posts found</h3>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Try adjusting your search or filter to find what you're looking for.</p>
           </div>

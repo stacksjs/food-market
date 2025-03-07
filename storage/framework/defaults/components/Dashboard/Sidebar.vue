@@ -45,11 +45,13 @@ const calculateTransform = (section: string) => {
 // State for each section's collapse status
 const sections = useLocalStorage<Sections>('sidebar-sections', {
   library: true,
+  blog: true,
   app: true,
   data: true,
   commerce: true,
   marketing: true,
-  management: true
+  management: true,
+  analytics: true
 })
 
 // Add separate state for nested items
@@ -58,11 +60,15 @@ const expandedItems = useLocalStorage<Record<string, boolean>>('sidebar-expanded
   '#queue': false,
   '#commerce': false,
   '#commerce-products': false,
-  '#social-posts': false
+  '#commerce-analytics': false,
+  '#social-posts': false,
+  '#analytics': false,
+  '#analytics-web': false,
+  '#waitlist': false
 })
 
 // Create an ordered array of sections that we can reorder
-const sectionOrder = useLocalStorage<string[]>('sidebar-section-order', ['library', 'app', 'data', 'commerce', 'marketing', 'management'])
+const sectionOrder = useLocalStorage<string[]>('sidebar-section-order', ['library', 'blog', 'app', 'data', 'commerce', 'marketing', 'analytics', 'management'])
 
 // Toggle function for sections
 const toggleSection = (section: string) => {
@@ -155,9 +161,20 @@ const sectionContent: Record<string, SectionContent> = {
       { to: '/packages', icon: 'i-hugeicons-package', text: 'Packages' }
     ]
   },
+  blog: {
+    items: [
+      { to: '/blog', icon: 'i-hugeicons-dashboard-speed-01', text: 'Dashboard' },
+      { to: '/blog/posts', icon: 'i-hugeicons-document-validation', text: 'Posts' },
+      { to: '/blog/categories', icon: 'i-hugeicons-tags', text: 'Categories' },
+      { to: '/blog/tags', icon: 'i-hugeicons-tag-01', text: 'Tags' },
+      { to: '/blog/comments', icon: 'i-hugeicons-comment-01', text: 'Comments' },
+      { to: '/blog/authors', icon: 'i-hugeicons-user-edit-01', text: 'Authors' },
+      { to: '/blog/seo', icon: 'i-hugeicons-seo', text: 'SEO' }
+    ]
+  },
   app: {
     items: [
-      { to: '/deployments', icon: 'i-hugeicons-rocket', text: 'Deployments' },
+      { to: '/deployments', icon: 'i-hugeicons-rocket-01', text: 'Deployments' },
       { to: '/requests', icon: 'i-hugeicons-api', text: 'Requests' },
       { to: '/realtime', icon: 'i-hugeicons-link-03', text: 'Realtime' },
       { to: '/actions', icon: 'i-hugeicons-function-of-x', text: 'Actions' },
@@ -196,8 +213,16 @@ const sectionContent: Record<string, SectionContent> = {
       { to: '/commerce/gift-cards', icon: 'i-hugeicons-gift-card', text: 'Gift Cards' },
       { to: '/commerce/payments', icon: 'i-hugeicons-invoice-01', text: 'Payments' },
       { to: '/commerce/delivery', icon: 'i-hugeicons-shipping-truck-01', text: 'Delivery' },
-      { to: '/commerce/taxes', icon: 'i-hugeicons-taxes', text: 'Taxes' },
-      { to: '/commerce/analytics', icon: 'i-hugeicons-analytics-01', text: 'Analytics' }
+      {
+        to: '#waitlist',
+        icon: 'i-hugeicons-hourglass',
+        text: 'Waitlist',
+        children: [
+          { to: '/commerce/waitlist/products', icon: 'i-hugeicons-package', text: 'Products' },
+          { to: '/commerce/waitlist/restaurant', icon: 'i-hugeicons-restaurant', text: 'Restaurant' }
+        ]
+      },
+      { to: '/commerce/taxes', icon: 'i-hugeicons-taxes', text: 'Taxes' }
     ]
   },
   data: {
@@ -213,10 +238,30 @@ const sectionContent: Record<string, SectionContent> = {
       { to: '/marketing', icon: 'i-hugeicons-dashboard-speed-01', text: 'Dashboard' },
       { to: '/marketing/social-posts', icon: 'i-hugeicons-time-schedule', text: 'Social Posts' },
       { to: '/marketing/campaigns', icon: 'i-hugeicons-rocket-01', text: 'Campaigns' },
-      { to: '/marketing/waitlist', icon: 'i-hugeicons-hourglass', text: 'Waitlist' },
       { to: '/marketing/reviews', icon: 'i-hugeicons-star', text: 'Reviews' },
-      { to: '/marketing/analytics', icon: 'i-hugeicons-analytics-01', text: 'Analytics' },
       { to: '/marketing/settings', icon: 'i-hugeicons-settings-02', text: 'Settings' }
+    ]
+  },
+  analytics: {
+    items: [
+      {
+        to: '#analytics-web',
+        icon: 'i-hugeicons-global',
+        text: 'Web',
+        children: [
+          { to: '/analytics/web', icon: 'i-hugeicons-dashboard-speed-01', text: 'Overview' },
+          { to: '/analytics/pages', icon: 'i-hugeicons-document-01', text: 'Pages' },
+          { to: '/analytics/referrers', icon: 'i-hugeicons-link-03', text: 'Referrers' },
+          { to: '/analytics/devices', icon: 'i-hugeicons-mobile-01', text: 'Devices' },
+          { to: '/analytics/browsers', icon: 'i-hugeicons-browser', text: 'Browsers' },
+          { to: '/analytics/countries', icon: 'i-hugeicons-globe-01', text: 'Countries' }
+        ]
+      },
+      { to: '/analytics/blog', icon: 'i-hugeicons-document-validation', text: 'Blog' },
+      { to: '/analytics/events', icon: 'i-hugeicons-target-01', text: 'Events' },
+      { to: '/analytics/commerce/web', icon: 'i-hugeicons-shopping-cart-02', text: 'Commerce' },
+      { to: '/analytics/commerce/sales', icon: 'i-hugeicons-sale-tag-01', text: 'Sales' },
+      { to: '/analytics/marketing', icon: 'i-hugeicons-megaphone-01', text: 'Marketing' },
     ]
   },
   management: {
@@ -364,6 +409,12 @@ const isChildRouteActive = (item: SidebarItem) => {
                     Home
                   </RouterLink>
                 </li>
+                <li>
+                  <RouterLink to="/file-manager" class="group sidebar-links">
+                    <div class="i-hugeicons-apple-finder h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700 mt-0.5" />
+                    File Manager
+                  </RouterLink>
+                </li>
               </ul>
             </li>
 
@@ -441,7 +492,7 @@ const isChildRouteActive = (item: SidebarItem) => {
                           <span class="truncate" :class="{ 'ml-[4px]': item.icon }">{{ item.text }}</span>
                           <div
                             v-if="item.children"
-                            class="i-heroicons-chevron-right h-4 w-4 text-gray-300 transition-transform duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700"
+                            class="i-hugeicons-arrow-right-01 h-4 w-4 text-gray-300 transition-transform duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700"
                             :class="{ 'transform rotate-90': expandedItems[item.to] }"
                           />
                         </div>
@@ -570,7 +621,7 @@ const isChildRouteActive = (item: SidebarItem) => {
 }
 
 .no-active.router-link-active div[class^="i-hugeicons"],
-.no-active.router-link-active div[class^="i-heroicons"] {
+.no-active.router-link-active div[class^="i-hugeicons"] {
   @apply !text-gray-400 dark:!text-gray-200;
 }
 
@@ -580,7 +631,7 @@ const isChildRouteActive = (item: SidebarItem) => {
 }
 
 .no-active.parent-active div[class^="i-hugeicons"],
-.no-active.parent-active div[class^="i-heroicons"] {
+.no-active.parent-active div[class^="i-hugeicons"] {
   @apply !text-blue-600 dark:!text-blue-400;
 }
 
@@ -683,7 +734,7 @@ li[draggable="true"].dragging .drag-handle {
 }
 
 .no-active:hover div[class^="i-hugeicons"],
-.no-active:hover div[class^="i-heroicons"] {
+.no-active:hover div[class^="i-hugeicons"] {
   @apply !text-blue-600 dark:!text-blue-400;
 }
 
@@ -693,7 +744,7 @@ li[draggable="true"].dragging .drag-handle {
 }
 
 .no-active.parent-active div[class^="i-hugeicons"],
-.no-active.parent-active div[class^="i-heroicons"] {
+.no-active.parent-active div[class^="i-hugeicons"] {
   @apply !text-blue-600 dark:!text-blue-400;
 }
 

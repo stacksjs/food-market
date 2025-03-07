@@ -1,4 +1,5 @@
 import type {
+  Attribute,
   Attributes,
   AttributesElements,
   BaseBelongsToMany,
@@ -707,7 +708,7 @@ export async function writeModelRequest(): Promise<void> {
       }
     }
 
-    fieldStringType += ` get<T>(key: T): string | undefined`
+    fieldStringType += ` get<T = string>(key: string, defaultValue?: T): T`
 
     const otherModelRelations = await fetchOtherModelRelations(modelName)
 
@@ -915,23 +916,26 @@ export async function extractFields(model: Model, modelFile: string): Promise<Mo
     match = regex.exec(code)
   }
 
-  const input: ModelElement[] = fieldKeys.map((field, index) => {
-    const fieldExist = fields[field]
+  const input = fieldKeys.map((field, index) => {
+    const fieldExist: Attribute = fields[field]
     let defaultValue = null
     let uniqueValue = false
+    let requiredValue = false
 
     if (fieldExist) {
       defaultValue = fieldExist || null
       uniqueValue = fieldExist.unique || false
+      requiredValue = fieldExist.required || false
     }
 
     return {
       field,
       default: defaultValue,
       unique: uniqueValue,
+      required: requiredValue,
       fieldArray: parseRule(rules[index] ?? ''),
     }
-  })
+  }) as ModelElement[]
 
   return input
 }
@@ -1262,7 +1266,7 @@ export async function generateKyselyTypes(): Promise<void> {
 }
 
 export function mapEntity(attribute: ModelElement): string | undefined {
-  const entity = attribute.fieldArray?.entity === 'enum' ? 'string[]' : attribute.fieldArray?.entity
+  const entity = attribute.fieldArray?.entity === 'enum' ? 'string | string[]' : attribute.fieldArray?.entity
 
   const mapEntity = entity === 'date' ? 'Date | string' : entity
 
