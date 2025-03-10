@@ -74,7 +74,7 @@ export async function generateModelString(
   attributes: ModelElement[],
 ): Promise<string> {
   const formattedTableName = pascalCase(tableName) // users -> Users
-  const formattedModelName = modelName.toLowerCase() // User -> user
+  const formattedModelName = camelCase(modelName) // User -> user
 
   let instanceSoftDeleteStatements = ''
   let instanceSoftDeleteStatementsSelectFrom = ''
@@ -314,7 +314,7 @@ export async function generateModelString(
 
       fieldString += ` ${relation.modelKey}: number \n`
 
-      getFields += `get ${relation.modelKey}(): number | undefined {
+      getFields += `get ${relation.modelKey}(): number {
         return this.attributes.${relation.modelKey}
       }\n\n`
 
@@ -323,8 +323,6 @@ export async function generateModelString(
       getFields += `get ${snakeCase(relationName)}(): ${modelRelation}Model | undefined {
         return this.attributes.${snakeCase(relationName)}
       }\n\n`
-
-      fieldString += `${snakeCase(relationName)}?: ${modelRelation}Model\n`
 
       jsonRelations += `${snakeCase(relationName)}: this.${snakeCase(relationName)},\n`
 
@@ -751,7 +749,6 @@ export async function generateModelString(
   }
 
   if (useUuid) {
-    // declareFields += 'public uuid: string | undefined \n'
     getFields += `get uuid(): string | undefined {
       return this.attributes.uuid
     }\n\n`
@@ -759,7 +756,8 @@ export async function generateModelString(
     setFields += `set uuid(value: string) {
       this.attributes.uuid = value
     }\n\n`
-    // constructorFields += `this.uuid = ${formattedModelName}?.uuid\n   `
+
+    jsonFields += '\n uuid: this.uuid,\n'
   }
 
   if (usePasskey) {
@@ -1006,7 +1004,7 @@ export async function generateModelString(
           }
         }
 
-        async mapCustomSetters(model: New${modelName}): Promise<void> {
+        async mapCustomSetters(model: New${modelName} | ${modelName}Update): Promise<void> {
           const customSetter = {
             default: () => {
             },
@@ -2486,7 +2484,7 @@ export async function generateModelString(
         }
   
         toJSON(): ${modelName}JsonResponse {
-          const output: ${modelName}JsonResponse = ${jsonFields}
+          const output = ${jsonFields}
 
           return output
         }

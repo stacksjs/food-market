@@ -1,26 +1,23 @@
-import type { Insertable, RawBuilder, Selectable, Updateable } from '@stacksjs/database'
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable } from '@stacksjs/database'
 import type { Operator } from '@stacksjs/orm'
 import type { AccessTokenModel } from './AccessToken'
-import type { UserModel } from './User'
 import { cache } from '@stacksjs/cache'
 import { sql } from '@stacksjs/database'
 import { HttpError, ModelNotFoundException } from '@stacksjs/error-handling'
-
 import { DB, SubqueryBuilder } from '@stacksjs/orm'
 
 import User from './User'
 
 export interface TeamsTable {
-  id?: number
-  personal_access_tokens?: AccessTokenModel[] | undefined
-  name?: string
-  company_name?: string
-  email?: string
-  billing_email?: string
-  status?: string
-  description?: string
-  path?: string
-  is_personal?: boolean
+  id: Generated<number>
+  name: string
+  company_name: string
+  email: string
+  billing_email: string
+  status: string
+  description: string
+  path: string
+  is_personal: boolean
 
   created_at?: Date
 
@@ -28,7 +25,7 @@ export interface TeamsTable {
 
 }
 
-interface TeamResponse {
+export interface TeamResponse {
   data: TeamJsonResponse[]
   paging: {
     total_records: number
@@ -38,16 +35,15 @@ interface TeamResponse {
   next_cursor: number | null
 }
 
-export interface TeamJsonResponse extends Omit<TeamsTable, 'password'> {
+export interface TeamJsonResponse extends Omit<Selectable<TeamsTable>, 'password'> {
   [key: string]: any
 }
 
-export type TeamType = Selectable<TeamsTable>
-export type NewTeam = Partial<Insertable<TeamsTable>>
+export type NewTeam = Insertable<TeamsTable>
 export type TeamUpdate = Updateable<TeamsTable>
 
       type SortDirection = 'asc' | 'desc'
-interface SortOptions { column: TeamType, order: SortDirection }
+interface SortOptions { column: TeamJsonResponse, order: SortDirection }
 // Define a type for the options parameter
 interface QueryOptions {
   sort?: SortOptions
@@ -60,8 +56,8 @@ export class TeamModel {
   private readonly hidden: Array<keyof TeamJsonResponse> = []
   private readonly fillable: Array<keyof TeamJsonResponse> = ['name', 'company_name', 'email', 'billing_email', 'status', 'description', 'path', 'is_personal', 'uuid']
   private readonly guarded: Array<keyof TeamJsonResponse> = []
-  protected attributes: Partial<TeamJsonResponse> = {}
-  protected originalAttributes: Partial<TeamJsonResponse> = {}
+  protected attributes = {} as TeamJsonResponse
+  protected originalAttributes = {} as TeamJsonResponse
 
   protected selectFromQuery: any
   protected withRelations: string[]
@@ -71,7 +67,7 @@ export class TeamModel {
   private hasSaved: boolean
   private customColumns: Record<string, unknown> = {}
 
-  constructor(team: Partial<TeamType> | null) {
+  constructor(team: TeamJsonResponse | undefined) {
     if (team) {
       this.attributes = { ...team }
       this.originalAttributes = { ...team }
@@ -124,7 +120,7 @@ export class TeamModel {
     }
   }
 
-  async mapCustomSetters(model: TeamJsonResponse): Promise<void> {
+  async mapCustomSetters(model: NewTeam | TeamUpdate): Promise<void> {
     const customSetter = {
       default: () => {
       },
@@ -136,43 +132,43 @@ export class TeamModel {
     }
   }
 
-  get personal_access_tokens(): AccessTokenModel[] | undefined {
+  get personal_access_tokens(): AccessTokenModel[] | [] {
     return this.attributes.personal_access_tokens
   }
 
-  get id(): number | undefined {
+  get id(): number {
     return this.attributes.id
   }
 
-  get name(): string | undefined {
+  get name(): string {
     return this.attributes.name
   }
 
-  get company_name(): string | undefined {
+  get company_name(): string {
     return this.attributes.company_name
   }
 
-  get email(): string | undefined {
+  get email(): string {
     return this.attributes.email
   }
 
-  get billing_email(): string | undefined {
+  get billing_email(): string {
     return this.attributes.billing_email
   }
 
-  get status(): string | undefined {
+  get status(): string {
     return this.attributes.status
   }
 
-  get description(): string | undefined {
+  get description(): string {
     return this.attributes.description
   }
 
-  get path(): string | undefined {
+  get path(): string {
     return this.attributes.path
   }
 
-  get is_personal(): boolean | undefined {
+  get is_personal(): boolean {
     return this.attributes.is_personal
   }
 
@@ -241,7 +237,7 @@ export class TeamModel {
     }, {})
   }
 
-  isDirty(column?: keyof TeamType): boolean {
+  isDirty(column?: keyof TeamJsonResponse): boolean {
     if (column) {
       return this.attributes[column] !== this.originalAttributes[column]
     }
@@ -253,15 +249,15 @@ export class TeamModel {
     })
   }
 
-  isClean(column?: keyof TeamType): boolean {
+  isClean(column?: keyof TeamJsonResponse): boolean {
     return !this.isDirty(column)
   }
 
-  wasChanged(column?: keyof TeamType): boolean {
+  wasChanged(column?: keyof TeamJsonResponse): boolean {
     return this.hasSaved && this.isDirty(column)
   }
 
-  select(params: (keyof TeamType)[] | RawBuilder<string> | string): TeamModel {
+  select(params: (keyof TeamJsonResponse)[] | RawBuilder<string> | string): TeamModel {
     this.selectFromQuery = this.selectFromQuery.select(params)
 
     this.hasSelect = true
@@ -269,8 +265,8 @@ export class TeamModel {
     return this
   }
 
-  static select(params: (keyof TeamType)[] | RawBuilder<string> | string): TeamModel {
-    const instance = new TeamModel(null)
+  static select(params: (keyof TeamJsonResponse)[] | RawBuilder<string> | string): TeamModel {
+    const instance = new TeamModel(undefined)
 
     // Initialize a query with the table name and selected fields
     instance.selectFromQuery = instance.selectFromQuery.select(params)
@@ -289,7 +285,7 @@ export class TeamModel {
     this.mapCustomGetters(model)
     await this.loadRelations(model)
 
-    const data = new TeamModel(model as TeamType)
+    const data = new TeamModel(model)
 
     cache.getOrSet(`team:${id}`, JSON.stringify(model))
 
@@ -302,13 +298,13 @@ export class TeamModel {
 
   // Method to find a Team by ID
   static async find(id: number): Promise<TeamModel | undefined> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return await instance.applyFind(id)
   }
 
   async first(): Promise<TeamModel | undefined> {
-    let model: TeamModel | undefined
+    let model: TeamJsonResponse | undefined
 
     if (this.hasSelect) {
       model = await this.selectFromQuery.executeTakeFirst()
@@ -322,13 +318,13 @@ export class TeamModel {
       await this.loadRelations(model)
     }
 
-    const data = new TeamModel(model as TeamType)
+    const data = new TeamModel(model)
 
     return data
   }
 
   static async first(): Promise<TeamModel | undefined> {
-    const instance = new TeamModel(null)
+    const instance = new TeamJsonResponse(null)
 
     const model = await DB.instance.selectFrom('teams')
       .selectAll()
@@ -336,7 +332,7 @@ export class TeamModel {
 
     instance.mapCustomGetters(model)
 
-    const data = new TeamModel(model as TeamType)
+    const data = new TeamModel(model)
 
     return data
   }
@@ -352,7 +348,7 @@ export class TeamModel {
       await this.loadRelations(model)
     }
 
-    const data = new TeamModel(model as TeamType)
+    const data = new TeamModel(model)
 
     return data
   }
@@ -362,19 +358,19 @@ export class TeamModel {
   }
 
   static async firstOrFail(): Promise<TeamModel | undefined> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return await instance.applyFirstOrFail()
   }
 
   static async all(): Promise<TeamModel[]> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     const models = await DB.instance.selectFrom('teams').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
-    const data = await Promise.all(models.map(async (model: TeamType) => {
+    const data = await Promise.all(models.map(async (model: TeamJsonResponse) => {
       return new TeamModel(model)
     }))
 
@@ -392,7 +388,7 @@ export class TeamModel {
     this.mapCustomGetters(model)
     await this.loadRelations(model)
 
-    const data = new TeamModel(model as TeamType)
+    const data = new TeamModel(model)
 
     return data
   }
@@ -402,7 +398,7 @@ export class TeamModel {
   }
 
   static async findOrFail(id: number): Promise<TeamModel> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return await instance.applyFindOrFail(id)
   }
@@ -410,7 +406,7 @@ export class TeamModel {
   async applyFindMany(ids: number[]): Promise<TeamModel[]> {
     let query = DB.instance.selectFrom('teams').where('id', 'in', ids)
 
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     query = query.selectAll()
 
@@ -419,11 +415,11 @@ export class TeamModel {
     instance.mapCustomGetters(models)
     await instance.loadRelations(models)
 
-    return models.map((modelItem: TeamModel) => instance.parseResult(new TeamModel(modelItem)))
+    return models.map((modelItem: TeamJsonResponse) => instance.parseResult(new TeamModel(modelItem)))
   }
 
   static async findMany(ids: number[]): Promise<TeamModel[]> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return await instance.applyFindMany(ids)
   }
@@ -439,7 +435,7 @@ export class TeamModel {
   }
 
   static skip(count: number): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.offset(count)
 
@@ -477,7 +473,7 @@ export class TeamModel {
   }
 
   static async chunk(size: number, callback: (models: TeamModel[]) => Promise<void>): Promise<void> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     await instance.applyChunk(size, callback)
   }
@@ -489,7 +485,7 @@ export class TeamModel {
   }
 
   static take(count: number): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.limit(count)
 
@@ -497,7 +493,7 @@ export class TeamModel {
   }
 
   static async pluck<K extends keyof TeamModel>(field: K): Promise<TeamModel[K][]> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     if (instance.hasSelect) {
       const model = await instance.selectFromQuery.execute()
@@ -510,11 +506,18 @@ export class TeamModel {
   }
 
   async pluck<K extends keyof TeamModel>(field: K): Promise<TeamModel[K][]> {
-    return TeamModel.pluck(field)
+    if (this.hasSelect) {
+      const model = await this.selectFromQuery.execute()
+      return model.map((modelItem: TeamModel) => modelItem[field])
+    }
+
+    const model = await this.selectFromQuery.selectAll().execute()
+
+    return model.map((modelItem: TeamModel) => modelItem[field])
   }
 
   static async count(): Promise<number> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`COUNT(*) as count`)
@@ -532,7 +535,7 @@ export class TeamModel {
   }
 
   static async max(field: keyof TeamModel): Promise<number> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`MAX(${sql.raw(field as string)}) as max `)
@@ -550,7 +553,7 @@ export class TeamModel {
   }
 
   static async min(field: keyof TeamModel): Promise<number> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`MIN(${sql.raw(field as string)}) as min `)
@@ -568,7 +571,7 @@ export class TeamModel {
   }
 
   static async avg(field: keyof TeamModel): Promise<number> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`AVG(${sql.raw(field as string)}) as avg `)
@@ -586,7 +589,7 @@ export class TeamModel {
   }
 
   static async sum(field: keyof TeamModel): Promise<number> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`SUM(${sql.raw(field as string)}) as sum `)
@@ -616,7 +619,7 @@ export class TeamModel {
     this.mapCustomGetters(models)
     await this.loadRelations(models)
 
-    const data = await Promise.all(models.map(async (model: TeamModel) => {
+    const data = await Promise.all(models.map(async (model: TeamJsonResponse) => {
       return new TeamModel(model)
     }))
 
@@ -628,7 +631,7 @@ export class TeamModel {
   }
 
   static async get(): Promise<TeamModel[]> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return await instance.applyGet()
   }
@@ -646,7 +649,7 @@ export class TeamModel {
   }
 
   static has(relation: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
       exists(
@@ -660,7 +663,7 @@ export class TeamModel {
   }
 
   static whereExists(callback: (qb: any) => any): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
       exists(callback({ exists, selectFrom })),
@@ -742,7 +745,7 @@ export class TeamModel {
     relation: string,
     callback: (query: SubqueryBuilder<keyof TeamModel>) => void,
   ): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return instance.applyWhereHas(relation, callback)
   }
@@ -766,7 +769,7 @@ export class TeamModel {
   }
 
   static doesntHave(relation: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return instance.applyDoesntHave(relation)
   }
@@ -835,7 +838,7 @@ export class TeamModel {
     relation: string,
     callback: (query: SubqueryBuilder<TeamsTable>) => void,
   ): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return instance.applyWhereDoesntHave(relation, callback)
   }
@@ -876,7 +879,7 @@ export class TeamModel {
 
   // Method to get all teams
   static async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<TeamResponse> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return await instance.applyPaginate(options)
   }
@@ -904,13 +907,13 @@ export class TeamModel {
   }
 
   static async create(newTeam: NewTeam): Promise<TeamModel> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return await instance.applyCreate(newTeam)
   }
 
   static async createMany(newTeam: NewTeam[]): Promise<void> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     const valuesFiltered = newTeam.map((newTeam: NewTeam) => {
       const filteredValues = Object.fromEntries(
@@ -944,7 +947,7 @@ export class TeamModel {
       .execute()
   }
 
-  applyWhere<V>(column: keyof UsersTable, ...args: [V] | [Operator, V]): UserModel {
+  applyWhere<V>(column: keyof TeamsTable, ...args: [V] | [Operator, V]): TeamModel {
     if (args.length === 1) {
       const [value] = args
       this.selectFromQuery = this.selectFromQuery.where(column, '=', value)
@@ -966,7 +969,7 @@ export class TeamModel {
   }
 
   static where<V = string>(column: keyof TeamsTable, ...args: [V] | [Operator, V]): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return instance.applyWhere<V>(column, ...args)
   }
@@ -978,7 +981,7 @@ export class TeamModel {
   }
 
   static whereColumn(first: keyof TeamsTable, operator: Operator, second: keyof TeamsTable): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.whereRef(first, operator, second)
 
@@ -990,7 +993,7 @@ export class TeamModel {
     const operator = value === undefined ? '=' : operatorOrValue
     const actualValue = value === undefined ? operatorOrValue : value
 
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
     instance.selectFromQuery = instance.selectFromQuery.whereRef(column, operator, actualValue)
 
     return instance
@@ -1001,7 +1004,7 @@ export class TeamModel {
   }
 
   static whereRef(column: keyof TeamsTable, ...args: string[]): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return instance.applyWhereRef(column, ...args)
   }
@@ -1013,7 +1016,7 @@ export class TeamModel {
   }
 
   static whereRaw(sqlStatement: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where(sql`${sqlStatement}`)
 
@@ -1047,7 +1050,7 @@ export class TeamModel {
   }
 
   static orWhere(...conditions: [string, any][]): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return instance.applyOrWhere(...conditions)
   }
@@ -1063,7 +1066,7 @@ export class TeamModel {
     condition: boolean,
     callback: (query: TeamModel) => TeamModel,
   ): TeamModel {
-    let instance = new TeamModel(null)
+    let instance = new TeamModel(undefined)
 
     if (condition)
       instance = callback(instance)
@@ -1088,7 +1091,7 @@ export class TeamModel {
   }
 
   static whereNotNull(column: keyof TeamsTable): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
       eb(column, '=', '').or(column, 'is not', null),
@@ -1122,7 +1125,7 @@ export class TeamModel {
   }
 
   static whereNull(column: keyof TeamsTable): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
       eb(column, '=', '').or(column, 'is', null),
@@ -1140,7 +1143,7 @@ export class TeamModel {
   }
 
   static whereName(value: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
 
@@ -1148,7 +1151,7 @@ export class TeamModel {
   }
 
   static whereCompanyName(value: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('companyName', '=', value)
 
@@ -1156,7 +1159,7 @@ export class TeamModel {
   }
 
   static whereEmail(value: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('email', '=', value)
 
@@ -1164,7 +1167,7 @@ export class TeamModel {
   }
 
   static whereBillingEmail(value: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('billingEmail', '=', value)
 
@@ -1172,7 +1175,7 @@ export class TeamModel {
   }
 
   static whereStatus(value: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('status', '=', value)
 
@@ -1180,7 +1183,7 @@ export class TeamModel {
   }
 
   static whereDescription(value: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('description', '=', value)
 
@@ -1188,7 +1191,7 @@ export class TeamModel {
   }
 
   static wherePath(value: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('path', '=', value)
 
@@ -1196,7 +1199,7 @@ export class TeamModel {
   }
 
   static whereIsPersonal(value: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('isPersonal', '=', value)
 
@@ -1218,7 +1221,7 @@ export class TeamModel {
   }
 
   static whereIn<V = number>(column: keyof TeamsTable, values: V[]): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return instance.applyWhereIn<V>(column, values)
   }
@@ -1242,7 +1245,7 @@ export class TeamModel {
   }
 
   static whereBetween<V = number>(column: keyof TeamsTable, range: [V, V]): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return instance.applyWhereBetween<V>(column, range)
   }
@@ -1262,7 +1265,7 @@ export class TeamModel {
   }
 
   static whereLike(column: keyof TeamsTable, value: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return instance.applyWhereLike(column, value)
   }
@@ -1282,7 +1285,7 @@ export class TeamModel {
   }
 
   static whereNotIn<V = number>(column: keyof TeamsTable, values: V[]): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     return instance.applyWhereNotIn<V>(column, values)
   }
@@ -1300,8 +1303,8 @@ export class TeamModel {
     return model !== null && model !== undefined
   }
 
-  static async latest(): Promise<TeamType | undefined> {
-    const instance = new TeamModel(null)
+  static async latest(): Promise<TeamModel | undefined> {
+    const instance = new TeamModel(undefined)
 
     const model = await DB.instance.selectFrom('teams')
       .selectAll()
@@ -1313,13 +1316,13 @@ export class TeamModel {
 
     instance.mapCustomGetters(model)
 
-    const data = new TeamModel(model as TeamType)
+    const data = new TeamModel(model)
 
     return data
   }
 
-  static async oldest(): Promise<TeamType | undefined> {
-    const instance = new TeamModel(null)
+  static async oldest(): Promise<TeamModel | undefined> {
+    const instance = new TeamModel(undefined)
 
     const model = await DB.instance.selectFrom('teams')
       .selectAll()
@@ -1331,18 +1334,18 @@ export class TeamModel {
 
     instance.mapCustomGetters(model)
 
-    const data = new TeamModel(model as TeamType)
+    const data = new TeamModel(model)
 
     return data
   }
 
   static async firstOrCreate(
-    condition: Partial<TeamType>,
+    condition: Partial<TeamJsonResponse>,
     newTeam: NewTeam,
   ): Promise<TeamModel> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
-    const key = Object.keys(condition)[0] as keyof TeamType
+    const key = Object.keys(condition)[0] as keyof TeamJsonResponse
 
     if (!key) {
       throw new HttpError(500, 'Condition must contain at least one key-value pair')
@@ -1360,7 +1363,7 @@ export class TeamModel {
       instance.mapCustomGetters(existingTeam)
       await instance.loadRelations(existingTeam)
 
-      return new TeamModel(existingTeam as TeamType)
+      return new TeamModel(existingTeam as TeamJsonResponse)
     }
     else {
       return await instance.create(newTeam)
@@ -1368,12 +1371,12 @@ export class TeamModel {
   }
 
   static async updateOrCreate(
-    condition: Partial<TeamType>,
+    condition: Partial<TeamJsonResponse>,
     newTeam: NewTeam,
   ): Promise<TeamModel> {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
-    const key = Object.keys(condition)[0] as keyof TeamType
+    const key = Object.keys(condition)[0] as keyof TeamJsonResponse
 
     if (!key) {
       throw new HttpError(500, 'Condition must contain at least one key-value pair')
@@ -1406,7 +1409,7 @@ export class TeamModel {
 
       instance.hasSaved = true
 
-      return new TeamModel(updatedTeam as TeamType)
+      return new TeamModel(updatedTeam as TeamJsonResponse)
     }
     else {
       // If not found, create a new record
@@ -1456,15 +1459,15 @@ export class TeamModel {
   }
 
   static with(relations: string[]): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.withRelations = relations
 
     return instance
   }
 
-  async last(): Promise<TeamType | undefined> {
-    let model: TeamModel | undefined
+  async last(): Promise<TeamModel | undefined> {
+    let model: TeamJsonResponse | undefined
 
     if (this.hasSelect) {
       model = await this.selectFromQuery.executeTakeFirst()
@@ -1478,18 +1481,18 @@ export class TeamModel {
       await this.loadRelations(model)
     }
 
-    const data = new TeamModel(model as TeamType)
+    const data = new TeamModel(model)
 
     return data
   }
 
-  static async last(): Promise<TeamType | undefined> {
+  static async last(): Promise<TeamModel | undefined> {
     const model = await DB.instance.selectFrom('teams').selectAll().orderBy('id', 'desc').executeTakeFirst()
 
     if (!model)
       return undefined
 
-    const data = new TeamModel(model as TeamType)
+    const data = new TeamModel(model)
 
     return data
   }
@@ -1501,7 +1504,7 @@ export class TeamModel {
   }
 
   static orderBy(column: keyof TeamsTable, order: 'asc' | 'desc'): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(column, order)
 
@@ -1515,7 +1518,7 @@ export class TeamModel {
   }
 
   static groupBy(column: keyof TeamsTable): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.groupBy(column)
 
@@ -1529,7 +1532,7 @@ export class TeamModel {
   }
 
   static having<V = string>(column: keyof TeamsTable, operator: Operator, value: V): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.having(column, operator, value)
 
@@ -1543,7 +1546,7 @@ export class TeamModel {
   }
 
   static inRandomOrder(): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(sql` ${sql.raw('RANDOM()')} `)
 
@@ -1557,7 +1560,7 @@ export class TeamModel {
   }
 
   static orderByDesc(column: keyof TeamsTable): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'desc')
 
@@ -1571,7 +1574,7 @@ export class TeamModel {
   }
 
   static orderByAsc(column: keyof TeamsTable): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'asc')
 
@@ -1642,7 +1645,7 @@ export class TeamModel {
     this.hasSaved = true
   }
 
-  fill(data: Partial<TeamType>): TeamModel {
+  fill(data: Partial<TeamJsonResponse>): TeamModel {
     const filteredValues = Object.fromEntries(
       Object.entries(data).filter(([key]) =>
         !this.guarded.includes(key) && this.fillable.includes(key),
@@ -1657,7 +1660,7 @@ export class TeamModel {
     return this
   }
 
-  forceFill(data: Partial<TeamType>): TeamModel {
+  forceFill(data: Partial<TeamJsonResponse>): TeamModel {
     this.attributes = {
       ...this.attributes,
       ...data,
@@ -1695,7 +1698,7 @@ export class TeamModel {
     return relationResults
   }
 
-  distinct(column: keyof TeamType): TeamModel {
+  distinct(column: keyof TeamJsonResponse): TeamModel {
     this.selectFromQuery = this.selectFromQuery.select(column).distinct()
 
     this.hasSelect = true
@@ -1703,8 +1706,8 @@ export class TeamModel {
     return this
   }
 
-  static distinct(column: keyof TeamType): TeamModel {
-    const instance = new TeamModel(null)
+  static distinct(column: keyof TeamJsonResponse): TeamModel {
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.select(column).distinct()
 
@@ -1720,15 +1723,15 @@ export class TeamModel {
   }
 
   static join(table: string, firstCol: string, secondCol: string): TeamModel {
-    const instance = new TeamModel(null)
+    const instance = new TeamModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.innerJoin(table, firstCol, secondCol)
 
     return instance
   }
 
-  toJSON(): Partial<TeamJsonResponse> {
-    const output: Partial<TeamJsonResponse> = {
+  toJSON(): TeamJsonResponse {
+    const output = {
 
       id: this.id,
       name: this.name,
@@ -1797,58 +1800,58 @@ export async function remove(id: number): Promise<void> {
 
 export async function whereName(value: string): Promise<TeamModel[]> {
   const query = DB.instance.selectFrom('teams').where('name', '=', value)
-  const results = await query.execute()
+  const results: TeamJsonResponse = await query.execute()
 
-  return results.map((modelItem: TeamModel) => new TeamModel(modelItem))
+  return results.map((modelItem: TeamJsonResponse) => new TeamModel(modelItem))
 }
 
 export async function whereCompanyName(value: string): Promise<TeamModel[]> {
   const query = DB.instance.selectFrom('teams').where('company_name', '=', value)
-  const results = await query.execute()
+  const results: TeamJsonResponse = await query.execute()
 
-  return results.map((modelItem: TeamModel) => new TeamModel(modelItem))
+  return results.map((modelItem: TeamJsonResponse) => new TeamModel(modelItem))
 }
 
 export async function whereEmail(value: string): Promise<TeamModel[]> {
   const query = DB.instance.selectFrom('teams').where('email', '=', value)
-  const results = await query.execute()
+  const results: TeamJsonResponse = await query.execute()
 
-  return results.map((modelItem: TeamModel) => new TeamModel(modelItem))
+  return results.map((modelItem: TeamJsonResponse) => new TeamModel(modelItem))
 }
 
 export async function whereBillingEmail(value: string): Promise<TeamModel[]> {
   const query = DB.instance.selectFrom('teams').where('billing_email', '=', value)
-  const results = await query.execute()
+  const results: TeamJsonResponse = await query.execute()
 
-  return results.map((modelItem: TeamModel) => new TeamModel(modelItem))
+  return results.map((modelItem: TeamJsonResponse) => new TeamModel(modelItem))
 }
 
 export async function whereStatus(value: string): Promise<TeamModel[]> {
   const query = DB.instance.selectFrom('teams').where('status', '=', value)
-  const results = await query.execute()
+  const results: TeamJsonResponse = await query.execute()
 
-  return results.map((modelItem: TeamModel) => new TeamModel(modelItem))
+  return results.map((modelItem: TeamJsonResponse) => new TeamModel(modelItem))
 }
 
 export async function whereDescription(value: string): Promise<TeamModel[]> {
   const query = DB.instance.selectFrom('teams').where('description', '=', value)
-  const results = await query.execute()
+  const results: TeamJsonResponse = await query.execute()
 
-  return results.map((modelItem: TeamModel) => new TeamModel(modelItem))
+  return results.map((modelItem: TeamJsonResponse) => new TeamModel(modelItem))
 }
 
 export async function wherePath(value: string): Promise<TeamModel[]> {
   const query = DB.instance.selectFrom('teams').where('path', '=', value)
-  const results = await query.execute()
+  const results: TeamJsonResponse = await query.execute()
 
-  return results.map((modelItem: TeamModel) => new TeamModel(modelItem))
+  return results.map((modelItem: TeamJsonResponse) => new TeamModel(modelItem))
 }
 
 export async function whereIsPersonal(value: boolean): Promise<TeamModel[]> {
   const query = DB.instance.selectFrom('teams').where('is_personal', '=', value)
-  const results = await query.execute()
+  const results: TeamJsonResponse = await query.execute()
 
-  return results.map((modelItem: TeamModel) => new TeamModel(modelItem))
+  return results.map((modelItem: TeamJsonResponse) => new TeamModel(modelItem))
 }
 
 export const Team = TeamModel

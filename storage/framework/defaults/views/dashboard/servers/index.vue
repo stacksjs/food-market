@@ -790,7 +790,7 @@ const getEventTypeIcon = (type: string) => {
           <div class="flex-1">
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <div class="i-hugeicons-magnifying-glass w-5 h-5 text-gray-400"></div>
+                <div class="i-hugeicons-search-01 w-5 h-5 text-gray-400"></div>
               </div>
               <input
                 v-model="searchQuery"
@@ -918,11 +918,11 @@ const getEventTypeIcon = (type: string) => {
                 </h5>
                 <button
                   @click="selectedNode = null"
-                  class="text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-200"
+                  class="text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-200 transition-colors duration-150"
                 >
                   <span class="sr-only">Close</span>
                   <div class="h-5 w-5">
-                    <span class="text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-200">×</span>
+                    <span class="text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-200 transition-colors duration-150">×</span>
                   </div>
                 </button>
               </div>

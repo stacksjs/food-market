@@ -1,4 +1,4 @@
-import type { Insertable, RawBuilder, Selectable, Updateable } from '@stacksjs/database'
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable } from '@stacksjs/database'
 import type { Operator } from '@stacksjs/orm'
 import type { ProductModel } from './Product'
 import { randomUUIDv7 } from 'bun'
@@ -9,14 +9,13 @@ import { dispatch } from '@stacksjs/events'
 import { DB, SubqueryBuilder } from '@stacksjs/orm'
 
 export interface ProductCategoriesTable {
-  id?: number
-  products?: ProductModel[] | undefined
-  name?: string
+  id: Generated<number>
+  name: string
   description?: string
   image_url?: string
   is_active?: boolean
   parent_category_id?: string
-  display_order?: number
+  display_order: number
   uuid?: string
 
   created_at?: Date
@@ -25,7 +24,7 @@ export interface ProductCategoriesTable {
 
 }
 
-interface ProductCategoryResponse {
+export interface ProductCategoryResponse {
   data: ProductCategoryJsonResponse[]
   paging: {
     total_records: number
@@ -35,16 +34,15 @@ interface ProductCategoryResponse {
   next_cursor: number | null
 }
 
-export interface ProductCategoryJsonResponse extends Omit<ProductCategoriesTable, 'password'> {
+export interface ProductCategoryJsonResponse extends Omit<Selectable<ProductCategoriesTable>, 'password'> {
   [key: string]: any
 }
 
-export type ProductCategoryType = Selectable<ProductCategoriesTable>
-export type NewProductCategory = Partial<Insertable<ProductCategoriesTable>>
+export type NewProductCategory = Insertable<ProductCategoriesTable>
 export type ProductCategoryUpdate = Updateable<ProductCategoriesTable>
 
       type SortDirection = 'asc' | 'desc'
-interface SortOptions { column: ProductCategoryType, order: SortDirection }
+interface SortOptions { column: ProductCategoryJsonResponse, order: SortDirection }
 // Define a type for the options parameter
 interface QueryOptions {
   sort?: SortOptions
@@ -57,8 +55,8 @@ export class ProductCategoryModel {
   private readonly hidden: Array<keyof ProductCategoryJsonResponse> = []
   private readonly fillable: Array<keyof ProductCategoryJsonResponse> = ['name', 'description', 'image_url', 'is_active', 'parent_category_id', 'display_order', 'uuid']
   private readonly guarded: Array<keyof ProductCategoryJsonResponse> = []
-  protected attributes: Partial<ProductCategoryJsonResponse> = {}
-  protected originalAttributes: Partial<ProductCategoryJsonResponse> = {}
+  protected attributes = {} as ProductCategoryJsonResponse
+  protected originalAttributes = {} as ProductCategoryJsonResponse
 
   protected selectFromQuery: any
   protected withRelations: string[]
@@ -68,14 +66,14 @@ export class ProductCategoryModel {
   private hasSaved: boolean
   private customColumns: Record<string, unknown> = {}
 
-  constructor(productcategory: Partial<ProductCategoryType> | null) {
-    if (productcategory) {
-      this.attributes = { ...productcategory }
-      this.originalAttributes = { ...productcategory }
+  constructor(productCategory: ProductCategoryJsonResponse | undefined) {
+    if (productCategory) {
+      this.attributes = { ...productCategory }
+      this.originalAttributes = { ...productCategory }
 
-      Object.keys(productcategory).forEach((key) => {
+      Object.keys(productCategory).forEach((key) => {
         if (!(key in this)) {
-          this.customColumns[key] = (productcategory as ProductCategoryJsonResponse)[key]
+          this.customColumns[key] = (productCategory as ProductCategoryJsonResponse)[key]
         }
       })
     }
@@ -121,7 +119,7 @@ export class ProductCategoryModel {
     }
   }
 
-  async mapCustomSetters(model: ProductCategoryJsonResponse): Promise<void> {
+  async mapCustomSetters(model: NewProductCategory | ProductCategoryUpdate): Promise<void> {
     const customSetter = {
       default: () => {
       },
@@ -133,11 +131,11 @@ export class ProductCategoryModel {
     }
   }
 
-  get products(): ProductModel[] | undefined {
+  get products(): ProductModel[] | [] {
     return this.attributes.products
   }
 
-  get id(): number | undefined {
+  get id(): number {
     return this.attributes.id
   }
 
@@ -145,7 +143,7 @@ export class ProductCategoryModel {
     return this.attributes.uuid
   }
 
-  get name(): string | undefined {
+  get name(): string {
     return this.attributes.name
   }
 
@@ -165,7 +163,7 @@ export class ProductCategoryModel {
     return this.attributes.parent_category_id
   }
 
-  get display_order(): number | undefined {
+  get display_order(): number {
     return this.attributes.display_order
   }
 
@@ -230,7 +228,7 @@ export class ProductCategoryModel {
     }, {})
   }
 
-  isDirty(column?: keyof ProductCategoryType): boolean {
+  isDirty(column?: keyof ProductCategoryJsonResponse): boolean {
     if (column) {
       return this.attributes[column] !== this.originalAttributes[column]
     }
@@ -242,15 +240,15 @@ export class ProductCategoryModel {
     })
   }
 
-  isClean(column?: keyof ProductCategoryType): boolean {
+  isClean(column?: keyof ProductCategoryJsonResponse): boolean {
     return !this.isDirty(column)
   }
 
-  wasChanged(column?: keyof ProductCategoryType): boolean {
+  wasChanged(column?: keyof ProductCategoryJsonResponse): boolean {
     return this.hasSaved && this.isDirty(column)
   }
 
-  select(params: (keyof ProductCategoryType)[] | RawBuilder<string> | string): ProductCategoryModel {
+  select(params: (keyof ProductCategoryJsonResponse)[] | RawBuilder<string> | string): ProductCategoryModel {
     this.selectFromQuery = this.selectFromQuery.select(params)
 
     this.hasSelect = true
@@ -258,8 +256,8 @@ export class ProductCategoryModel {
     return this
   }
 
-  static select(params: (keyof ProductCategoryType)[] | RawBuilder<string> | string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+  static select(params: (keyof ProductCategoryJsonResponse)[] | RawBuilder<string> | string): ProductCategoryModel {
+    const instance = new ProductCategoryModel(undefined)
 
     // Initialize a query with the table name and selected fields
     instance.selectFromQuery = instance.selectFromQuery.select(params)
@@ -278,9 +276,9 @@ export class ProductCategoryModel {
     this.mapCustomGetters(model)
     await this.loadRelations(model)
 
-    const data = new ProductCategoryModel(model as ProductCategoryType)
+    const data = new ProductCategoryModel(model)
 
-    cache.getOrSet(`productcategory:${id}`, JSON.stringify(model))
+    cache.getOrSet(`productCategory:${id}`, JSON.stringify(model))
 
     return data
   }
@@ -291,13 +289,13 @@ export class ProductCategoryModel {
 
   // Method to find a ProductCategory by ID
   static async find(id: number): Promise<ProductCategoryModel | undefined> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return await instance.applyFind(id)
   }
 
   async first(): Promise<ProductCategoryModel | undefined> {
-    let model: ProductCategoryModel | undefined
+    let model: ProductCategoryJsonResponse | undefined
 
     if (this.hasSelect) {
       model = await this.selectFromQuery.executeTakeFirst()
@@ -311,13 +309,13 @@ export class ProductCategoryModel {
       await this.loadRelations(model)
     }
 
-    const data = new ProductCategoryModel(model as ProductCategoryType)
+    const data = new ProductCategoryModel(model)
 
     return data
   }
 
   static async first(): Promise<ProductCategoryModel | undefined> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryJsonResponse(null)
 
     const model = await DB.instance.selectFrom('product_categories')
       .selectAll()
@@ -325,7 +323,7 @@ export class ProductCategoryModel {
 
     instance.mapCustomGetters(model)
 
-    const data = new ProductCategoryModel(model as ProductCategoryType)
+    const data = new ProductCategoryModel(model)
 
     return data
   }
@@ -341,7 +339,7 @@ export class ProductCategoryModel {
       await this.loadRelations(model)
     }
 
-    const data = new ProductCategoryModel(model as ProductCategoryType)
+    const data = new ProductCategoryModel(model)
 
     return data
   }
@@ -351,19 +349,19 @@ export class ProductCategoryModel {
   }
 
   static async firstOrFail(): Promise<ProductCategoryModel | undefined> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return await instance.applyFirstOrFail()
   }
 
   static async all(): Promise<ProductCategoryModel[]> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     const models = await DB.instance.selectFrom('product_categories').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
-    const data = await Promise.all(models.map(async (model: ProductCategoryType) => {
+    const data = await Promise.all(models.map(async (model: ProductCategoryJsonResponse) => {
       return new ProductCategoryModel(model)
     }))
 
@@ -376,12 +374,12 @@ export class ProductCategoryModel {
     if (model === undefined)
       throw new ModelNotFoundException(404, `No ProductCategoryModel results for ${id}`)
 
-    cache.getOrSet(`productcategory:${id}`, JSON.stringify(model))
+    cache.getOrSet(`productCategory:${id}`, JSON.stringify(model))
 
     this.mapCustomGetters(model)
     await this.loadRelations(model)
 
-    const data = new ProductCategoryModel(model as ProductCategoryType)
+    const data = new ProductCategoryModel(model)
 
     return data
   }
@@ -391,7 +389,7 @@ export class ProductCategoryModel {
   }
 
   static async findOrFail(id: number): Promise<ProductCategoryModel> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return await instance.applyFindOrFail(id)
   }
@@ -399,7 +397,7 @@ export class ProductCategoryModel {
   async applyFindMany(ids: number[]): Promise<ProductCategoryModel[]> {
     let query = DB.instance.selectFrom('product_categories').where('id', 'in', ids)
 
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     query = query.selectAll()
 
@@ -408,11 +406,11 @@ export class ProductCategoryModel {
     instance.mapCustomGetters(models)
     await instance.loadRelations(models)
 
-    return models.map((modelItem: ProductCategoryModel) => instance.parseResult(new ProductCategoryModel(modelItem)))
+    return models.map((modelItem: ProductCategoryJsonResponse) => instance.parseResult(new ProductCategoryModel(modelItem)))
   }
 
   static async findMany(ids: number[]): Promise<ProductCategoryModel[]> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return await instance.applyFindMany(ids)
   }
@@ -428,7 +426,7 @@ export class ProductCategoryModel {
   }
 
   static skip(count: number): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.offset(count)
 
@@ -466,7 +464,7 @@ export class ProductCategoryModel {
   }
 
   static async chunk(size: number, callback: (models: ProductCategoryModel[]) => Promise<void>): Promise<void> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     await instance.applyChunk(size, callback)
   }
@@ -478,7 +476,7 @@ export class ProductCategoryModel {
   }
 
   static take(count: number): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.limit(count)
 
@@ -486,7 +484,7 @@ export class ProductCategoryModel {
   }
 
   static async pluck<K extends keyof ProductCategoryModel>(field: K): Promise<ProductCategoryModel[K][]> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     if (instance.hasSelect) {
       const model = await instance.selectFromQuery.execute()
@@ -499,11 +497,18 @@ export class ProductCategoryModel {
   }
 
   async pluck<K extends keyof ProductCategoryModel>(field: K): Promise<ProductCategoryModel[K][]> {
-    return ProductCategoryModel.pluck(field)
+    if (this.hasSelect) {
+      const model = await this.selectFromQuery.execute()
+      return model.map((modelItem: ProductCategoryModel) => modelItem[field])
+    }
+
+    const model = await this.selectFromQuery.selectAll().execute()
+
+    return model.map((modelItem: ProductCategoryModel) => modelItem[field])
   }
 
   static async count(): Promise<number> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`COUNT(*) as count`)
@@ -521,7 +526,7 @@ export class ProductCategoryModel {
   }
 
   static async max(field: keyof ProductCategoryModel): Promise<number> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`MAX(${sql.raw(field as string)}) as max `)
@@ -539,7 +544,7 @@ export class ProductCategoryModel {
   }
 
   static async min(field: keyof ProductCategoryModel): Promise<number> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`MIN(${sql.raw(field as string)}) as min `)
@@ -557,7 +562,7 @@ export class ProductCategoryModel {
   }
 
   static async avg(field: keyof ProductCategoryModel): Promise<number> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`AVG(${sql.raw(field as string)}) as avg `)
@@ -575,7 +580,7 @@ export class ProductCategoryModel {
   }
 
   static async sum(field: keyof ProductCategoryModel): Promise<number> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`SUM(${sql.raw(field as string)}) as sum `)
@@ -605,7 +610,7 @@ export class ProductCategoryModel {
     this.mapCustomGetters(models)
     await this.loadRelations(models)
 
-    const data = await Promise.all(models.map(async (model: ProductCategoryModel) => {
+    const data = await Promise.all(models.map(async (model: ProductCategoryJsonResponse) => {
       return new ProductCategoryModel(model)
     }))
 
@@ -617,7 +622,7 @@ export class ProductCategoryModel {
   }
 
   static async get(): Promise<ProductCategoryModel[]> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return await instance.applyGet()
   }
@@ -627,7 +632,7 @@ export class ProductCategoryModel {
       exists(
         selectFrom(relation)
           .select('1')
-          .whereRef(`${relation}.productcategory_id`, '=', 'product_categories.id'),
+          .whereRef(`${relation}.productCategory_id`, '=', 'product_categories.id'),
       ),
     )
 
@@ -635,13 +640,13 @@ export class ProductCategoryModel {
   }
 
   static has(relation: string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
       exists(
         selectFrom(relation)
           .select('1')
-          .whereRef(`${relation}.productcategory_id`, '=', 'product_categories.id'),
+          .whereRef(`${relation}.productCategory_id`, '=', 'product_categories.id'),
       ),
     )
 
@@ -649,7 +654,7 @@ export class ProductCategoryModel {
   }
 
   static whereExists(callback: (qb: any) => any): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
       exists(callback({ exists, selectFrom })),
@@ -671,7 +676,7 @@ export class ProductCategoryModel {
       .where(({ exists, selectFrom }: any) => {
         let subquery = selectFrom(relation)
           .select('1')
-          .whereRef(`${relation}.productcategory_id`, '=', 'product_categories.id')
+          .whereRef(`${relation}.productCategory_id`, '=', 'product_categories.id')
 
         conditions.forEach((condition) => {
           switch (condition.method) {
@@ -731,7 +736,7 @@ export class ProductCategoryModel {
     relation: string,
     callback: (query: SubqueryBuilder<keyof ProductCategoryModel>) => void,
   ): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return instance.applyWhereHas(relation, callback)
   }
@@ -742,7 +747,7 @@ export class ProductCategoryModel {
         exists(
           selectFrom(relation)
             .select('1')
-            .whereRef(`${relation}.productcategory_id`, '=', 'product_categories.id'),
+            .whereRef(`${relation}.productCategory_id`, '=', 'product_categories.id'),
         ),
       ),
     )
@@ -755,7 +760,7 @@ export class ProductCategoryModel {
   }
 
   static doesntHave(relation: string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return instance.applyDoesntHave(relation)
   }
@@ -770,7 +775,7 @@ export class ProductCategoryModel {
       .where(({ exists, selectFrom, not }: any) => {
         const subquery = selectFrom(relation)
           .select('1')
-          .whereRef(`${relation}.productcategory_id`, '=', 'product_categories.id')
+          .whereRef(`${relation}.productCategory_id`, '=', 'product_categories.id')
 
         return not(exists(subquery))
       })
@@ -824,7 +829,7 @@ export class ProductCategoryModel {
     relation: string,
     callback: (query: SubqueryBuilder<ProductCategoriesTable>) => void,
   ): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return instance.applyWhereDoesntHave(relation, callback)
   }
@@ -865,7 +870,7 @@ export class ProductCategoryModel {
 
   // Method to get all product_categories
   static async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<ProductCategoryResponse> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return await instance.applyPaginate(options)
   }
@@ -888,7 +893,7 @@ export class ProductCategoryModel {
     const model = await this.find(Number(result.numInsertedOrUpdatedRows)) as ProductCategoryModel
 
     if (model)
-      dispatch('productcategory:created', model)
+      dispatch('productCategory:created', model)
 
     return model
   }
@@ -898,13 +903,13 @@ export class ProductCategoryModel {
   }
 
   static async create(newProductCategory: NewProductCategory): Promise<ProductCategoryModel> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return await instance.applyCreate(newProductCategory)
   }
 
   static async createMany(newProductCategory: NewProductCategory[]): Promise<void> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     const valuesFiltered = newProductCategory.map((newProductCategory: NewProductCategory) => {
       const filteredValues = Object.fromEntries(
@@ -931,26 +936,26 @@ export class ProductCategoryModel {
     const model = await find(Number(result.numInsertedOrUpdatedRows)) as ProductCategoryModel
 
     if (model)
-      dispatch('productcategory:created', model)
+      dispatch('productCategory:created', model)
 
     return model
   }
 
   // Method to remove a ProductCategory
   static async remove(id: number): Promise<any> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     const model = await instance.find(Number(id))
 
     if (model)
-      dispatch('productcategory:deleted', model)
+      dispatch('productCategory:deleted', model)
 
     return await DB.instance.deleteFrom('product_categories')
       .where('id', '=', id)
       .execute()
   }
 
-  applyWhere<V>(column: keyof UsersTable, ...args: [V] | [Operator, V]): UserModel {
+  applyWhere<V>(column: keyof ProductCategoriesTable, ...args: [V] | [Operator, V]): ProductCategoryModel {
     if (args.length === 1) {
       const [value] = args
       this.selectFromQuery = this.selectFromQuery.where(column, '=', value)
@@ -972,7 +977,7 @@ export class ProductCategoryModel {
   }
 
   static where<V = string>(column: keyof ProductCategoriesTable, ...args: [V] | [Operator, V]): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return instance.applyWhere<V>(column, ...args)
   }
@@ -984,7 +989,7 @@ export class ProductCategoryModel {
   }
 
   static whereColumn(first: keyof ProductCategoriesTable, operator: Operator, second: keyof ProductCategoriesTable): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.whereRef(first, operator, second)
 
@@ -996,7 +1001,7 @@ export class ProductCategoryModel {
     const operator = value === undefined ? '=' : operatorOrValue
     const actualValue = value === undefined ? operatorOrValue : value
 
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
     instance.selectFromQuery = instance.selectFromQuery.whereRef(column, operator, actualValue)
 
     return instance
@@ -1007,7 +1012,7 @@ export class ProductCategoryModel {
   }
 
   static whereRef(column: keyof ProductCategoriesTable, ...args: string[]): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return instance.applyWhereRef(column, ...args)
   }
@@ -1019,7 +1024,7 @@ export class ProductCategoryModel {
   }
 
   static whereRaw(sqlStatement: string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where(sql`${sqlStatement}`)
 
@@ -1053,7 +1058,7 @@ export class ProductCategoryModel {
   }
 
   static orWhere(...conditions: [string, any][]): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return instance.applyOrWhere(...conditions)
   }
@@ -1069,7 +1074,7 @@ export class ProductCategoryModel {
     condition: boolean,
     callback: (query: ProductCategoryModel) => ProductCategoryModel,
   ): ProductCategoryModel {
-    let instance = new ProductCategoryModel(null)
+    let instance = new ProductCategoryModel(undefined)
 
     if (condition)
       instance = callback(instance)
@@ -1094,7 +1099,7 @@ export class ProductCategoryModel {
   }
 
   static whereNotNull(column: keyof ProductCategoriesTable): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
       eb(column, '=', '').or(column, 'is not', null),
@@ -1128,7 +1133,7 @@ export class ProductCategoryModel {
   }
 
   static whereNull(column: keyof ProductCategoriesTable): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
       eb(column, '=', '').or(column, 'is', null),
@@ -1146,7 +1151,7 @@ export class ProductCategoryModel {
   }
 
   static whereName(value: string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
 
@@ -1154,7 +1159,7 @@ export class ProductCategoryModel {
   }
 
   static whereDescription(value: string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('description', '=', value)
 
@@ -1162,7 +1167,7 @@ export class ProductCategoryModel {
   }
 
   static whereImageUrl(value: string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('image_url', '=', value)
 
@@ -1170,7 +1175,7 @@ export class ProductCategoryModel {
   }
 
   static whereIsActive(value: string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('is_active', '=', value)
 
@@ -1178,7 +1183,7 @@ export class ProductCategoryModel {
   }
 
   static whereParentCategoryId(value: string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('parent_category_id', '=', value)
 
@@ -1186,7 +1191,7 @@ export class ProductCategoryModel {
   }
 
   static whereDisplayOrder(value: string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('display_order', '=', value)
 
@@ -1208,7 +1213,7 @@ export class ProductCategoryModel {
   }
 
   static whereIn<V = number>(column: keyof ProductCategoriesTable, values: V[]): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return instance.applyWhereIn<V>(column, values)
   }
@@ -1232,7 +1237,7 @@ export class ProductCategoryModel {
   }
 
   static whereBetween<V = number>(column: keyof ProductCategoriesTable, range: [V, V]): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return instance.applyWhereBetween<V>(column, range)
   }
@@ -1252,7 +1257,7 @@ export class ProductCategoryModel {
   }
 
   static whereLike(column: keyof ProductCategoriesTable, value: string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return instance.applyWhereLike(column, value)
   }
@@ -1272,7 +1277,7 @@ export class ProductCategoryModel {
   }
 
   static whereNotIn<V = number>(column: keyof ProductCategoriesTable, values: V[]): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     return instance.applyWhereNotIn<V>(column, values)
   }
@@ -1290,8 +1295,8 @@ export class ProductCategoryModel {
     return model !== null && model !== undefined
   }
 
-  static async latest(): Promise<ProductCategoryType | undefined> {
-    const instance = new ProductCategoryModel(null)
+  static async latest(): Promise<ProductCategoryModel | undefined> {
+    const instance = new ProductCategoryModel(undefined)
 
     const model = await DB.instance.selectFrom('product_categories')
       .selectAll()
@@ -1303,13 +1308,13 @@ export class ProductCategoryModel {
 
     instance.mapCustomGetters(model)
 
-    const data = new ProductCategoryModel(model as ProductCategoryType)
+    const data = new ProductCategoryModel(model)
 
     return data
   }
 
-  static async oldest(): Promise<ProductCategoryType | undefined> {
-    const instance = new ProductCategoryModel(null)
+  static async oldest(): Promise<ProductCategoryModel | undefined> {
+    const instance = new ProductCategoryModel(undefined)
 
     const model = await DB.instance.selectFrom('product_categories')
       .selectAll()
@@ -1321,18 +1326,18 @@ export class ProductCategoryModel {
 
     instance.mapCustomGetters(model)
 
-    const data = new ProductCategoryModel(model as ProductCategoryType)
+    const data = new ProductCategoryModel(model)
 
     return data
   }
 
   static async firstOrCreate(
-    condition: Partial<ProductCategoryType>,
+    condition: Partial<ProductCategoryJsonResponse>,
     newProductCategory: NewProductCategory,
   ): Promise<ProductCategoryModel> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
-    const key = Object.keys(condition)[0] as keyof ProductCategoryType
+    const key = Object.keys(condition)[0] as keyof ProductCategoryJsonResponse
 
     if (!key) {
       throw new HttpError(500, 'Condition must contain at least one key-value pair')
@@ -1350,7 +1355,7 @@ export class ProductCategoryModel {
       instance.mapCustomGetters(existingProductCategory)
       await instance.loadRelations(existingProductCategory)
 
-      return new ProductCategoryModel(existingProductCategory as ProductCategoryType)
+      return new ProductCategoryModel(existingProductCategory as ProductCategoryJsonResponse)
     }
     else {
       return await instance.create(newProductCategory)
@@ -1358,12 +1363,12 @@ export class ProductCategoryModel {
   }
 
   static async updateOrCreate(
-    condition: Partial<ProductCategoryType>,
+    condition: Partial<ProductCategoryJsonResponse>,
     newProductCategory: NewProductCategory,
   ): Promise<ProductCategoryModel> {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
-    const key = Object.keys(condition)[0] as keyof ProductCategoryType
+    const key = Object.keys(condition)[0] as keyof ProductCategoryJsonResponse
 
     if (!key) {
       throw new HttpError(500, 'Condition must contain at least one key-value pair')
@@ -1396,7 +1401,7 @@ export class ProductCategoryModel {
 
       instance.hasSaved = true
 
-      return new ProductCategoryModel(updatedProductCategory as ProductCategoryType)
+      return new ProductCategoryModel(updatedProductCategory as ProductCategoryJsonResponse)
     }
     else {
       // If not found, create a new record
@@ -1415,14 +1420,14 @@ export class ProductCategoryModel {
     for (const relation of this.withRelations) {
       const relatedRecords = await DB.instance
         .selectFrom(relation)
-        .where('productcategory_id', 'in', modelIds)
+        .where('productCategory_id', 'in', modelIds)
         .selectAll()
         .execute()
 
       if (Array.isArray(models)) {
         models.map((model: ProductCategoryJsonResponse) => {
-          const records = relatedRecords.filter((record: { productcategory_id: number }) => {
-            return record.productcategory_id === model.id
+          const records = relatedRecords.filter((record: { productCategory_id: number }) => {
+            return record.productCategory_id === model.id
           })
 
           model[relation] = records.length === 1 ? records[0] : records
@@ -1430,8 +1435,8 @@ export class ProductCategoryModel {
         })
       }
       else {
-        const records = relatedRecords.filter((record: { productcategory_id: number }) => {
-          return record.productcategory_id === models.id
+        const records = relatedRecords.filter((record: { productCategory_id: number }) => {
+          return record.productCategory_id === models.id
         })
 
         models[relation] = records.length === 1 ? records[0] : records
@@ -1446,15 +1451,15 @@ export class ProductCategoryModel {
   }
 
   static with(relations: string[]): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.withRelations = relations
 
     return instance
   }
 
-  async last(): Promise<ProductCategoryType | undefined> {
-    let model: ProductCategoryModel | undefined
+  async last(): Promise<ProductCategoryModel | undefined> {
+    let model: ProductCategoryJsonResponse | undefined
 
     if (this.hasSelect) {
       model = await this.selectFromQuery.executeTakeFirst()
@@ -1468,18 +1473,18 @@ export class ProductCategoryModel {
       await this.loadRelations(model)
     }
 
-    const data = new ProductCategoryModel(model as ProductCategoryType)
+    const data = new ProductCategoryModel(model)
 
     return data
   }
 
-  static async last(): Promise<ProductCategoryType | undefined> {
+  static async last(): Promise<ProductCategoryModel | undefined> {
     const model = await DB.instance.selectFrom('product_categories').selectAll().orderBy('id', 'desc').executeTakeFirst()
 
     if (!model)
       return undefined
 
-    const data = new ProductCategoryModel(model as ProductCategoryType)
+    const data = new ProductCategoryModel(model)
 
     return data
   }
@@ -1491,7 +1496,7 @@ export class ProductCategoryModel {
   }
 
   static orderBy(column: keyof ProductCategoriesTable, order: 'asc' | 'desc'): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(column, order)
 
@@ -1505,7 +1510,7 @@ export class ProductCategoryModel {
   }
 
   static groupBy(column: keyof ProductCategoriesTable): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.groupBy(column)
 
@@ -1519,7 +1524,7 @@ export class ProductCategoryModel {
   }
 
   static having<V = string>(column: keyof ProductCategoriesTable, operator: Operator, value: V): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.having(column, operator, value)
 
@@ -1533,7 +1538,7 @@ export class ProductCategoryModel {
   }
 
   static inRandomOrder(): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(sql` ${sql.raw('RANDOM()')} `)
 
@@ -1547,7 +1552,7 @@ export class ProductCategoryModel {
   }
 
   static orderByDesc(column: keyof ProductCategoriesTable): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'desc')
 
@@ -1561,7 +1566,7 @@ export class ProductCategoryModel {
   }
 
   static orderByAsc(column: keyof ProductCategoriesTable): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'asc')
 
@@ -1586,7 +1591,7 @@ export class ProductCategoryModel {
       const model = await this.find(this.id)
 
       if (model)
-        dispatch('productcategory:updated', model)
+        dispatch('productCategory:updated', model)
 
       return model
     }
@@ -1596,15 +1601,15 @@ export class ProductCategoryModel {
     return undefined
   }
 
-  async forceUpdate(productcategory: ProductCategoryUpdate): Promise<ProductCategoryModel | undefined> {
+  async forceUpdate(productCategory: ProductCategoryUpdate): Promise<ProductCategoryModel | undefined> {
     if (this.id === undefined) {
-      this.updateFromQuery.set(productcategory).execute()
+      this.updateFromQuery.set(productCategory).execute()
     }
 
-    await this.mapCustomSetters(productcategory)
+    await this.mapCustomSetters(productCategory)
 
     await DB.instance.updateTable('product_categories')
-      .set(productcategory)
+      .set(productCategory)
       .where('id', '=', this.id)
       .executeTakeFirst()
 
@@ -1612,7 +1617,7 @@ export class ProductCategoryModel {
       const model = await this.find(this.id)
 
       if (model)
-        dispatch('productcategory:updated', model)
+        dispatch('productCategory:updated', model)
 
       this.hasSaved = true
 
@@ -1638,7 +1643,7 @@ export class ProductCategoryModel {
     this.hasSaved = true
   }
 
-  fill(data: Partial<ProductCategoryType>): ProductCategoryModel {
+  fill(data: Partial<ProductCategoryJsonResponse>): ProductCategoryModel {
     const filteredValues = Object.fromEntries(
       Object.entries(data).filter(([key]) =>
         !this.guarded.includes(key) && this.fillable.includes(key),
@@ -1653,7 +1658,7 @@ export class ProductCategoryModel {
     return this
   }
 
-  forceFill(data: Partial<ProductCategoryType>): ProductCategoryModel {
+  forceFill(data: Partial<ProductCategoryJsonResponse>): ProductCategoryModel {
     this.attributes = {
       ...this.attributes,
       ...data,
@@ -1662,20 +1667,20 @@ export class ProductCategoryModel {
     return this
   }
 
-  // Method to delete (soft delete) the productcategory instance
+  // Method to delete (soft delete) the productCategory instance
   async delete(): Promise<ProductCategoriesTable> {
     if (this.id === undefined)
       this.deleteFromQuery.execute()
     const model = await this.find(Number(this.id))
     if (model)
-      dispatch('productcategory:deleted', model)
+      dispatch('productCategory:deleted', model)
 
     return await DB.instance.deleteFrom('product_categories')
       .where('id', '=', this.id)
       .execute()
   }
 
-  toSearchableObject(): Partial<ProductCategoriesTable> {
+  toSearchableObject(): Partial<ProductCategoryJsonResponse> {
     return {
       id: this.id,
       name: this.name,
@@ -1686,7 +1691,7 @@ export class ProductCategoryModel {
     }
   }
 
-  distinct(column: keyof ProductCategoryType): ProductCategoryModel {
+  distinct(column: keyof ProductCategoryJsonResponse): ProductCategoryModel {
     this.selectFromQuery = this.selectFromQuery.select(column).distinct()
 
     this.hasSelect = true
@@ -1694,8 +1699,8 @@ export class ProductCategoryModel {
     return this
   }
 
-  static distinct(column: keyof ProductCategoryType): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+  static distinct(column: keyof ProductCategoryJsonResponse): ProductCategoryModel {
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.select(column).distinct()
 
@@ -1711,15 +1716,17 @@ export class ProductCategoryModel {
   }
 
   static join(table: string, firstCol: string, secondCol: string): ProductCategoryModel {
-    const instance = new ProductCategoryModel(null)
+    const instance = new ProductCategoryModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.innerJoin(table, firstCol, secondCol)
 
     return instance
   }
 
-  toJSON(): Partial<ProductCategoryJsonResponse> {
-    const output: Partial<ProductCategoryJsonResponse> = {
+  toJSON(): ProductCategoryJsonResponse {
+    const output = {
+
+      uuid: this.uuid,
 
       id: this.id,
       name: this.name,
@@ -1786,44 +1793,44 @@ export async function remove(id: number): Promise<void> {
 
 export async function whereName(value: string): Promise<ProductCategoryModel[]> {
   const query = DB.instance.selectFrom('product_categories').where('name', '=', value)
-  const results = await query.execute()
+  const results: ProductCategoryJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductCategoryModel) => new ProductCategoryModel(modelItem))
+  return results.map((modelItem: ProductCategoryJsonResponse) => new ProductCategoryModel(modelItem))
 }
 
 export async function whereDescription(value: string): Promise<ProductCategoryModel[]> {
   const query = DB.instance.selectFrom('product_categories').where('description', '=', value)
-  const results = await query.execute()
+  const results: ProductCategoryJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductCategoryModel) => new ProductCategoryModel(modelItem))
+  return results.map((modelItem: ProductCategoryJsonResponse) => new ProductCategoryModel(modelItem))
 }
 
 export async function whereImageUrl(value: string): Promise<ProductCategoryModel[]> {
   const query = DB.instance.selectFrom('product_categories').where('image_url', '=', value)
-  const results = await query.execute()
+  const results: ProductCategoryJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductCategoryModel) => new ProductCategoryModel(modelItem))
+  return results.map((modelItem: ProductCategoryJsonResponse) => new ProductCategoryModel(modelItem))
 }
 
 export async function whereIsActive(value: boolean): Promise<ProductCategoryModel[]> {
   const query = DB.instance.selectFrom('product_categories').where('is_active', '=', value)
-  const results = await query.execute()
+  const results: ProductCategoryJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductCategoryModel) => new ProductCategoryModel(modelItem))
+  return results.map((modelItem: ProductCategoryJsonResponse) => new ProductCategoryModel(modelItem))
 }
 
 export async function whereParentCategoryId(value: string): Promise<ProductCategoryModel[]> {
   const query = DB.instance.selectFrom('product_categories').where('parent_category_id', '=', value)
-  const results = await query.execute()
+  const results: ProductCategoryJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductCategoryModel) => new ProductCategoryModel(modelItem))
+  return results.map((modelItem: ProductCategoryJsonResponse) => new ProductCategoryModel(modelItem))
 }
 
 export async function whereDisplayOrder(value: number): Promise<ProductCategoryModel[]> {
   const query = DB.instance.selectFrom('product_categories').where('display_order', '=', value)
-  const results = await query.execute()
+  const results: ProductCategoryJsonResponse = await query.execute()
 
-  return results.map((modelItem: ProductCategoryModel) => new ProductCategoryModel(modelItem))
+  return results.map((modelItem: ProductCategoryJsonResponse) => new ProductCategoryModel(modelItem))
 }
 
 export const ProductCategory = ProductCategoryModel

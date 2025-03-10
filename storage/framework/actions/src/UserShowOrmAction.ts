@@ -13,7 +13,7 @@ export default new Action({
       },
       to: 'chrisbreuer93@gmail.com',
       subject: 'Test Email',
-      text: 'test',
+      template: 'WelcomeTest',
     })
 
     // async handle(request: UserRequestType) {

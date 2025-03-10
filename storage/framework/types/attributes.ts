@@ -1,19 +1,79 @@
 export interface Attributes {
   name: string
   description: string
+  url: string
+  status: string
+  email: string
+  token: string
+  plain_text_token: string
+  abilities: string | string[]
+  last_used_at: Date | string
+  expires_at: Date | string
+  revoked_at: Date | string
+  ip_address: string
+  device_name: string
+  is_single_use: boolean
+  company_name: string
+  billing_email: string
+  path: string
+  is_personal: boolean
+  subscribed: boolean
+  commit_sha: string
+  commit_message: string
+  branch: string
+  execution_time: number
+  deploy_script: string
+  terminal_output: string
+  version: string
+  job_title: string
+  password: string
+  title: string
+  body: string
+  quantity: number
   price: number
+  special_instructions: string
+  connection: string
+  queue: string
+  payload: string
+  exception: string
+  failed_at: Date | string
+  phone: string
+  total_spent: number
+  last_order: string
+  avatar: string
+  rating: number
+  content: string
+  is_verified_purchase: boolean
+  is_approved: boolean
+  helpful_votes: number
+  unhelpful_votes: number
+  purchase_date: string
+  images: string
   image_url: string
   is_available: boolean
   inventory_count: number
   category_id: string
   preparation_time: number
-  allergens: string // Store as JSON string
-  nutritional_info: string // Store as JSON string
+  allergens: string
+  nutritional_info: string
+  type: string
+  last_four: number
+  brand: string
+  exp_month: number
+  exp_year: number
+  is_default: boolean
+  provider_id: string
+  amount: number
+  method: string | string[]
+  status_code: number
+  duration_ms: number
+  memory_usage: number
+  user_agent: string
+  error_message: string
   code: string
   initial_balance: number
   current_balance: number
   currency: string
-  status: string
   purchaser_id: string
   recipient_email: string
   recipient_name: string
@@ -24,7 +84,6 @@ export interface Attributes {
   expiry_date: string
   last_used_date: string
   template_id: string
-  customer_id: string
   total_amount: number
   tax_amount: number
   discount_amount: number
@@ -32,10 +91,8 @@ export interface Attributes {
   tip_amount: number
   order_type: string
   delivery_address: string
-  special_instructions: string
-  estimated_delivery_time: string // Store as ISO date string
+  estimated_delivery_time: string
   applied_coupon_id: string
-  order_items: string // Store as JSON string
   discount_type: string
   discount_value: number
   min_order_amount: number
@@ -47,10 +104,8 @@ export interface Attributes {
   end_date: string
   applicable_products: string
   applicable_categories: string
-  order_id: string
-  amount: number
   payment_method: string
-  payment_details: string // Store as JSON string
+  payment_details: string
   transaction_reference: string
   loyalty_points_earned: number
   loyalty_points_redeemed: number
@@ -59,46 +114,6 @@ export interface Attributes {
   source: string
   source_reference_id: string
   is_used: boolean
-  points_required: number
-  reward_type: string
-  discount_percentage: number
-  expiry_days: number
-  parent_category_id: string
-  display_order: number
-  email: string
-  job_title: string
-  password: string
-  connection: string
-  queue: string
-  payload: string
-  exception: string
-  failed_at: Date | string
-  token: string
-  plain_text_token: string
-  abilities: string[]
-  last_used_at: Date | string
-  expires_at: Date | string
-  revoked_at: Date | string
-  ip_address: string
-  device_name: string
-  is_single_use: boolean
-  type: string
-  last_four: number
-  brand: string
-  exp_month: number
-  exp_year: number
-  is_default: boolean
-  provider_id: string
-  company_name: string
-  billing_email: string
-  path: string
-  is_personal: boolean
-  method: string[]
-  status_code: number
-  duration_ms: number
-  memory_usage: number
-  user_agent: string
-  error_message: string
   attempts: number
   available_at: number
   reserved_at: Date | string
@@ -106,12 +121,17 @@ export interface Attributes {
   unit_price: number
   provider_type: string
   provider_price_id: string
-  quantity: number
   trial_ends_at: string
   ends_at: string
   key: number
   image: string
+  points_required: number
+  reward_type: string
+  discount_percentage: number
+  expiry_days: number
   message: string
   stack: string
   additional_info: string
+  parent_category_id: string
+  display_order: number
 }

@@ -1,5 +1,8 @@
 <script setup lang="ts">
 // Add Team interface
+import Tooltip from './Tooltip.vue'
+import { useDark } from '@vueuse/core'
+
 interface Team {
   id: number
   name: string
@@ -25,6 +28,15 @@ interface Sections {
 
 const route = useRoute()
 const router = useRouter()
+const isDark = useDark()
+
+// Add sidebar collapsed state
+const isSidebarCollapsed = useLocalStorage('sidebar-collapsed', false)
+
+// Toggle sidebar function
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
+}
 
 const calculateTransform = (section: string) => {
   if (!draggedItem || !isDragging.value) return ''
@@ -45,7 +57,7 @@ const calculateTransform = (section: string) => {
 // State for each section's collapse status
 const sections = useLocalStorage<Sections>('sidebar-sections', {
   library: true,
-  blog: true,
+  content: true,
   app: true,
   data: true,
   commerce: true,
@@ -64,11 +76,12 @@ const expandedItems = useLocalStorage<Record<string, boolean>>('sidebar-expanded
   '#social-posts': false,
   '#analytics': false,
   '#analytics-web': false,
-  '#waitlist': false
+  '#waitlist': false,
+  '#notifications': false
 })
 
 // Create an ordered array of sections that we can reorder
-const sectionOrder = useLocalStorage<string[]>('sidebar-section-order', ['library', 'blog', 'app', 'data', 'commerce', 'marketing', 'analytics', 'management'])
+const sectionOrder = useLocalStorage<string[]>('sidebar-section-order', ['library', 'content', 'app', 'data', 'commerce', 'marketing', 'analytics', 'management'])
 
 // Toggle function for sections
 const toggleSection = (section: string) => {
@@ -161,15 +174,17 @@ const sectionContent: Record<string, SectionContent> = {
       { to: '/packages', icon: 'i-hugeicons-package', text: 'Packages' }
     ]
   },
-  blog: {
+  content: {
     items: [
-      { to: '/blog', icon: 'i-hugeicons-dashboard-speed-01', text: 'Dashboard' },
-      { to: '/blog/posts', icon: 'i-hugeicons-document-validation', text: 'Posts' },
-      { to: '/blog/categories', icon: 'i-hugeicons-tags', text: 'Categories' },
-      { to: '/blog/tags', icon: 'i-hugeicons-tag-01', text: 'Tags' },
-      { to: '/blog/comments', icon: 'i-hugeicons-comment-01', text: 'Comments' },
-      { to: '/blog/authors', icon: 'i-hugeicons-user-edit-01', text: 'Authors' },
-      { to: '/blog/seo', icon: 'i-hugeicons-seo', text: 'SEO' }
+      { to: '/content/dashboard', icon: 'i-hugeicons-dashboard-speed-01', text: 'Dashboard' },
+      { to: '/content/files', icon: 'i-hugeicons-apple-finder', text: 'Files' },
+      { to: '/content/pages', icon: 'i-hugeicons-file-02', text: 'Pages' },
+      { to: '/content/posts', icon: 'i-hugeicons-message-edit-02', text: 'Posts' },
+      { to: '/content/categories', icon: 'i-hugeicons-tags', text: 'Categories' },
+      { to: '/content/tags', icon: 'i-hugeicons-tag-01', text: 'Tags' },
+      { to: '/content/comments', icon: 'i-hugeicons-comment-01', text: 'Comments' },
+      { to: '/content/authors', icon: 'i-hugeicons-user-edit-01', text: 'Authors' },
+      { to: '/content/seo', icon: 'i-hugeicons-seo', text: 'SEO' }
     ]
   },
   app: {
@@ -188,12 +203,22 @@ const sectionContent: Record<string, SectionContent> = {
           { to: '/jobs', icon: 'i-hugeicons-briefcase-01', text: 'Jobs' }
         ]
       },
-      { to: '/notifications', icon: 'i-hugeicons-notification-square', text: 'Notifications' }
+      {
+        to: '#notifications',
+        icon: 'i-hugeicons-notification-square',
+        text: 'Notifications',
+        children: [
+          { to: '/notifications/dashboard', icon: 'i-hugeicons-dashboard-speed-01', text: 'Dashboard' },
+          { to: '/notifications/history', icon: 'i-hugeicons-notification-03', text: 'History' },
+          { to: '/notifications/sms', icon: 'i-hugeicons-smart-phone-01', text: 'SMS' },
+          { to: '/notifications/email', icon: 'i-hugeicons-mail-01', text: 'Email' }
+        ]
+      }
     ]
   },
   commerce: {
     items: [
-      { to: '/commerce', icon: 'i-hugeicons-dashboard-speed-01', text: 'Dashboard' },
+      { to: '/commerce/dashboard', icon: 'i-hugeicons-dashboard-speed-01', text: 'Dashboard' },
       { to: '/commerce/customers', icon: 'i-hugeicons-user-account', text: 'Customers' },
       { to: '/commerce/orders', icon: 'i-hugeicons-search-list-01', text: 'Orders' },
       {
@@ -219,10 +244,19 @@ const sectionContent: Record<string, SectionContent> = {
         text: 'Waitlist',
         children: [
           { to: '/commerce/waitlist/products', icon: 'i-hugeicons-package', text: 'Products' },
-          { to: '/commerce/waitlist/restaurant', icon: 'i-hugeicons-restaurant', text: 'Restaurant' }
+          { to: '/commerce/waitlist/restaurant', icon: 'i-hugeicons-restaurant-01', text: 'Restaurant' }
         ]
       },
-      { to: '/commerce/taxes', icon: 'i-hugeicons-taxes', text: 'Taxes' }
+      { to: '/commerce/taxes', icon: 'i-hugeicons-taxes', text: 'Taxes' },
+      {
+        to: '#printers',
+        icon: 'i-hugeicons-printer',
+        text: 'Printers',
+        children: [
+          { to: '/commerce/printers/devices', icon: 'i-hugeicons-printer', text: 'Devices' },
+          { to: '/commerce/printers/prints', icon: 'i-hugeicons-file-02', text: 'Prints' }
+        ]
+      }
     ]
   },
   data: {
@@ -250,15 +284,15 @@ const sectionContent: Record<string, SectionContent> = {
         text: 'Web',
         children: [
           { to: '/analytics/web', icon: 'i-hugeicons-dashboard-speed-01', text: 'Overview' },
-          { to: '/analytics/pages', icon: 'i-hugeicons-document-01', text: 'Pages' },
+          { to: '/analytics/pages', icon: 'i-hugeicons-files-01', text: 'Pages' },
           { to: '/analytics/referrers', icon: 'i-hugeicons-link-03', text: 'Referrers' },
-          { to: '/analytics/devices', icon: 'i-hugeicons-mobile-01', text: 'Devices' },
+          { to: '/analytics/devices', icon: 'i-hugeicons-computer-phone-sync', text: 'Devices' },
           { to: '/analytics/browsers', icon: 'i-hugeicons-browser', text: 'Browsers' },
-          { to: '/analytics/countries', icon: 'i-hugeicons-globe-01', text: 'Countries' }
+          { to: '/analytics/countries', icon: 'i-hugeicons-global', text: 'Countries' }
         ]
       },
       { to: '/analytics/blog', icon: 'i-hugeicons-document-validation', text: 'Blog' },
-      { to: '/analytics/events', icon: 'i-hugeicons-target-01', text: 'Events' },
+      { to: '/analytics/events', icon: 'i-hugeicons-target-01', text: 'Goals' },
       { to: '/analytics/commerce/web', icon: 'i-hugeicons-shopping-cart-02', text: 'Commerce' },
       { to: '/analytics/commerce/sales', icon: 'i-hugeicons-sale-tag-01', text: 'Sales' },
       { to: '/analytics/marketing', icon: 'i-hugeicons-megaphone-01', text: 'Marketing' },
@@ -266,6 +300,7 @@ const sectionContent: Record<string, SectionContent> = {
   },
   management: {
     items: [
+      { to: '/activity', icon: 'i-hugeicons-activity-01', text: 'Activity' },
       {
         to: '/cloud',
         icon: 'i-hugeicons-cloud',
@@ -310,6 +345,29 @@ const switchTeam = (team: Team) => {
   // Add your team switching logic here
 }
 
+// Add reference for the button
+const teamSwitcherButton = ref<HTMLElement | null>(null)
+
+// Compute position for the teleported dropdown
+const teamSwitcherPosition = computed(() => {
+  if (!teamSwitcherButton.value) return {}
+
+  const rect = teamSwitcherButton.value.getBoundingClientRect()
+
+  // Calculate the dropdown width
+  const dropdownWidth = 256; // Width in pixels
+
+  // Calculate the left position to center the dropdown under the button
+  // We want to position it so it's not cut off on either side
+  const buttonCenter = rect.left + (rect.width / 2);
+  const leftPosition = Math.max(16, buttonCenter - (dropdownWidth / 2));
+
+  return {
+    top: `${rect.bottom + 8}px`,
+    left: `${leftPosition}px`
+  }
+})
+
 // Check if any child route is active for a parent item
 const isChildRouteActive = (item: SidebarItem) => {
   if (!item.children) return false
@@ -319,100 +377,265 @@ const isChildRouteActive = (item: SidebarItem) => {
     route.path === child.to
   )
 }
+
+// Add transition functions for dropdown animation
+const startTransition = (el: Element, done: () => void) => {
+  const element = el as HTMLElement
+  element.style.maxHeight = '0'
+  element.style.width = '100%'
+  element.style.overflow = 'hidden'
+  // Force a reflow
+  void element.offsetHeight
+  // Set the max height to the scroll height to trigger the transition
+  element.style.maxHeight = `${element.scrollHeight}px`
+  // Call done when transition completes
+  el.addEventListener('transitionend', () => {
+    // Remove the max height constraint after animation completes
+    element.style.maxHeight = 'none'
+    done()
+  }, { once: true })
+}
+
+const endTransition = (el: Element, done: () => void) => {
+  const element = el as HTMLElement
+  // First set the max height to the current height
+  element.style.maxHeight = `${element.scrollHeight}px`
+  element.style.overflow = 'hidden'
+  // Force a reflow
+  void element.offsetHeight
+  // Then animate to 0
+  element.style.maxHeight = '0'
+  // Call done when transition completes
+  el.addEventListener('transitionend', done, { once: true })
+}
+
+// Add transition functions for section transition
+const startSectionTransition = (el: Element, done: () => void) => {
+  const element = el as HTMLElement
+  element.style.maxHeight = '0'
+  element.style.width = '100%'
+  element.style.overflow = 'hidden'
+  // Force a reflow
+  void element.offsetHeight
+  // Set the max height to the scroll height to trigger the transition
+  element.style.maxHeight = `${element.scrollHeight}px`
+  // Call done when transition completes
+  el.addEventListener('transitionend', () => {
+    // Remove the max height constraint after animation completes
+    element.style.maxHeight = 'none'
+    done()
+  }, { once: true })
+}
+
+const endSectionTransition = (el: Element, done: () => void) => {
+  const element = el as HTMLElement
+  // First set the max height to the current height
+  element.style.maxHeight = `${element.scrollHeight}px`
+  element.style.overflow = 'hidden'
+  // Force a reflow
+  void element.offsetHeight
+  // Then animate to 0
+  element.style.maxHeight = '0'
+  // Call done when transition completes
+  el.addEventListener('transitionend', done, { once: true })
+}
+
+// Add a ref to store dropdown positions
+const dropdownPositions = ref<Record<string, number>>({})
+
+// Function to calculate dropdown position
+const calculateDropdownPosition = (event: MouseEvent, itemPath: string) => {
+  const target = event.currentTarget as HTMLElement
+  if (target) {
+    const rect = target.getBoundingClientRect()
+    // Center the dropdown vertically relative to the button
+    dropdownPositions.value[itemPath] = rect.top - 5
+  }
+}
+
+// Add refs for dropdown menus
+const dropdownRefs = ref<Record<string, HTMLElement | null>>({})
+
+// Function to close all dropdowns
+const closeAllDropdowns = () => {
+  Object.keys(expandedItems.value).forEach(key => {
+    if (expandedItems.value[key]) {
+      expandedItems.value[key] = false
+    }
+  })
+}
+
+// Add event listener to close dropdowns when clicking outside
+onMounted(() => {
+  document.addEventListener('click', (event) => {
+    // Only process if we have open dropdowns and we're in collapsed mode
+    if (isSidebarCollapsed.value && Object.values(expandedItems.value).some(v => v)) {
+      const target = event.target as HTMLElement
+      // Check if the click is outside any dropdown
+      if (!target.closest('.sidebar-dropdown-menu') && !target.closest('.sidebar-dropdown-trigger')) {
+        closeAllDropdowns()
+      }
+    }
+  })
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeAllDropdowns)
+})
+
+// Add transition functions for accordion animation in collapsed mode
+const startAccordionTransition = (el: Element, done: () => void) => {
+  const element = el as HTMLElement
+  // Start with height 0
+  element.style.height = '0'
+  // Force a reflow
+  void element.offsetHeight
+  // Set the height to the scroll height to trigger the transition
+  element.style.height = `${element.scrollHeight}px`
+  // Call done when transition completes
+  el.addEventListener('transitionend', () => {
+    // Remove the height constraint after animation completes
+    element.style.height = 'auto'
+    done()
+  }, { once: true })
+}
+
+const endAccordionTransition = (el: Element, done: () => void) => {
+  const element = el as HTMLElement
+  // First set the height to the current height
+  element.style.height = `${element.scrollHeight}px`
+  // Force a reflow
+  void element.offsetHeight
+  // Then animate to 0
+  element.style.height = '0'
+  // Call done when transition completes
+  el.addEventListener('transitionend', done, { once: true })
+}
 </script>
 
 <template>
   <div>
     <!-- Static sidebar for desktop -->
-    <div class="hidden lg:fixed lg:inset-y-0 lg:w-64 lg:flex lg:flex-col">
-      <div class="flex grow flex-col gap-y-4 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-2 dark:border-gray-600 dark:bg-blue-gray-900">
-        <div class="pt-3 h-10 flex shrink-0 items-center justify-between rounded-lg">
-          <RouterLink to="/">
+    <div
+      class="hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 ease-in-out"
+      :class="isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'"
+    >
+      <div
+        class="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white dark:border-gray-600 dark:bg-blue-gray-900 transition-all duration-300"
+        :class="{
+          'items-center px-2 pb-4': isSidebarCollapsed,
+          'px-6 pb-4': !isSidebarCollapsed
+        }"
+      >
+        <div class="pt-4 h-10 flex shrink-0 items-center justify-between rounded-lg">
+          <RouterLink to="/" :class="isSidebarCollapsed ? 'hidden' : ''">
             <img class="h-10 w-auto rounded-lg cursor-pointer" src="/images/logos/logo.svg" alt="Stacks Logo">
           </RouterLink>
 
-          <!-- Team Switcher -->
-          <div class="relative" ref="teamSwitcherRef">
-            <button
-              type="button"
-              class="block p-2 text-gray-400 hover:text-gray-500 focus:outline-none"
-              @click="showTeamSwitcher = !showTeamSwitcher"
-            >
-              <div class="i-hugeicons-more-horizontal-circle-01 h-6 w-6 cursor-pointer text-gray-400 transition duration-150 ease-in-out hover:text-gray-900 dark:text-gray-200 dark:hover:text-gray-100" />
-            </button>
+          <div class="flex items-center space-x-2">
+            <!-- Sidebar Toggle Button -->
+            <Tooltip text="Toggle sidebar" position="right" :dark="isDark" :usePortal="true">
+              <button
+                type="button"
+                class="p-1.5 text-gray-400 hover:text-gray-500 focus:outline-none rounded-md hover:bg-gray-50 dark:hover:bg-blue-gray-800 flex items-center justify-center"
+                @click="toggleSidebar"
+              >
+                <div
+                  class="i-hugeicons-layout-01 h-5 w-5 cursor-pointer text-gray-400 transition-all duration-300 ease-in-out hover:text-gray-900 dark:text-gray-200 dark:hover:text-gray-100"
+                  :class="{ 'transform rotate-180': isSidebarCollapsed }"
+                />
+              </button>
+            </Tooltip>
 
-            <!-- Team Switcher Dropdown -->
-            <div
-              v-if="showTeamSwitcher"
-              class="absolute right-0 z-10 mt-2 w-72 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none dark:bg-blue-gray-800 dark:ring-gray-700"
-              role="menu"
-              aria-orientation="vertical"
-              tabindex="-1"
-            >
-              <div class="px-4 py-2">
-                <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">Switch Team</h3>
-              </div>
+            <!-- Team Switcher -->
+            <div class="relative" ref="teamSwitcherRef" :class="isSidebarCollapsed ? 'hidden' : ''">
+              <button
+                type="button"
+                class="block p-2 text-gray-400 hover:text-gray-500 focus:outline-none"
+                @click="showTeamSwitcher = !showTeamSwitcher"
+                ref="teamSwitcherButton"
+              >
+                <div class="i-hugeicons-more-horizontal-circle-01 h-6 w-6 cursor-pointer text-gray-400 transition duration-150 ease-in-out hover:text-gray-900 dark:text-gray-200 dark:hover:text-gray-100" />
+              </button>
 
-              <div class="border-t border-gray-100 dark:border-gray-700">
-                <div class="max-h-96 overflow-y-auto py-2">
-                  <button
-                    v-for="team in teams"
-                    :key="team.id"
-                    class="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-blue-gray-700"
-                    :class="{ 'bg-gray-50 dark:bg-blue-gray-700': currentTeam.id === team.id }"
-                    @click="switchTeam(team)"
-                  >
-                    <div class="flex items-center">
-                      <div class="h-8 w-8 flex-shrink-0">
-                        <img
-                          src="https://avatars.githubusercontent.com/u/6228425?v=4"
-                          alt=""
-                          class="h-8 w-8 rounded-full"
-                        >
-                      </div>
-                      <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ team.name }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ team.email }}</p>
-                      </div>
-                      <div
-                        v-if="currentTeam.id === team.id"
-                        class="ml-auto"
-                      >
-                        <div class="i-hugeicons-checkmark-circle-02 h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              <div class="border-t border-gray-100 dark:border-gray-700 px-4 py-2">
-                <RouterLink
-                  to="/models/teams"
-                  class="block w-full rounded-md px-3 py-2 text-center text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors duration-150"
-                  @click="showTeamSwitcher = false"
+              <!-- Team Switcher Dropdown using Teleport -->
+              <Teleport to="body">
+                <div
+                  v-if="showTeamSwitcher"
+                  class="fixed z-50 rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none dark:bg-blue-gray-800 dark:ring-gray-700"
+                  style="width: 256px;"
+                  role="menu"
+                  aria-orientation="vertical"
+                  tabindex="-1"
+                  :style="teamSwitcherPosition"
                 >
-                  Manage Teams
-                </RouterLink>
-              </div>
+                  <div class="px-4 py-2">
+                    <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">Switch Team</h3>
+                  </div>
+
+                  <div class="border-t border-gray-100 dark:border-gray-700">
+                    <div class="max-h-96 overflow-y-auto py-2">
+                      <button
+                        v-for="team in teams"
+                        :key="team.id"
+                        class="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-blue-gray-700"
+                        :class="{ 'bg-gray-50 dark:bg-blue-gray-700': currentTeam.id === team.id }"
+                        @click="switchTeam(team)"
+                      >
+                        <div class="flex items-center">
+                          <div class="h-8 w-8 flex-shrink-0">
+                            <img
+                              src="/images/logos/logo.svg"
+                              alt=""
+                              class="h-8 w-8 rounded-full"
+                            >
+                          </div>
+                          <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ team.name }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ team.email }}</p>
+                          </div>
+                          <div
+                            v-if="currentTeam.id === team.id"
+                            class="ml-auto"
+                          >
+                            <div class="i-hugeicons-checkmark-circle-02 h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="border-t border-gray-100 dark:border-gray-700 px-4 py-2">
+                    <RouterLink
+                      to="/models/teams"
+                      class="block w-full rounded-md px-3 py-2 text-center text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors duration-150"
+                      @click="showTeamSwitcher = false"
+                    >
+                      Manage Teams
+                    </RouterLink>
+                  </div>
+                </div>
+              </Teleport>
             </div>
           </div>
         </div>
 
-        <nav class="flex flex-1 flex-col">
-          <ul role="list" class="flex flex-1 flex-col gap-y-4">
+        <nav class="flex flex-1 flex-col w-full">
+          <ul role="list" class="flex flex-1 flex-col gap-y-6">
             <!-- Dashboard section -->
             <li>
-              <ul role="list" class="mt-1 -mx-2 space-y-0.5">
+              <ul role="list" class="mt-1 -mx-2 space-y-1" :class="{ 'mx-0 flex flex-col items-center': isSidebarCollapsed }">
                 <li>
-                  <RouterLink to="/" class="group sidebar-links">
+                  <template v-if="isSidebarCollapsed">
+                    <Tooltip text="Home" position="right" :dark="isDark" :usePortal="true">
+                      <RouterLink to="/" class="group sidebar-links justify-center" :class="{ 'home-link': route.path === '/' }">
+                        <div class="i-hugeicons-home-05 h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700 mt-0.5" />
+                      </RouterLink>
+                    </Tooltip>
+                  </template>
+                  <RouterLink v-else to="/" class="group sidebar-links" :class="{ 'home-link': route.path === '/' }">
                     <div class="i-hugeicons-home-05 h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700 mt-0.5" />
-                    Home
-                  </RouterLink>
-                </li>
-                <li>
-                  <RouterLink to="/file-manager" class="group sidebar-links">
-                    <div class="i-hugeicons-apple-finder h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700 mt-0.5" />
-                    File Manager
+                    <span>Home</span>
                   </RouterLink>
                 </li>
               </ul>
@@ -431,7 +654,8 @@ const isChildRouteActive = (item: SidebarItem) => {
                 :class="{
                   'opacity-50': isDragging && draggedItem === sectionKey,
                   'cursor-grabbing': isDragging,
-                  'cursor-grab': !isDragging
+                  'cursor-grab': !isDragging,
+                  'w-full': true
                 }"
                 @dragstart="handleDragStart(sectionKey, $event)"
                 @dragover="handleDragOver(sectionKey, $event)"
@@ -439,364 +663,442 @@ const isChildRouteActive = (item: SidebarItem) => {
               >
                 <!-- Section header -->
                 <div
-                  class="flex items-center justify-between cursor-pointer py-0.5"
+                  class="flex items-center justify-between cursor-pointer py-1.5 mb-1"
                   @click="toggleSection(sectionKey)"
+                  :class="{ 'justify-center': isSidebarCollapsed }"
                 >
-                  <div class="flex items-center gap-2 -ml-3">
-                    <div
-                      class="i-hugeicons-drag-drop-horizontal h-4 w-4 text-gray-400 cursor-move drag-handle"
-                      @mousedown.stop
-                      @click.stop
-                    />
-                    <div class="text-xs text-gray-400 font-semibold leading-6">
-                      {{ sectionKey.charAt(0).toUpperCase() + sectionKey.slice(1) }}
-                    </div>
+                  <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider" :class="{ 'hidden': isSidebarCollapsed }">
+                    {{ sectionKey }}
+                  </h2>
+                  <div class="flex items-center justify-center" :class="{ 'w-full': isSidebarCollapsed }">
+                    <button
+                      type="button"
+                      class="flex h-6 w-6 items-center justify-center rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                      @click.stop="toggleSection(sectionKey)"
+                    >
+                      <div
+                        class="i-hugeicons-arrow-right-01 h-5 w-5 transition-transform duration-200 mt-0.5"
+                        :class="[
+                          { 'transform rotate-90': sections[sectionKey] },
+                          isSidebarCollapsed ? 'mx-auto' : ''
+                        ]"
+                      />
+                    </button>
                   </div>
-
-                  <div
-                    :class="[
-                      'i-hugeicons-arrow-down-01 h-4 w-4 text-gray-300 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700',
-                      { 'transform -rotate-90': !sections[sectionKey] }
-                    ]"
-                  />
                 </div>
 
-                <!-- Section content -->
-                <ul
-                  role="list"
-                  class="mt-0.5 -mx-2 space-y-0.5 section-content max-h-[60vh] overflow-y-auto pr-2"
-                  :class="sections[sectionKey] ? 'expanded' : 'collapsed'"
+                <!-- Section items with transition -->
+                <transition
+                  name="section-transition"
+                  @enter="startSectionTransition"
+                  @leave="endSectionTransition"
                 >
-                  <li v-for="item in sectionContent[sectionKey]?.items || []" :key="item.to">
-                    <div>
-                      <RouterLink
-                        :to="item.to"
-                        class="sidebar-links group relative"
-                        :class="{
-                          'no-active': item.to.startsWith('#'),
-                          'parent-active': (item.children && expandedItems[item.to] && isChildRouteActive(item))
-                        }"
-                        :active-class="item.to.startsWith('#') ? '' : 'router-link-active'"
-                        :exact-active-class="!item.to.startsWith('#') ? 'router-link-exact-active' : ''"
-                        @click.prevent="item.children ? toggleItem(item.to) : router.push(item.to)"
-                      >
-                        <template v-if="item.icon">
-                          <div :class="[item.icon, 'h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700 mt-0.5']" />
-                        </template>
-                        <template v-else-if="item.letter">
-                          <span class="h-6 w-6 flex shrink-0 items-center justify-center border border-gray-200 rounded-lg bg-white text-[0.625rem] text-gray-400 font-medium dark:border-gray-600 group-hover:border-blue-600 group-hover:text-blue-600">
+                  <div
+                    v-if="sections[sectionKey] && !isSidebarCollapsed"
+                    class="section-content mt-1 -mx-2 space-y-0.5 w-full"
+                    :style="{ maxHeight: 'none' }"
+                  >
+                    <template v-for="item in sectionContent[sectionKey]?.items" :key="item.to">
+                      <!-- Regular item -->
+                      <li v-if="!item.children" class="w-full">
+                        <Tooltip v-if="isSidebarCollapsed" :text="item.text" position="right" :dark="isDark" :usePortal="true">
+                          <RouterLink :to="item.to" class="group sidebar-links justify-center">
+                            <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700']" />
+                            <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-gray-200 bg-white text-[10px] font-medium text-gray-400 dark:border-gray-700 dark:bg-blue-gray-800">
+                              {{ item.letter }}
+                            </div>
+                          </RouterLink>
+                        </Tooltip>
+                        <RouterLink v-else :to="item.to" class="group sidebar-links w-full">
+                          <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700']" />
+                          <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-gray-200 bg-white text-[10px] font-medium text-gray-400 dark:border-gray-700 dark:bg-blue-gray-800">
                             {{ item.letter }}
-                          </span>
-                        </template>
-                        <div class="flex items-center justify-between flex-1">
-                          <span class="truncate" :class="{ 'ml-[4px]': item.icon }">{{ item.text }}</span>
+                          </div>
+                          <span class="flex-1">{{ item.text }}</span>
+                        </RouterLink>
+                      </li>
+
+                      <!-- Dropdown item in expanded mode -->
+                      <li v-else class="w-full">
+                        <button
+                          @click="(event) => {
+                            event.stopPropagation();
+                            toggleItem(item.to);
+                          }"
+                          class="group sidebar-links w-full text-left sidebar-dropdown-trigger"
+                          :class="{ 'parent-active': isChildRouteActive(item) }"
+                        >
+                          <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700']" />
+                          <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-gray-200 bg-white text-[10px] font-medium text-gray-400 dark:border-gray-700 dark:bg-blue-gray-800">
+                            {{ item.letter }}
+                          </div>
+                          <span class="flex-1">{{ item.text }}</span>
                           <div
-                            v-if="item.children"
-                            class="i-hugeicons-arrow-right-01 h-4 w-4 text-gray-300 transition-transform duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700"
+                            class="i-hugeicons-arrow-right-01 ml-auto h-4 w-4 text-gray-400 transition-transform duration-200"
                             :class="{ 'transform rotate-90': expandedItems[item.to] }"
                           />
-                        </div>
-                      </RouterLink>
+                        </button>
 
-                      <!-- Use transition for all dropdowns -->
-                      <transition name="dropdown">
-                        <ul
-                          v-if="item.children && expandedItems[item.to]"
-                          role="list"
-                          class="mt-0.5 space-y-0.5 dropdown-list pl-4 border-l border-gray-200 dark:border-gray-700 ml-2.5 w-full mb-4"
-                          :data-dropdown-id="item.to"
-                          :style="{ 'max-height': item.to === '#commerce-products' ? '150px' : '200px' }"
+                        <!-- Dropdown content with transition -->
+                        <transition
+                          name="dropdown"
+                          @enter="startTransition"
+                          @leave="endTransition"
                         >
-                          <li v-for="child in item.children" :key="child.to" class="dropdown-item w-full">
-                            <RouterLink
-                              :to="child.to"
-                              class="sidebar-child-link group w-full"
-                              exact-active-class="router-link-exact-active"
+                          <div
+                            v-if="expandedItems[item.to]"
+                            class="dropdown-list mt-0.5 space-y-0.5 pl-6 ml-2.5 w-full"
+                            :data-dropdown-id="item.to"
+                            :style="{ maxHeight: 'none' }"
+                          >
+                            <div
+                              v-for="child in item.children"
+                              :key="child.to"
+                              class="dropdown-item w-full"
                             >
-                              <span class="truncate">{{ child.text }}</span>
+                              <RouterLink
+                                :to="child.to"
+                                class="sidebar-child-link w-full"
+                              >
+                                <div v-if="child.icon" :class="[child.icon, 'h-4 w-4 text-gray-400 mr-2']" />
+                                <span class="flex-1">{{ child.text }}</span>
+                              </RouterLink>
+                            </div>
+                          </div>
+                        </transition>
+                      </li>
+                    </template>
+                  </div>
+                </transition>
+
+                <!-- Special case for collapsed sidebar -->
+                <div
+                  v-if="isSidebarCollapsed"
+                  class="mx-0 flex flex-col items-center"
+                >
+                  <!-- Section header is always visible -->
+
+                  <!-- Accordion-style transition for section content -->
+                  <transition
+                    name="accordion"
+                    @enter="startAccordionTransition"
+                    @leave="endAccordionTransition"
+                  >
+                    <div
+                      v-if="sections[sectionKey]"
+                      class="w-full flex flex-col items-center space-y-1 accordion-content overflow-hidden"
+                    >
+                      <template v-for="item in sectionContent[sectionKey]?.items" :key="item.to">
+                        <!-- Regular item -->
+                        <li v-if="!item.children" class="flex justify-center w-full">
+                          <Tooltip v-if="isSidebarCollapsed" :text="item.text" position="right" :dark="isDark" :usePortal="true">
+                            <RouterLink :to="item.to" class="group sidebar-links justify-center">
+                              <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700']" />
+                              <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-gray-200 bg-white text-[10px] font-medium text-gray-400 dark:border-gray-700 dark:bg-blue-gray-800">
+                                {{ item.letter }}
+                              </div>
                             </RouterLink>
-                          </li>
-                        </ul>
-                      </transition>
+                          </Tooltip>
+                        </li>
+
+                        <!-- Dropdown item in collapsed mode -->
+                        <li v-else class="flex justify-center w-full">
+                          <div class="relative flex justify-center">
+                            <Tooltip v-if="isSidebarCollapsed" :text="item.text" position="right" :dark="isDark" :usePortal="true">
+                              <button
+                                @click="(event) => {
+                                  event.stopPropagation();
+                                  toggleItem(item.to);
+                                  calculateDropdownPosition(event as MouseEvent, item.to);
+                                }"
+                                class="group sidebar-links justify-center sidebar-dropdown-trigger"
+                                :class="{ 'parent-active': isChildRouteActive(item) }"
+                              >
+                                <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700']" />
+                                <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-gray-200 bg-white text-[10px] font-medium text-gray-400 dark:border-gray-700 dark:bg-blue-gray-800">
+                                  {{ item.letter }}
+                                </div>
+                              </button>
+                            </Tooltip>
+                          </div>
+
+                          <!-- Teleport dropdown for collapsed mode -->
+                          <Teleport to="body" v-if="expandedItems[item.to]">
+                            <div
+                              class="fixed z-50 rounded-lg bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none dark:bg-blue-gray-800 dark:ring-gray-700 sidebar-dropdown-menu"
+                              style="width: 200px;"
+                              :style="{
+                                top: `${dropdownPositions[item.to] || 100}px`,
+                                left: '64px',
+                                transform: 'translateX(0)'
+                              }"
+                            >
+                              <div class="px-2 py-1">
+                                <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.text }}</h3>
+                              </div>
+                              <div class="border-t border-gray-100 dark:border-gray-700">
+                                <div class="max-h-96 overflow-y-auto py-1">
+                                  <RouterLink
+                                    v-for="child in item.children"
+                                    :key="child.to"
+                                    :to="child.to"
+                                    class="block w-full px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-blue-gray-700"
+                                    :class="{ 'bg-gray-50 text-blue-600 dark:bg-blue-gray-700 dark:text-blue-400': route.path === child.to }"
+                                    @click="expandedItems[item.to] = false"
+                                  >
+                                    <div class="flex items-center">
+                                      <div v-if="child.icon" :class="[child.icon, 'h-4 w-4 mr-2 text-gray-400']" />
+                                      <span>{{ child.text }}</span>
+                                    </div>
+                                  </RouterLink>
+                                </div>
+                              </div>
+                            </div>
+                          </Teleport>
+                        </li>
+                      </template>
                     </div>
-                  </li>
-                </ul>
+                  </transition>
+                </div>
               </li>
             </template>
 
             <!-- Bottom section -->
-            <li class="mt-auto flex items-center justify-between space-x-4">
-              <div class="flex items-center">
-                <RouterLink
-                  to="/buddy"
-                  class="sidebar-bottom-link"
-                  :class="{ 'active-bottom-link': route.path === '/buddy' }"
-                >
-                  <div class="i-hugeicons-ai-chat-02 h-5 w-5 text-gray-400 transition-all duration-150 ease-in-out dark:text-gray-200 group-hover:text-blue-600" />
-                </RouterLink>
+            <li class="mt-auto pb-4">
+              <div :class="isSidebarCollapsed ? 'flex flex-col items-center justify-center space-y-6' : 'flex items-center space-x-4'">
+                <Tooltip text="AI Buddy" position="top" :dark="isDark" :usePortal="true">
+                  <RouterLink
+                    to="/buddy"
+                    class="sidebar-bottom-link"
+                    :class="{ 'active-bottom-link': route.path === '/buddy' }"
+                  >
+                    <div class="i-hugeicons-ai-chat-02 h-5 w-5 text-gray-400 transition-all duration-150 ease-in-out dark:text-gray-200 group-hover:text-blue-600" />
+                  </RouterLink>
+                </Tooltip>
 
-                <RouterLink
-                  to="/environment"
-                  class="sidebar-bottom-link"
-                  :class="{ 'active-bottom-link': route.path === '/environment' }"
-                >
-                  <div class="i-hugeicons-key-01 h-5 w-5 text-gray-400 transition-all duration-150 ease-in-out dark:text-gray-200 group-hover:text-blue-600" />
-                </RouterLink>
+                <Tooltip text="Environment" position="top" :dark="isDark" :usePortal="true">
+                  <RouterLink
+                    to="/environment"
+                    class="sidebar-bottom-link"
+                    :class="{ 'active-bottom-link': route.path === '/environment' }"
+                  >
+                    <div class="i-hugeicons-key-01 h-5 w-5 text-gray-400 transition-all duration-150 ease-in-out dark:text-gray-200 group-hover:text-blue-600" />
+                  </RouterLink>
+                </Tooltip>
 
-                <RouterLink
-                  to="/access-tokens"
-                  class="sidebar-bottom-link"
-                  :class="{ 'active-bottom-link': route.path === '/access-tokens' }"
-                >
-                  <div class="i-hugeicons-shield-key h-5 w-5 text-gray-400 transition-all duration-150 ease-in-out dark:text-gray-200 group-hover:text-blue-600" />
-                </RouterLink>
+                <Tooltip text="Access Tokens" position="top" :dark="isDark" :usePortal="true">
+                  <RouterLink
+                    to="/access-tokens"
+                    class="sidebar-bottom-link"
+                    :class="{ 'active-bottom-link': route.path === '/access-tokens' }"
+                  >
+                    <div class="i-hugeicons-shield-key h-5 w-5 text-gray-400 transition-all duration-150 ease-in-out dark:text-gray-200 group-hover:text-blue-600" />
+                  </RouterLink>
+                </Tooltip>
 
-                <RouterLink
-                  to="/settings/ai"
-                  class="sidebar-bottom-link"
-                  :class="{ 'active-bottom-link': route.path.startsWith('/settings/ai') }"
-                >
-                  <div class="i-hugeicons-settings-02 h-5 w-5 text-gray-400 transition-all duration-150 ease-in-out dark:text-gray-200 group-hover:text-blue-600" />
-                </RouterLink>
+                <Tooltip text="Settings" position="top" :dark="isDark" :usePortal="true">
+                  <RouterLink
+                    to="/settings/ai"
+                    class="sidebar-bottom-link"
+                    :class="{ 'active-bottom-link': route.path.startsWith('/settings/ai') }"
+                  >
+                    <div class="i-hugeicons-settings-02 h-5 w-5 text-gray-400 transition-all duration-150 ease-in-out dark:text-gray-200 group-hover:text-blue-600" />
+                  </RouterLink>
+                </Tooltip>
               </div>
             </li>
           </ul>
         </nav>
       </div>
     </div>
+
+    <!-- Add class to body when sidebar is collapsed -->
+    <Teleport to="body" v-if="isSidebarCollapsed">
+      <div class="sidebar-collapsed hidden"></div>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
+/* Add transition for sidebar collapse */
 .sidebar-links {
-  @apply text-blue-gray-600 dark:text-blue-gray-200 hover:text-blue-gray-800
-         duration-150 ease-in-out transition flex items-center gap-x-3
-         rounded-md p-1 text-sm leading-6 font-semibold;
+  @apply flex items-center gap-x-3 p-1.5 text-sm leading-6 text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-blue-gray-800 rounded-lg;
+  transition: all 0.3s ease;
 }
 
-/* Make sure section content is scrollable when it overflows */
-.section-content {
-  @apply overflow-hidden transition-all duration-300 ease-in-out;
+/* When sidebar is collapsed, adjust links */
+:deep(.lg\:w-20) .sidebar-links {
+  @apply justify-center px-0 rounded-lg;
+  width: 32px;
+  height: 32px;
+  margin: 0 auto;
+  padding: 0.375rem; /* 6px */
 }
 
-.section-content.expanded {
-  @apply overflow-y-auto;
-  max-height: calc(100vh - 220px);
-  scrollbar-width: thin;
-}
-
-.section-content.collapsed {
-  max-height: 0;
-  overflow: hidden;
-}
-
-/* Add spacing between the last item in a section and the next section */
-.section-content > li:last-child {
-  @apply mb-2;
-}
-
-.section-content::-webkit-scrollbar {
-  width: 4px;
-}
-
-.section-content::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-.section-content::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 dark:bg-gray-600 rounded;
-}
-
+/* Active state styling */
 .router-link-active {
-  @apply bg-blue-gray-50 text-blue-600 dark:bg-gray-700 dark:text-blue-400;
+  @apply bg-gray-100 text-blue-600 dark:bg-blue-gray-800 dark:text-blue-400 rounded-lg;
 }
 
 .router-link-exact-active {
-  @apply bg-blue-gray-50 text-blue-600 dark:bg-gray-700 dark:text-blue-400;
+  @apply bg-gray-100 text-blue-600 dark:bg-blue-gray-800 dark:text-blue-400 font-medium rounded-lg;
 }
 
-/* Override for parent items with children */
-.no-active.router-link-active {
-  @apply !bg-transparent !text-blue-gray-600 dark:!text-blue-gray-200;
-}
-
-.no-active.router-link-active div[class^="i-hugeicons"],
-.no-active.router-link-active div[class^="i-hugeicons"] {
-  @apply !text-gray-400 dark:!text-gray-200;
-}
-
-/* When parent is active (expanded) and has an active child, change text color */
-.no-active.parent-active {
-  @apply !text-blue-600 dark:!text-blue-400;
-}
-
-.no-active.parent-active div[class^="i-hugeicons"],
-.no-active.parent-active div[class^="i-hugeicons"] {
-  @apply !text-blue-600 dark:!text-blue-400;
-}
-
-.router-link-active div[class^="i-hugeicons"] {
+.router-link-active div[class^="i-hugeicons"],
+.router-link-exact-active div[class^="i-hugeicons"] {
   @apply text-blue-600 dark:text-blue-400;
 }
 
-.router-link-active span.h-6 {
-  @apply border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400;
-}
-
-/* Fix for regular items that should not be active when child routes are active */
-.sidebar-links.router-link-active:not(.no-active):not(.router-link-exact-active) {
-  @apply bg-transparent text-blue-gray-600 dark:text-blue-gray-200;
-}
-
-.sidebar-links.router-link-active:not(.no-active):not(.router-link-exact-active) div[class^="i-hugeicons"] {
-  @apply !text-gray-400 dark:!text-gray-200;
-}
-
-.sidebar-links.router-link-active:not(.router-link-exact-active) div[class^="i-hugeicons"] {
-  @apply !text-gray-400 dark:!text-gray-200;
-}
-
-/* Only apply active state to exact matches for regular items */
-.sidebar-links.router-link-exact-active:not(.no-active) {
-  @apply bg-blue-gray-50 text-blue-600 dark:bg-gray-700 dark:text-blue-400;
-}
-
-.sidebar-links.router-link-exact-active:not(.no-active) div[class^="i-hugeicons"] {
+/* Parent active state when child is active */
+.parent-active {
   @apply text-blue-600 dark:text-blue-400;
 }
 
-.sidebar-bottom-link {
-  @apply flex items-center justify-center px-2 py-2 text-sm font-semibold leading-6
-         transition-all duration-150 ease-in-out rounded-lg
-         hover:bg-blue-gray-50 dark:hover:bg-gray-700;
+.parent-active div[class^="i-hugeicons"] {
+  @apply text-blue-600 dark:text-blue-400;
 }
 
-.sidebar-bottom-link div {
-  @apply group-hover:text-blue-600 dark:group-hover:text-blue-400;
+/* Nested items styling */
+.dropdown-list {
+  overflow: visible;
+  transition: max-height 0.3s ease;
+  @apply border-l border-gray-200 dark:border-blue-gray-700;
+  width: 100%;
+  position: relative;
 }
 
-.active-bottom-link {
-  @apply bg-blue-gray-50 dark:bg-gray-700;
-}
-
-.active-bottom-link div {
-  @apply text-blue-600 dark:text-blue-400 !important;
-}
-
-li[draggable="true"] {
-  @apply touch-none select-none;
-  will-change: transform;
-}
-
-/* Add smooth transition for non-dragged items */
-li[draggable="true"]:not(.dragging) {
-  @apply transition-transform;
-}
-
-/* Remove transition during drag */
-:global(body.is-dragging) li[draggable="true"] {
-  transition-duration: 200ms;
-}
-
-/* Update drag handle styles */
-.drag-handle {
-  @apply opacity-0 transition-opacity duration-200 cursor-grab;
-}
-
-li[draggable="true"]:hover .drag-handle {
-  @apply opacity-100;
-}
-
-li[draggable="true"].dragging .drag-handle {
-  @apply cursor-grabbing;
+.dropdown-item {
+  position: relative;
+  width: 100%;
 }
 
 .sidebar-child-link {
-  @apply text-blue-gray-600 dark:text-blue-gray-200 hover:text-blue-600 dark:hover:text-blue-400
-         duration-150 ease-in-out transition flex items-center
-         rounded-md py-1 px-2 text-sm leading-6 font-medium w-full;
+  @apply flex items-center rounded-lg py-1 px-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-blue-gray-800;
+  transition: all 0.2s ease;
+  width: calc(100% - 8px);
 }
 
-.router-link-active.sidebar-child-link {
-  @apply text-blue-600 dark:text-blue-400 bg-transparent font-semibold;
+.sidebar-child-link.router-link-active {
+  @apply text-blue-600 dark:text-blue-400 font-medium;
 }
 
-.no-active {
-  @apply !bg-transparent !text-blue-gray-600 dark:!text-blue-gray-200;
-}
-
-.no-active div[class^="i-hugeicons"] {
-  @apply !text-gray-400 dark:!text-gray-200;
-}
-
-.no-active:hover {
-  @apply !text-blue-600 dark:!text-blue-400;
-}
-
-.no-active:hover div[class^="i-hugeicons"],
-.no-active:hover div[class^="i-hugeicons"] {
-  @apply !text-blue-600 dark:!text-blue-400;
-}
-
-/* When parent is active (expanded), change text color */
-.no-active.parent-active {
-  @apply !text-blue-600 dark:!text-blue-400;
-}
-
-.no-active.parent-active div[class^="i-hugeicons"],
-.no-active.parent-active div[class^="i-hugeicons"] {
-  @apply !text-blue-600 dark:!text-blue-400;
-}
-
+/* Dropdown transition */
 .dropdown-enter-active,
 .dropdown-leave-active {
-  transition: all 0.3s ease;
+  transition: max-height 0.3s ease;
+  width: 100%;
 }
 
 .dropdown-enter-from,
 .dropdown-leave-to {
-  opacity: 0;
-  max-height: 0 !important;
+  max-height: 0;
 }
 
-.dropdown-item {
-  height: 24px;
-}
-
-/* Make Products dropdown items even more compact */
-.dropdown-list {
-  overflow-y: visible;
-  width: calc(100% - 10px);
-}
-
-/* Specific styling for the commerce-products dropdown */
-[data-dropdown-id="#commerce-products"],
-[data-dropdown-id="#social-posts"] {
-  @apply space-y-1;
-}
-
-[data-dropdown-id="#commerce-products"] .dropdown-item,
-[data-dropdown-id="#social-posts"] .dropdown-item {
-  height: 24px;
+/* Section transition */
+.section-transition-enter-active,
+.section-transition-leave-active {
+  transition: max-height 0.3s ease;
   width: 100%;
+  position: relative;
 }
 
-[data-dropdown-id="#commerce-products"] .sidebar-child-link,
-[data-dropdown-id="#social-posts"] .sidebar-child-link {
-  @apply py-0.5 px-2 text-xs flex items-center;
+.section-transition-enter-from,
+.section-transition-leave-to {
+  max-height: 0;
 }
 
-[data-dropdown-id="#commerce-products"] .sidebar-child-link span,
-[data-dropdown-id="#social-posts"] .sidebar-child-link span {
-  @apply my-auto;
+.section-content {
+  overflow: visible;
+  width: 100%;
+  position: relative;
 }
 
-/* Adjust spacing between sections */
-ul[role="list"].flex.flex-1.flex-col.gap-y-4 {
-  @apply gap-y-4;
+/* Bottom links styling */
+.sidebar-bottom-link {
+  @apply flex items-center p-1.5 text-gray-400 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100 rounded-lg;
+  transition: all 0.2s ease;
 }
 
-.router-link-exact-active.sidebar-child-link {
-  @apply text-blue-600 dark:text-blue-400 font-semibold;
+:deep(.lg\:w-20) .sidebar-bottom-link {
+  @apply justify-center;
+  width: 32px;
+  height: 32px;
+  padding: 0.375rem; /* 6px */
+}
+
+.active-bottom-link div {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+/* Adjust main content when sidebar is collapsed */
+:deep(.lg\:pl-64) {
+  transition: padding-left 0.3s ease;
+}
+
+:deep(.sidebar-collapsed .lg\:pl-64) {
+  padding-left: 5rem !important; /* 5rem = 80px (w-20) */
+}
+
+/* Ensure logo is properly rounded */
+img.rounded-lg {
+  overflow: hidden;
+}
+
+/* Special styling for home link */
+.home-link {
+  @apply rounded-xl bg-gray-100;
+}
+
+.dark .home-link {
+  background-color: rgba(30, 41, 59, 0.5);
+}
+
+.dark .home-link.router-link-active {
+  background-color: rgba(30, 41, 59, 0.8);
+}
+
+/* Accordion transition for collapsed sidebar sections */
+.accordion-enter-active,
+.accordion-leave-active {
+  transition: height 0.3s ease;
+  overflow: hidden;
+}
+
+.accordion-enter-from,
+.accordion-leave-to {
+  height: 0;
+}
+
+.accordion-content {
+  margin-top: 0.5rem;
+}
+
+/* Remove the fade transition since we're using accordion now */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* Dropdown menu styling */
+.sidebar-dropdown-menu {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Ensure all items in collapsed sidebar are properly centered */
+:deep(.lg\:w-20) .flex.flex-col.items-center button,
+:deep(.lg\:w-20) .flex.flex-col.items-center a {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0.375rem;
+  margin: 0 auto;
 }
 </style>

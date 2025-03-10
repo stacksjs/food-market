@@ -1,6 +1,6 @@
-// soon, these will be auto-imported
 import type { Faker } from '@stacksjs/faker'
 import type { Attributes, Model } from '@stacksjs/types'
+// soon, these will be auto-imported
 import { schema } from '@stacksjs/validation'
 
 export default {
@@ -40,7 +40,8 @@ export default {
     billable: true,
   },
 
-  hasMany: ['Subscription', 'PaymentMethod', 'Transaction'],
+  hasOne: ['Subscriber'],
+  hasMany: ['Deployment', 'Subscription', 'PaymentMethod', 'Post', 'PaymentTransaction'],
 
   belongsToMany: ['Team'],
 

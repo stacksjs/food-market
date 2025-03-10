@@ -1,5 +1,26 @@
 import { route } from '@stacksjs/router'
 
+route.get('customers', 'CustomerIndexOrmAction')
+
+route.post('customers', 'CustomerStoreOrmAction')
+
+route.get('customers/{id}', 'CustomerShowOrmAction')
+
+route.patch('customers/{id}', 'CustomerUpdateOrmAction')
+
+route.delete('customers/{id}', 'CustomerDestroyOrmAction')
+
+route.get('product-reviews', 'ProductReviewIndexOrmAction')
+
+route.post('product-reviews', 'ProductReviewStoreOrmAction')
+
+route.get('product-reviews/{id}', 'ProductReviewShowOrmAction')
+
+route.get('products', 'ProductIndexOrmAction')
+
+route.post('products', 'ProductStoreOrmAction')
+
+route.get('products/{id}', 'ProductShowOrmAction')
 
 route.get('requests', 'storage/framework/actions/src/RequestIndexOrmAction.ts')
 
@@ -11,7 +32,17 @@ route.patch('requests/{id}', 'storage/framework/actions/src/RequestUpdateOrmActi
 
 route.delete('requests/{id}', 'storage/framework/actions/src/RequestDestroyOrmAction.ts')
 
-howOrmAction')
+route.get('gift-cards', 'GiftCardIndexOrmAction')
+
+route.post('gift-cards', 'GiftCardStoreOrmAction')
+
+route.get('gift-cards/{id}', 'GiftCardShowOrmAction')
+
+route.get('orders', 'OrderIndexOrmAction')
+
+route.post('orders', 'OrderStoreOrmAction')
+
+route.get('orders/{id}', 'OrderShowOrmAction')
 
 route.get('coupons', 'CouponIndexOrmAction')
 
@@ -42,10 +73,3 @@ route.get('product-categories', 'ProductCategoryIndexOrmAction')
 route.post('product-categories', 'ProductCategoryStoreOrmAction')
 
 route.get('product-categories/{id}', 'ProductCategoryShowOrmAction')
-
-route.get('users', 'UserIndexOrmAction')
-
-route.post('users', 'UserStoreOrmAction')
-
-route.get('users/{id}', 'UserShowOrmAction')
-

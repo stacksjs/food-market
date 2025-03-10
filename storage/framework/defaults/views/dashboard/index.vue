@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useHead } from '@vueuse/head'
 
 useHead({
@@ -10,7 +10,7 @@ useHead({
 const stats = [
   { name: 'Total Users', value: '8,294', change: '+12.5%', trend: 'up' },
   { name: 'Active Projects', value: '124', change: '+8.2%', trend: 'up' },
-  { name: 'Server Uptime', value: '99.98%', change: '+0.1%', trend: 'up' },
+  { name: 'Cloud Uptime', value: '99.98%', change: '+0.1%', trend: 'up' },
   { name: 'Response Time', value: '42ms', change: '-3.7%', trend: 'down' },
 ]
 
@@ -23,10 +23,10 @@ const recentActivity = [
 ]
 
 const quickLinks = [
-  { name: 'Blog', description: 'Manage your blog posts and categories', icon: 'i-hugeicons-document-validation', href: '/dashboard/blog', color: 'bg-blue-500' },
-  { name: 'Commerce', description: 'View orders and manage products', icon: 'i-hugeicons-shopping-cart-02', href: '/dashboard/commerce', color: 'bg-green-500' },
-  { name: 'Cloud', description: 'Monitor cloud performance and status', icon: 'i-hugeicons-ai-cloud', href: '/dashboard/servers', color: 'bg-purple-500' },
-  { name: 'Settings', description: 'Configure your application settings', icon: 'i-hugeicons-settings-01', href: '/dashboard/settings', color: 'bg-gray-500' },
+  { name: 'Blog', description: 'Manage your blog posts and categories', icon: 'i-hugeicons-document-validation', href: '/content/dashboard', color: 'bg-blue-500' },
+  { name: 'Commerce', description: 'View orders and manage products', icon: 'i-hugeicons-shopping-cart-02', href: '/commerce', color: 'bg-green-500' },
+  { name: 'Cloud', description: 'Monitor cloud performance and status', icon: 'i-hugeicons-ai-cloud', href: '/cloud', color: 'bg-purple-500' },
+  { name: 'Settings', description: 'Configure your application settings', icon: 'i-hugeicons-settings-01', href: '/settings', color: 'bg-gray-500' },
 ]
 
 const timeRange = ref('Last 7 days')
@@ -39,6 +39,9 @@ const systemHealth = [
   { name: 'Storage', status: 'healthy', latency: '22ms', uptime: '100%' },
   { name: 'Cache', status: 'healthy', latency: '12ms', uptime: '99.95%' },
   { name: 'Queue', status: 'degraded', latency: '120ms', uptime: '99.90%' },
+  { name: 'Notifications', status: 'healthy', latency: '12ms', uptime: '99.95%' },
+  { name: 'Printers', status: 'healthy', latency: '12ms', uptime: '99.95%' },
+  { name: 'Health', status: 'healthy', latency: '12ms', uptime: '99.95%' },
 ]
 
 // Get status color based on health status
@@ -209,7 +212,7 @@ function getActivityColor(status: string): string {
                 </ul>
               </div>
               <div class="border-t border-gray-200 dark:border-gray-700 px-4 py-4 sm:px-6">
-                <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
+                <a href="/activity" class="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">
                   View all activity
                   <span aria-hidden="true"> &rarr;</span>
                 </a>

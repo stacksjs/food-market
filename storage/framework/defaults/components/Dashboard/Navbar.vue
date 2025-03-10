@@ -1,10 +1,22 @@
 <script setup lang="ts">
-import { useDark } from '@vueuse/core'
-import { ref, watch } from 'vue'
+import { useDark, useLocalStorage } from '@vueuse/core'
+import { ref, watch, computed } from 'vue'
+import Tooltip from './Tooltip.vue'
 
 const showDropdown = ref(false)
 const isDark = useDark()
 const theme = ref(isDark.value ? 'dark' : 'light')
+
+// Import the sidebar collapsed state from localStorage
+const isSidebarCollapsed = useLocalStorage('sidebar-collapsed', false)
+
+// Compute classes based on sidebar state
+const navbarClasses = computed(() => {
+  return {
+    'navbar-expanded': !isSidebarCollapsed.value,
+    'navbar-collapsed': isSidebarCollapsed.value
+  }
+})
 
 watch(theme, (currentVal) => {
   if (currentVal === 'light')
@@ -16,11 +28,16 @@ watch(theme, (currentVal) => {
 </script>
 
 <template>
-  <div class="sticky top-0 z-10 h-16 flex shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 dark:border-gray-600 dark:border-gray-600 dark:bg-blue-gray-900 lg:px-8 sm:px-6">
-    <button type="button" class="p-2.5 text-gray-700 -m-2.5 lg:hidden">
-      <span class="sr-only">Open sidebar</span>
-      <div class="i-hugeicons-menu-01 h-6 w-6" />
-    </button>
+  <div
+    class="sticky top-0 z-10 h-16 flex shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 dark:border-gray-600 dark:border-gray-600 dark:bg-blue-gray-900 lg:px-8 sm:px-6 transition-all duration-300"
+    :class="navbarClasses"
+  >
+    <Tooltip text="Open sidebar" :dark="isDark" :usePortal="true">
+      <button type="button" class="p-2.5 text-gray-700 -m-2.5 lg:hidden">
+        <span class="sr-only">Open sidebar</span>
+        <div class="i-hugeicons-menu-01 h-6 w-6" />
+      </button>
+    </Tooltip>
 
     <!-- Separator -->
     <div class="h-6 w-px bg-gray-200 lg:hidden" aria-hidden="true" />
@@ -43,75 +60,85 @@ watch(theme, (currentVal) => {
         >
       </form>
       <div class="flex items-center gap-x-4 lg:gap-x-6">
-        <button
-          type="button"
-          class="header-icon-button"
-        >
-          <span class="sr-only">View Errors</span>
-          <RouterLink
-            to="/errors"
-            class="header-link"
-            :class="{ 'active-header-link': $route.path === '/errors' }"
+        <Tooltip text="View Errors" :dark="isDark" :usePortal="true">
+          <button
+            type="button"
+            class="header-icon-button"
           >
-            <div class="i-hugeicons-alert-01 h-6 w-6 transition duration-150 ease-in-out" />
-          </RouterLink>
-        </button>
+            <span class="sr-only">View Errors</span>
+            <RouterLink
+              to="/errors"
+              class="header-link"
+              :class="{ 'active-header-link': $route.path === '/errors' }"
+            >
+              <div class="i-hugeicons-alert-01 h-6 w-6 transition duration-150 ease-in-out" />
+            </RouterLink>
+          </button>
+        </Tooltip>
 
-        <button
-          type="button"
-          class="header-icon-button"
-        >
-          <span class="sr-only">View Health Page</span>
-          <RouterLink
-            to="/health"
-            class="header-link"
-            :class="{ 'active-header-link': $route.path === '/health' }"
+        <Tooltip text="View Health Page" :dark="isDark" :usePortal="true">
+          <button
+            type="button"
+            class="header-icon-button"
           >
-            <div class="i-hugeicons-health h-6 w-6 transition duration-150 ease-in-out" />
-          </RouterLink>
-        </button>
+            <span class="sr-only">View Health Page</span>
+            <RouterLink
+              to="/health"
+              class="header-link"
+              :class="{ 'active-header-link': $route.path === '/health' }"
+            >
+              <div class="i-hugeicons-health h-6 w-6 transition duration-150 ease-in-out" />
+            </RouterLink>
+          </button>
+        </Tooltip>
 
-        <button
-          type="button"
-          class="header-icon-button"
-        >
-          <span class="sr-only">View Cloud Insights Page</span>
-          <RouterLink
-            to="/insights"
-            class="header-link"
-            :class="{ 'active-header-link': $route.path === '/insights' }"
+        <Tooltip text="View Cloud Insights Page" :dark="isDark" :usePortal="true">
+          <button
+            type="button"
+            class="header-icon-button"
           >
-            <div class="i-hugeicons-pulse-01 h-6 w-6 transition duration-150 ease-in-out" />
-          </RouterLink>
-        </button>
+            <span class="sr-only">View Cloud Insights Page</span>
+            <RouterLink
+              to="/insights"
+              class="header-link"
+              :class="{ 'active-header-link': $route.path === '/insights' }"
+            >
+              <div class="i-hugeicons-pulse-01 h-6 w-6 transition duration-150 ease-in-out" />
+            </RouterLink>
+          </button>
+        </Tooltip>
 
-        <button
-          type="button"
-          class="header-icon-button"
-        >
-          <span class="sr-only">View Inbox</span>
-          <RouterLink
-            to="/inbox"
-            class="header-link"
-            :class="{ 'active-header-link': $route.path.startsWith('/inbox') }"
+        <Tooltip text="View Inbox" :dark="isDark" :usePortal="true">
+          <button
+            type="button"
+            class="header-icon-button"
           >
-            <div class="i-hugeicons-mail-02 h-6 w-6 transition duration-150 ease-in-out" />
-          </RouterLink>
-        </button>
+            <span class="sr-only">View Inbox</span>
+            <RouterLink
+              to="/inbox"
+              class="header-link"
+              :class="{ 'active-header-link': $route.path.startsWith('/inbox') }"
+            >
+              <div class="i-hugeicons-mail-02 h-6 w-6 transition duration-150 ease-in-out" />
+            </RouterLink>
+          </button>
+        </Tooltip>
 
-        <button
-          type="button"
-          class="header-icon-button"
-        >
-          <span class="sr-only">View notifications</span>
-          <RouterLink
-            to="/notifications"
-            class="header-link"
-            :class="{ 'active-header-link': $route.path === '/notifications' }"
+        <Tooltip text="View notifications" :dark="isDark" :usePortal="true">
+          <button
+            type="button"
+            class="header-icon-button"
           >
-            <div class="i-hugeicons-notification-02 h-6 w-6" />
-          </RouterLink>
-        </button>
+            <span class="sr-only">View notifications</span>
+            <RouterLink
+              to="/notifications"
+              class="header-link"
+              :class="{ 'active-header-link': $route.path === '/notifications' }"
+            >
+              <div class="i-hugeicons-notification-02 h-6 w-6" />
+            </RouterLink>
+          </button>
+        </Tooltip>
 
         <!-- Separator -->
         <div
@@ -122,11 +149,13 @@ watch(theme, (currentVal) => {
         <!-- Profile dropdown -->
         <div class="relative ml-3">
           <div>
-            <button id="user-menu-button" type="button" class="relative flex rounded-full bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white focus:ring-offset-gray-800" aria-expanded="false" aria-haspopup="true" @click="showDropdown = !showDropdown">
-              <span class="absolute -inset-1.5" />
-              <span class="sr-only">Open user menu</span>
-              <img class="h-8 w-8 rounded-full" src="https://avatars.githubusercontent.com/u/6228425" alt="">
-            </button>
+            <Tooltip text="User profile" :dark="isDark" :usePortal="true">
+              <button id="user-menu-button" type="button" class="relative flex rounded-full bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white focus:ring-offset-gray-800" aria-expanded="false" aria-haspopup="true" @click="showDropdown = !showDropdown">
+                <span class="absolute -inset-1.5" />
+                <span class="sr-only">Open user menu</span>
+                <img class="h-8 w-8 rounded-full" src="https://avatars.githubusercontent.com/u/6228425" alt="">
+              </button>
+            </Tooltip>
           </div>
 
           <transition
@@ -201,5 +230,21 @@ watch(theme, (currentVal) => {
 
 .user-menu-item.active {
   @apply bg-blue-gray-50 text-blue-600;
+}
+
+/* Navbar responsive styles - width only, no margin */
+.navbar-expanded {
+  width: 100%;
+}
+
+.navbar-collapsed {
+  width: 100%;
+}
+
+@media (max-width: 1023px) {
+  .navbar-expanded,
+  .navbar-collapsed {
+    width: 100%;
+  }
 }
 </style>

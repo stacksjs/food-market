@@ -13,7 +13,6 @@ interface CustomAttributes {
 }
 interface RequestDataOrder {
   id: number
-  customer_id: string
   status: string
   total_amount: number
   tax_amount: number
@@ -23,9 +22,9 @@ interface RequestDataOrder {
   order_type: string
   delivery_address: string
   special_instructions: string
-  estimated_delivery_time: string // Store as ISO date string
+  estimated_delivery_time: string
   applied_coupon_id: string
-  order_items: string // Store as JSON string
+  customer_id: number
   gift_card_id: number
   coupon_id: number
   created_at?: Date
@@ -33,7 +32,6 @@ interface RequestDataOrder {
 }
 export class OrderRequest extends Request<RequestDataOrder> implements OrderRequestType {
   public id = 1
-  public customer_id = ''
   public status = ''
   public total_amount = 0
   public tax_amount = 0
@@ -45,7 +43,7 @@ export class OrderRequest extends Request<RequestDataOrder> implements OrderRequ
   public special_instructions = ''
   public estimated_delivery_time = ''
   public applied_coupon_id = ''
-  public order_items = ''
+  public customer_id = 0
   public gift_card_id = 0
   public coupon_id = 0
   public created_at = new Date()

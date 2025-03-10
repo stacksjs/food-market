@@ -1,15 +1,26 @@
 import type { CouponModel } from '../orm/src/models/Coupon'
+import type { CustomerModel } from '../orm/src/models/Customer'
 import type { GiftCardModel } from '../orm/src/models/GiftCard'
 import type { LoyaltyPointModel } from '../orm/src/models/LoyaltyPoint'
 import type { LoyaltyRewardModel } from '../orm/src/models/LoyaltyReward'
 import type { OrderModel } from '../orm/src/models/Order'
 import type { ProductModel } from '../orm/src/models/Product'
 import type { ProductCategoryModel } from '../orm/src/models/ProductCategory'
+import type { ProductReviewModel } from '../orm/src/models/ProductReview'
 import type { TransactionModel } from '../orm/src/models/Transaction'
 import type { UserModel } from '../orm/src/models/User'
 
 export interface ModelEvents {
 
+  'user:created': UserModel
+  'user:updated': UserModel
+  'user:deleted': UserModel
+  'customer:created': CustomerModel
+  'customer:updated': CustomerModel
+  'customer:deleted': CustomerModel
+  'productreview:created': ProductReviewModel
+  'productreview:updated': ProductReviewModel
+  'productreview:deleted': ProductReviewModel
   'product:created': ProductModel
   'product:updated': ProductModel
   'product:deleted': ProductModel
@@ -34,8 +45,5 @@ export interface ModelEvents {
   'productcategory:created': ProductCategoryModel
   'productcategory:updated': ProductCategoryModel
   'productcategory:deleted': ProductCategoryModel
-  'user:created': UserModel
-  'user:updated': UserModel
-  'user:deleted': UserModel
 
 }

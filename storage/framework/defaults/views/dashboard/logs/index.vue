@@ -32,11 +32,51 @@ useHead({
 interface Log {
   id: string
   timestamp: string
-  type: 'info' | 'error' | 'success'
-  source: 'CLI' | 'File' | 'System'
+  type: 'info' | 'error' | 'success' | 'warning' | 'mail'
+  source: 'CLI' | 'File' | 'System' | 'Mail' | 'Notification'
   message: string
   metadata: Record<string, any>
-  project?: string // Added project field
+  project?: string
+  email?: EmailMetadata
+}
+
+interface EmailMetadata {
+  subject: string
+  sender: string
+  recipient: string
+  messageId?: string
+  size?: string
+  provider?: string
+  attachments?: Attachment[]
+  bounceInfo?: BounceInfo
+  authResults?: AuthResults
+  userInteraction?: UserInteraction
+}
+
+interface Attachment {
+  name: string
+  type: string
+  size: string
+}
+
+interface BounceInfo {
+  reason: string
+  code: string
+  timestamp: string
+}
+
+interface AuthResults {
+  spf: 'pass' | 'fail' | 'neutral'
+  dkim: 'pass' | 'fail' | 'neutral'
+  dmarc: 'pass' | 'fail' | 'neutral'
+}
+
+interface UserInteraction {
+  opened: boolean
+  openedAt?: string
+  clicked: boolean
+  clickedAt?: string
+  links?: string[]
 }
 
 interface Project {
@@ -45,6 +85,11 @@ interface Project {
   color: string
 }
 
+// Add pagination
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+const totalItems = ref(0)
+
 const logs = ref<Log[]>([])
 const filter = ref('all')
 const searchTerm = ref('')
@@ -52,6 +97,7 @@ const autoRefresh = ref(true)
 const selectedLog = ref<Log | null>(null)
 const selectedProjects = ref<string[]>([])
 const isLoading = ref(false)
+const logTypeFilter = ref<string>('all')
 
 // Sample projects
 const projects: Project[] = [
@@ -63,7 +109,7 @@ const projects: Project[] = [
   { id: 'vite-plugin-local', name: 'vite-plugin-local', color: 'amber' },
 ]
 
-// Updated sample logs with project information
+// Updated sample logs with project information and CLI samples
 const sampleLogs: Log[] = [
   {
     id: '1',
@@ -107,7 +153,8 @@ const sampleLogs: Log[] = [
     metadata: {
       migration: 'create_users_table',
       database: 'production',
-      user: 'deploy@stacksjs.org'
+      user: 'deploy@stacksjs.org',
+      command: 'buddy db:migrate'
     },
     project: 'stacks'
   },
@@ -134,7 +181,8 @@ const sampleLogs: Log[] = [
     metadata: {
       duration: '12.5s',
       assets: ['main.js', 'vendor.js', 'app.css'],
-      size: '2.3MB'
+      size: '2.3MB',
+      command: 'buddy build --production'
     },
     project: 'stacks'
   },
@@ -156,12 +204,13 @@ const sampleLogs: Log[] = [
     id: '8',
     timestamp: new Date(Date.now() - 300000).toISOString(),
     type: 'success',
-    source: 'File',
+    source: 'CLI',
     message: 'Configuration cache cleared',
     metadata: {
       triggered_by: 'deployment',
       cache_size: '156KB',
-      duration: '0.8s'
+      duration: '0.8s',
+      command: 'buddy config:clear'
     },
     project: 'stacks'
   },
@@ -175,7 +224,8 @@ const sampleLogs: Log[] = [
       suite: 'Integration Tests',
       total_tests: 156,
       parallel: true,
-      ci: true
+      ci: true,
+      command: 'buddy test --suite=integration'
     },
     project: 'stacks'
   },
@@ -196,14 +246,59 @@ const sampleLogs: Log[] = [
 
 const filteredLogs = computed(() => {
   return logs.value.filter(log => {
-    const matchesSearch = log.message.toLowerCase().includes(searchTerm.value.toLowerCase())
-    const matchesSource = filter.value === 'all' || log.source.toLowerCase() === filter.value.toLowerCase()
-    const matchesProject = selectedProjects.value.length === 0 ||
-      (log.project && selectedProjects.value.includes(log.project))
+    const matchesSearch = log.message.toLowerCase().includes(searchTerm.value.toLowerCase()) ||
+      (log.email?.subject?.toLowerCase().includes(searchTerm.value.toLowerCase())) ||
+      (log.email?.recipient?.toLowerCase().includes(searchTerm.value.toLowerCase()));
 
-    return matchesSearch && matchesSource && matchesProject
-  })
-})
+    const matchesSource = filter.value === 'all' || log.source.toLowerCase() === filter.value.toLowerCase();
+
+    const matchesType = logTypeFilter.value === 'all' || log.type === logTypeFilter.value;
+
+    const matchesProject = selectedProjects.value.length === 0 ||
+      (log.project && selectedProjects.value.includes(log.project));
+
+    return matchesSearch && matchesSource && matchesProject && matchesType;
+  }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+});
+
+// Add pagination computed properties
+const paginatedLogs = computed(() => {
+  const startIndex = (currentPage.value - 1) * itemsPerPage.value;
+  const endIndex = startIndex + itemsPerPage.value;
+  totalItems.value = filteredLogs.value.length;
+  return filteredLogs.value.slice(startIndex, endIndex);
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(totalItems.value / itemsPerPage.value);
+});
+
+// Add pagination methods
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+  }
+};
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+  }
+};
+
+const resetFilters = () => {
+  searchTerm.value = '';
+  filter.value = 'all';
+  logTypeFilter.value = 'all';
+  selectedProjects.value = [];
+  currentPage.value = 1;
+};
 
 const getProjectClasses = (projectId: string): { bg: string, text: string, ring: string } => {
   switch (projectId) {
@@ -236,13 +331,17 @@ const toggleProject = (projectId: string) => {
 const getLogIcon = (type: Log['type']) => {
   switch (type) {
     case 'error':
-      return 'i-hugeicons-outline-exclamation-circle'
+      return 'i-hugeicons-alert-02'
     case 'info':
-      return 'i-hugeicons-outline-information-circle'
+      return 'i-hugeicons-information-circle'
     case 'success':
-      return 'i-hugeicons-outline-check-circle'
+      return 'i-hugeicons-checkmark-circle-02'
+    case 'warning':
+      return 'i-hugeicons-alert-02'
+    case 'mail':
+      return 'i-hugeicons-mail-01'
     default:
-      return 'i-hugeicons-outline-terminal'
+      return 'i-hugeicons-computer-terminal-01'
   }
 }
 
@@ -254,6 +353,10 @@ const getLogIconColor = (type: Log['type']) => {
       return 'text-blue-500'
     case 'success':
       return 'text-green-500'
+    case 'warning':
+      return 'text-amber-500'
+    case 'mail':
+      return 'text-purple-500'
     default:
       return 'text-gray-500'
   }
@@ -262,9 +365,13 @@ const getLogIconColor = (type: Log['type']) => {
 const getLogRowClass = (type: Log['type']) => {
   switch (type) {
     case 'error':
-      return 'bg-red-50'
+      return 'bg-red-50 bg-opacity-50'
     case 'success':
-      return 'bg-green-50'
+      return 'bg-green-50 bg-opacity-50'
+    case 'warning':
+      return 'bg-amber-50 bg-opacity-50'
+    case 'mail':
+      return 'bg-purple-50 bg-opacity-50'
     default:
       return ''
   }
@@ -383,6 +490,20 @@ const getLogVolumeData = () => {
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
         fill: true,
       },
+      {
+        label: 'Mail',
+        data: Array.from({ length: 24 }, () => Math.floor(Math.random() * 60) + 30),
+        borderColor: 'rgb(139, 92, 246)', // Purple
+        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        fill: true,
+      },
+      {
+        label: 'Warning',
+        data: Array.from({ length: 24 }, () => Math.floor(Math.random() * 15) + 5),
+        borderColor: 'rgb(245, 158, 11)', // Amber
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        fill: true,
+      }
     ],
   }
 }
@@ -464,6 +585,20 @@ watch(timeRange, async () => {
               <option value="cli">CLI</option>
               <option value="file">File</option>
               <option value="system">System</option>
+              <option value="mail">Mail</option>
+              <option value="notification">Notification</option>
+            </select>
+
+            <select
+              v-model="logTypeFilter"
+              class="px-4 py-2 border rounded-lg bg-white min-w-[140px]"
+            >
+              <option value="all">All Types</option>
+              <option value="info">Info</option>
+              <option value="success">Success</option>
+              <option value="warning">Warning</option>
+              <option value="error">Error</option>
+              <option value="mail">Mail</option>
             </select>
 
             <button
@@ -472,11 +607,20 @@ watch(timeRange, async () => {
               @click="toggleAutoRefresh"
             >
               <i
-                class="i-hugeicons-outline-refresh h-4 w-4"
+                class="i-hugeicons-refresh h-4 w-4"
                 :class="{ 'animate-spin': autoRefresh }"
                 aria-hidden="true"
               />
               {{ autoRefresh ? 'Auto-refreshing' : 'Auto-refresh' }}
+            </button>
+
+            <button
+              v-if="searchTerm || filter !== 'all' || logTypeFilter !== 'all' || selectedProjects.length > 0"
+              class="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+              @click="resetFilters"
+            >
+              <i class="i-hugeicons-cancel-01 h-4 w-4" aria-hidden="true" />
+              Reset Filters
             </button>
           </div>
 
@@ -507,21 +651,30 @@ watch(timeRange, async () => {
               <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr
-                    v-for="log in filteredLogs"
+                    v-for="log in paginatedLogs"
                     :key="log.id"
                     :class="[getLogRowClass(log.type), 'hover:bg-gray-50 cursor-pointer']"
                     @click="selectedLog = log"
                   >
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-gray-900">
+                        <i
+                          class="i-hugeicons-clock-01 h-4 w-4 mr-2 text-gray-400"
+                          aria-hidden="true"
+                        />
+                        {{ new Date(log.timestamp).toLocaleTimeString() }}
+                      </div>
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <i
@@ -537,6 +690,9 @@ watch(timeRange, async () => {
                     </td>
                     <td class="px-6 py-4">
                       <div class="text-sm text-gray-900">{{ log.message }}</div>
+                      <div v-if="log.email" class="text-xs text-gray-500 mt-1 truncate">
+                        {{ log.email.subject }}
+                      </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <span
@@ -548,22 +704,75 @@ watch(timeRange, async () => {
                       </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right">
-                      <div class="text-sm text-gray-900">
-                        <i
-                          class="i-hugeicons-outline-clock h-4 w-4 mr-2 text-gray-400"
-                          aria-hidden="true"
-                        />
-                        {{ new Date(log.timestamp).toLocaleTimeString() }}
-                      </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right">
-                      <button class="text-blue-600 hover:text-blue-900">
-                        View
+                      <button class="text-gray-400 hover:text-blue-500 transition-colors duration-150">
+                        <i class="i-hugeicons-view h-5 w-5" aria-hidden="true" />
                       </button>
                     </td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="mt-4 flex items-center justify-between">
+          <div class="flex items-center">
+            <span class="text-sm text-gray-700 dark:text-gray-400">
+              Showing <span class="font-medium">{{ paginatedLogs.length }}</span> of <span class="font-medium">{{ totalItems }}</span> results
+            </span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <select
+              v-model="itemsPerPage"
+              class="px-2 py-1 text-sm border rounded-md"
+              @change="currentPage = 1"
+            >
+              <option :value="10">10 per page</option>
+              <option :value="25">25 per page</option>
+              <option :value="50">50 per page</option>
+              <option :value="100">100 per page</option>
+            </select>
+
+            <div class="flex items-center space-x-1">
+              <button
+                @click="prevPage"
+                :disabled="currentPage === 1"
+                class="px-2 py-1 text-sm border rounded-md"
+                :class="currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'"
+              >
+                <i class="i-hugeicons-arrow-left-01 h-4 w-4" aria-hidden="true" />
+              </button>
+
+              <button
+                v-for="page in Math.min(5, totalPages)"
+                :key="page"
+                @click="goToPage(page)"
+                class="px-3 py-1 text-sm border rounded-md"
+                :class="currentPage === page ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'"
+              >
+                {{ page }}
+              </button>
+
+              <span v-if="totalPages > 5" class="px-2">...</span>
+
+              <button
+                v-if="totalPages > 5"
+                @click="goToPage(totalPages)"
+                class="px-3 py-1 text-sm border rounded-md"
+                :class="currentPage === totalPages ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'"
+              >
+                {{ totalPages }}
+              </button>
+
+              <button
+                @click="nextPage"
+                :disabled="currentPage === totalPages || totalPages === 0"
+                class="px-2 py-1 text-sm border rounded-md"
+                :class="currentPage === totalPages || totalPages === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'"
+              >
+                <i class="i-hugeicons-arrow-right-01 h-4 w-4" aria-hidden="true" />
+              </button>
             </div>
           </div>
         </div>
@@ -574,7 +783,7 @@ watch(timeRange, async () => {
             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
             @click.self="selectedLog = null"
           >
-            <div class="bg-white rounded-lg max-w-2xl w-full p-6">
+            <div class="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
               <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Log Details</h3>
                 <button
@@ -582,7 +791,7 @@ watch(timeRange, async () => {
                   class="text-gray-500 hover:text-gray-700"
                 >
                   <i
-                    class="i-hugeicons-outline-x h-5 w-5"
+                    class="i-hugeicons-cancel-01 h-5 w-5"
                     aria-hidden="true"
                   />
                 </button>
@@ -596,7 +805,17 @@ watch(timeRange, async () => {
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Type</label>
-                  <p class="mt-1 text-sm text-gray-900">{{ selectedLog.type }}</p>
+                  <div class="mt-1 flex items-center">
+                    <i
+                      :class="[getLogIcon(selectedLog.type), getLogIconColor(selectedLog.type), 'h-5 w-5 mr-2']"
+                      aria-hidden="true"
+                    />
+                    <span class="text-sm text-gray-900 capitalize">{{ selectedLog.type }}</span>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700">Source</label>
+                  <p class="mt-1 text-sm text-gray-900">{{ selectedLog.source }}</p>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Project</label>
@@ -608,9 +827,161 @@ watch(timeRange, async () => {
                   <label class="block text-sm font-medium text-gray-700">Message</label>
                   <p class="mt-1 text-sm text-gray-900">{{ selectedLog.message }}</p>
                 </div>
+
+                <!-- Email-specific details -->
+                <div v-if="selectedLog.email" class="border-t border-gray-200 pt-4">
+                  <h4 class="text-base font-medium text-gray-900 mb-3">Email Details</h4>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700">Subject</label>
+                      <p class="mt-1 text-sm text-gray-900">{{ selectedLog.email.subject }}</p>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700">Provider</label>
+                      <p class="mt-1 text-sm text-gray-900">{{ selectedLog.email.provider || 'N/A' }}</p>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700">Sender</label>
+                      <p class="mt-1 text-sm text-gray-900">{{ selectedLog.email.sender }}</p>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700">Recipient</label>
+                      <p class="mt-1 text-sm text-gray-900">{{ selectedLog.email.recipient }}</p>
+                    </div>
+
+                    <div v-if="selectedLog.email.messageId">
+                      <label class="block text-sm font-medium text-gray-700">Message ID</label>
+                      <p class="mt-1 text-sm text-gray-900 font-mono">{{ selectedLog.email.messageId }}</p>
+                    </div>
+
+                    <div v-if="selectedLog.email.size">
+                      <label class="block text-sm font-medium text-gray-700">Size</label>
+                      <p class="mt-1 text-sm text-gray-900">{{ selectedLog.email.size }}</p>
+                    </div>
+                  </div>
+
+                  <!-- Attachments -->
+                  <div v-if="selectedLog.email.attachments && selectedLog.email.attachments.length > 0" class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700">Attachments</label>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                      <div
+                        v-for="(attachment, index) in selectedLog.email.attachments"
+                        :key="index"
+                        class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800"
+                      >
+                        <i class="i-hugeicons-attachment-01 h-4 w-4 mr-1" aria-hidden="true" />
+                        {{ attachment.name }} ({{ attachment.size }})
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Authentication Results -->
+                  <div v-if="selectedLog.email.authResults" class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700">Authentication Results</label>
+                    <div class="mt-2 grid grid-cols-3 gap-2">
+                      <div class="px-3 py-1 rounded-md text-sm font-medium"
+                        :class="{
+                          'bg-green-100 text-green-800': selectedLog.email.authResults.spf === 'pass',
+                          'bg-red-100 text-red-800': selectedLog.email.authResults.spf === 'fail',
+                          'bg-gray-100 text-gray-800': selectedLog.email.authResults.spf === 'neutral'
+                        }"
+                      >
+                        SPF: {{ selectedLog.email.authResults.spf }}
+                      </div>
+                      <div class="px-3 py-1 rounded-md text-sm font-medium"
+                        :class="{
+                          'bg-green-100 text-green-800': selectedLog.email.authResults.dkim === 'pass',
+                          'bg-red-100 text-red-800': selectedLog.email.authResults.dkim === 'fail',
+                          'bg-gray-100 text-gray-800': selectedLog.email.authResults.dkim === 'neutral'
+                        }"
+                      >
+                        DKIM: {{ selectedLog.email.authResults.dkim }}
+                      </div>
+                      <div class="px-3 py-1 rounded-md text-sm font-medium"
+                        :class="{
+                          'bg-green-100 text-green-800': selectedLog.email.authResults.dmarc === 'pass',
+                          'bg-red-100 text-red-800': selectedLog.email.authResults.dmarc === 'fail',
+                          'bg-gray-100 text-gray-800': selectedLog.email.authResults.dmarc === 'neutral'
+                        }"
+                      >
+                        DMARC: {{ selectedLog.email.authResults.dmarc }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Bounce Info -->
+                  <div v-if="selectedLog.email.bounceInfo" class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700">Bounce Information</label>
+                    <div class="mt-2 p-3 bg-red-50 rounded-md">
+                      <p class="text-sm text-red-800 font-medium">{{ selectedLog.email.bounceInfo.reason }}</p>
+                      <p class="text-xs text-red-700 mt-1">Code: {{ selectedLog.email.bounceInfo.code }}</p>
+                      <p class="text-xs text-red-700">Time: {{ new Date(selectedLog.email.bounceInfo.timestamp).toLocaleString() }}</p>
+                    </div>
+                  </div>
+
+                  <!-- User Interaction -->
+                  <div v-if="selectedLog.email.userInteraction" class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700">User Interaction</label>
+                    <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div class="p-2 bg-gray-50 rounded-md">
+                        <div class="flex items-center">
+                          <i
+                            :class="[
+                              selectedLog.email.userInteraction.opened ? 'i-hugeicons-checkmark-circle-02 text-green-500' : 'i-hugeicons-cancel-circle text-red-500',
+                              'h-5 w-5 mr-2'
+                            ]"
+                            aria-hidden="true"
+                          />
+                          <span class="text-sm font-medium">{{ selectedLog.email.userInteraction.opened ? 'Opened' : 'Not opened' }}</span>
+                        </div>
+                        <p v-if="selectedLog.email.userInteraction.openedAt" class="text-xs text-gray-500 mt-1 ml-7">
+                          {{ new Date(selectedLog.email.userInteraction.openedAt).toLocaleString() }}
+                        </p>
+                      </div>
+
+                      <div class="p-2 bg-gray-50 rounded-md">
+                        <div class="flex items-center">
+                          <i
+                            :class="[
+                              selectedLog.email.userInteraction.clicked ? 'i-hugeicons-checkmark-circle-02 text-green-500' : 'i-hugeicons-cancel-01-circle text-red-500',
+                              'h-5 w-5 mr-2'
+                            ]"
+                            aria-hidden="true"
+                          />
+                          <span class="text-sm font-medium">{{ selectedLog.email.userInteraction.clicked ? 'Clicked' : 'No clicks' }}</span>
+                        </div>
+                        <p v-if="selectedLog.email.userInteraction.clickedAt" class="text-xs text-gray-500 mt-1 ml-7">
+                          {{ new Date(selectedLog.email.userInteraction.clickedAt).toLocaleString() }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div v-if="selectedLog.email.userInteraction.links && selectedLog.email.userInteraction.links.length > 0" class="mt-2">
+                      <p class="text-xs text-gray-700 font-medium">Clicked links:</p>
+                      <ul class="mt-1 pl-7 list-disc">
+                        <li v-for="(link, index) in selectedLog.email.userInteraction.links" :key="index" class="text-xs text-blue-600">
+                          {{ link }}
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- CLI Command -->
+                  <div v-if="selectedLog.source === 'CLI' && selectedLog.metadata?.command" class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700">Command</label>
+                    <div class="mt-2 p-3 bg-gray-50 rounded-md font-mono text-sm">
+                      {{ selectedLog.metadata.command }}
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label class="block text-sm font-medium text-gray-700">Metadata</label>
-                  <pre class="mt-1 text-sm text-gray-900 bg-gray-50 p-3 rounded">{{ JSON.stringify(selectedLog.metadata, null, 2) }}</pre>
+                  <pre class="mt-1 text-sm text-gray-900 bg-gray-50 p-3 rounded overflow-x-auto">{{ JSON.stringify(selectedLog.metadata, null, 2) }}</pre>
                 </div>
               </div>
             </div>

@@ -1,14 +1,19 @@
-import type { Insertable, RawBuilder, Selectable, Updateable } from '@stacksjs/database'
+import type { Generated, Insertable, RawBuilder, Selectable, Updateable } from '@stacksjs/database'
 import type { Operator } from '@stacksjs/orm'
 import type { Stripe } from '@stacksjs/payments'
 import type { CheckoutLineItem, CheckoutOptions, StripeCustomerOptions } from '@stacksjs/types'
+import type { DeploymentModel } from './Deployment'
 import type { PaymentMethodModel, PaymentMethodsTable } from './PaymentMethod'
-import type { PaymentTransactionsTable } from './PaymentTransaction'
+import type { PaymentTransactionModel, PaymentTransactionsTable } from './PaymentTransaction'
+import type { PostModel } from './Post'
+import type { SubscriberModel } from './Subscriber'
 import type { SubscriptionModel } from './Subscription'
-import type { TransactionModel } from './Transaction'
 import { randomUUIDv7 } from 'bun'
+
 import { cache } from '@stacksjs/cache'
+
 import { sql } from '@stacksjs/database'
+
 import { HttpError, ModelNotFoundException } from '@stacksjs/error-handling'
 
 import { dispatch } from '@stacksjs/events'
@@ -19,14 +24,11 @@ import { manageCharge, manageCheckout, manageCustomer, manageInvoice, managePaym
 import Team from './Team'
 
 export interface UsersTable {
-  id?: number
-  subscriptions?: SubscriptionModel[] | undefined
-  payment_methods?: PaymentMethodModel[] | undefined
-  transactions?: TransactionModel[] | undefined
-  name?: string
-  email?: string
-  job_title?: string
-  password?: string
+  id: Generated<number>
+  name: string
+  email: string
+  job_title: string
+  password: string
   public_passkey?: string
   stripe_id?: string
   uuid?: string
@@ -37,7 +39,7 @@ export interface UsersTable {
 
 }
 
-interface UserResponse {
+export interface UserResponse {
   data: UserJsonResponse[]
   paging: {
     total_records: number
@@ -47,16 +49,15 @@ interface UserResponse {
   next_cursor: number | null
 }
 
-export interface UserJsonResponse extends Omit<UsersTable, 'password'> {
+export interface UserJsonResponse extends Omit<Selectable<UsersTable>, 'password'> {
   [key: string]: any
 }
 
-export type UserType = Selectable<UsersTable>
-export type NewUser = Partial<Insertable<UsersTable>>
+export type NewUser = Insertable<UsersTable>
 export type UserUpdate = Updateable<UsersTable>
 
       type SortDirection = 'asc' | 'desc'
-interface SortOptions { column: UserType, order: SortDirection }
+interface SortOptions { column: UserJsonResponse, order: SortDirection }
 // Define a type for the options parameter
 interface QueryOptions {
   sort?: SortOptions
@@ -69,8 +70,8 @@ export class UserModel {
   private readonly hidden: Array<keyof UserJsonResponse> = ['password']
   private readonly fillable: Array<keyof UserJsonResponse> = ['name', 'email', 'job_title', 'password', 'stripe_id', 'uuid', 'two_factor_secret', 'public_key']
   private readonly guarded: Array<keyof UserJsonResponse> = []
-  protected attributes: Partial<UserJsonResponse> = {}
-  protected originalAttributes: Partial<UserJsonResponse> = {}
+  protected attributes = {} as UserJsonResponse
+  protected originalAttributes = {} as UserJsonResponse
 
   protected selectFromQuery: any
   protected withRelations: string[]
@@ -80,7 +81,7 @@ export class UserModel {
   private hasSaved: boolean
   private customColumns: Record<string, unknown> = {}
 
-  constructor(user: Partial<UserType> | null) {
+  constructor(user: UserJsonResponse | undefined) {
     if (user) {
       this.attributes = { ...user }
       this.originalAttributes = { ...user }
@@ -141,7 +142,7 @@ export class UserModel {
     }
   }
 
-  async mapCustomSetters(model: UserJsonResponse): Promise<void> {
+  async mapCustomSetters(model: NewUser | UserUpdate): Promise<void> {
     const customSetter = {
       default: () => {
       },
@@ -155,19 +156,31 @@ export class UserModel {
     }
   }
 
-  get subscriptions(): SubscriptionModel[] | undefined {
+  get subscriber(): SubscriberModel | undefined {
+    return this.attributes.subscriber
+  }
+
+  get deployments(): DeploymentModel[] | [] {
+    return this.attributes.deployments
+  }
+
+  get subscriptions(): SubscriptionModel[] | [] {
     return this.attributes.subscriptions
   }
 
-  get payment_methods(): PaymentMethodModel[] | undefined {
+  get payment_methods(): PaymentMethodModel[] | [] {
     return this.attributes.payment_methods
   }
 
-  get transactions(): TransactionModel[] | undefined {
-    return this.attributes.transactions
+  get posts(): PostModel[] | [] {
+    return this.attributes.posts
   }
 
-  get id(): number | undefined {
+  get payment_transactions(): PaymentTransactionModel[] | [] {
+    return this.attributes.payment_transactions
+  }
+
+  get id(): number {
     return this.attributes.id
   }
 
@@ -183,19 +196,19 @@ export class UserModel {
     return this.attributes.public_passkey
   }
 
-  get name(): string | undefined {
+  get name(): string {
     return this.attributes.name
   }
 
-  get email(): string | undefined {
+  get email(): string {
     return this.attributes.email
   }
 
-  get job_title(): string | undefined {
+  get job_title(): string {
     return this.attributes.job_title
   }
 
-  get password(): string | undefined {
+  get password(): string {
     return this.attributes.password
   }
 
@@ -260,7 +273,7 @@ export class UserModel {
     }, {})
   }
 
-  isDirty(column?: keyof UserType): boolean {
+  isDirty(column?: keyof UserJsonResponse): boolean {
     if (column) {
       return this.attributes[column] !== this.originalAttributes[column]
     }
@@ -272,15 +285,15 @@ export class UserModel {
     })
   }
 
-  isClean(column?: keyof UserType): boolean {
+  isClean(column?: keyof UserJsonResponse): boolean {
     return !this.isDirty(column)
   }
 
-  wasChanged(column?: keyof UserType): boolean {
+  wasChanged(column?: keyof UserJsonResponse): boolean {
     return this.hasSaved && this.isDirty(column)
   }
 
-  select(params: (keyof UserType)[] | RawBuilder<string> | string): UserModel {
+  select(params: (keyof UserJsonResponse)[] | RawBuilder<string> | string): UserModel {
     this.selectFromQuery = this.selectFromQuery.select(params)
 
     this.hasSelect = true
@@ -288,8 +301,8 @@ export class UserModel {
     return this
   }
 
-  static select(params: (keyof UserType)[] | RawBuilder<string> | string): UserModel {
-    const instance = new UserModel(null)
+  static select(params: (keyof UserJsonResponse)[] | RawBuilder<string> | string): UserModel {
+    const instance = new UserModel(undefined)
 
     // Initialize a query with the table name and selected fields
     instance.selectFromQuery = instance.selectFromQuery.select(params)
@@ -308,7 +321,7 @@ export class UserModel {
     this.mapCustomGetters(model)
     await this.loadRelations(model)
 
-    const data = new UserModel(model as UserType)
+    const data = new UserModel(model)
 
     cache.getOrSet(`user:${id}`, JSON.stringify(model))
 
@@ -321,13 +334,13 @@ export class UserModel {
 
   // Method to find a User by ID
   static async find(id: number): Promise<UserModel | undefined> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return await instance.applyFind(id)
   }
 
   async first(): Promise<UserModel | undefined> {
-    let model: UserModel | undefined
+    let model: UserJsonResponse | undefined
 
     if (this.hasSelect) {
       model = await this.selectFromQuery.executeTakeFirst()
@@ -341,13 +354,13 @@ export class UserModel {
       await this.loadRelations(model)
     }
 
-    const data = new UserModel(model as UserType)
+    const data = new UserModel(model)
 
     return data
   }
 
   static async first(): Promise<UserModel | undefined> {
-    const instance = new UserModel(null)
+    const instance = new UserJsonResponse(null)
 
     const model = await DB.instance.selectFrom('users')
       .selectAll()
@@ -355,7 +368,7 @@ export class UserModel {
 
     instance.mapCustomGetters(model)
 
-    const data = new UserModel(model as UserType)
+    const data = new UserModel(model)
 
     return data
   }
@@ -371,7 +384,7 @@ export class UserModel {
       await this.loadRelations(model)
     }
 
-    const data = new UserModel(model as UserType)
+    const data = new UserModel(model)
 
     return data
   }
@@ -381,19 +394,19 @@ export class UserModel {
   }
 
   static async firstOrFail(): Promise<UserModel | undefined> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return await instance.applyFirstOrFail()
   }
 
   static async all(): Promise<UserModel[]> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     const models = await DB.instance.selectFrom('users').selectAll().execute()
 
     instance.mapCustomGetters(models)
 
-    const data = await Promise.all(models.map(async (model: UserType) => {
+    const data = await Promise.all(models.map(async (model: UserJsonResponse) => {
       return new UserModel(model)
     }))
 
@@ -411,7 +424,7 @@ export class UserModel {
     this.mapCustomGetters(model)
     await this.loadRelations(model)
 
-    const data = new UserModel(model as UserType)
+    const data = new UserModel(model)
 
     return data
   }
@@ -421,7 +434,7 @@ export class UserModel {
   }
 
   static async findOrFail(id: number): Promise<UserModel> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return await instance.applyFindOrFail(id)
   }
@@ -429,7 +442,7 @@ export class UserModel {
   async applyFindMany(ids: number[]): Promise<UserModel[]> {
     let query = DB.instance.selectFrom('users').where('id', 'in', ids)
 
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     query = query.selectAll()
 
@@ -438,11 +451,11 @@ export class UserModel {
     instance.mapCustomGetters(models)
     await instance.loadRelations(models)
 
-    return models.map((modelItem: UserModel) => instance.parseResult(new UserModel(modelItem)))
+    return models.map((modelItem: UserJsonResponse) => instance.parseResult(new UserModel(modelItem)))
   }
 
   static async findMany(ids: number[]): Promise<UserModel[]> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return await instance.applyFindMany(ids)
   }
@@ -458,7 +471,7 @@ export class UserModel {
   }
 
   static skip(count: number): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.offset(count)
 
@@ -496,7 +509,7 @@ export class UserModel {
   }
 
   static async chunk(size: number, callback: (models: UserModel[]) => Promise<void>): Promise<void> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     await instance.applyChunk(size, callback)
   }
@@ -508,7 +521,7 @@ export class UserModel {
   }
 
   static take(count: number): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.limit(count)
 
@@ -516,7 +529,7 @@ export class UserModel {
   }
 
   static async pluck<K extends keyof UserModel>(field: K): Promise<UserModel[K][]> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     if (instance.hasSelect) {
       const model = await instance.selectFromQuery.execute()
@@ -529,11 +542,18 @@ export class UserModel {
   }
 
   async pluck<K extends keyof UserModel>(field: K): Promise<UserModel[K][]> {
-    return UserModel.pluck(field)
+    if (this.hasSelect) {
+      const model = await this.selectFromQuery.execute()
+      return model.map((modelItem: UserModel) => modelItem[field])
+    }
+
+    const model = await this.selectFromQuery.selectAll().execute()
+
+    return model.map((modelItem: UserModel) => modelItem[field])
   }
 
   static async count(): Promise<number> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`COUNT(*) as count`)
@@ -551,7 +571,7 @@ export class UserModel {
   }
 
   static async max(field: keyof UserModel): Promise<number> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`MAX(${sql.raw(field as string)}) as max `)
@@ -569,7 +589,7 @@ export class UserModel {
   }
 
   static async min(field: keyof UserModel): Promise<number> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`MIN(${sql.raw(field as string)}) as min `)
@@ -587,7 +607,7 @@ export class UserModel {
   }
 
   static async avg(field: keyof UserModel): Promise<number> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`AVG(${sql.raw(field as string)}) as avg `)
@@ -605,7 +625,7 @@ export class UserModel {
   }
 
   static async sum(field: keyof UserModel): Promise<number> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     const result = await instance.selectFromQuery
       .select(sql`SUM(${sql.raw(field as string)}) as sum `)
@@ -635,7 +655,7 @@ export class UserModel {
     this.mapCustomGetters(models)
     await this.loadRelations(models)
 
-    const data = await Promise.all(models.map(async (model: UserModel) => {
+    const data = await Promise.all(models.map(async (model: UserJsonResponse) => {
       return new UserModel(model)
     }))
 
@@ -647,7 +667,7 @@ export class UserModel {
   }
 
   static async get(): Promise<UserModel[]> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return await instance.applyGet()
   }
@@ -665,7 +685,7 @@ export class UserModel {
   }
 
   static has(relation: string): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
       exists(
@@ -679,7 +699,7 @@ export class UserModel {
   }
 
   static whereExists(callback: (qb: any) => any): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
       exists(callback({ exists, selectFrom })),
@@ -761,7 +781,7 @@ export class UserModel {
     relation: string,
     callback: (query: SubqueryBuilder<keyof UserModel>) => void,
   ): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return instance.applyWhereHas(relation, callback)
   }
@@ -785,7 +805,7 @@ export class UserModel {
   }
 
   static doesntHave(relation: string): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return instance.applyDoesntHave(relation)
   }
@@ -854,7 +874,7 @@ export class UserModel {
     relation: string,
     callback: (query: SubqueryBuilder<UsersTable>) => void,
   ): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return instance.applyWhereDoesntHave(relation, callback)
   }
@@ -895,7 +915,7 @@ export class UserModel {
 
   // Method to get all users
   static async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<UserResponse> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return await instance.applyPaginate(options)
   }
@@ -928,13 +948,13 @@ export class UserModel {
   }
 
   static async create(newUser: NewUser): Promise<UserModel> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return await instance.applyCreate(newUser)
   }
 
   static async createMany(newUser: NewUser[]): Promise<void> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     const valuesFiltered = newUser.map((newUser: NewUser) => {
       const filteredValues = Object.fromEntries(
@@ -968,7 +988,7 @@ export class UserModel {
 
   // Method to remove a User
   static async remove(id: number): Promise<any> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     const model = await instance.find(Number(id))
 
@@ -1002,7 +1022,7 @@ export class UserModel {
   }
 
   static where<V = string>(column: keyof UsersTable, ...args: [V] | [Operator, V]): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return instance.applyWhere<V>(column, ...args)
   }
@@ -1014,7 +1034,7 @@ export class UserModel {
   }
 
   static whereColumn(first: keyof UsersTable, operator: Operator, second: keyof UsersTable): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.whereRef(first, operator, second)
 
@@ -1026,7 +1046,7 @@ export class UserModel {
     const operator = value === undefined ? '=' : operatorOrValue
     const actualValue = value === undefined ? operatorOrValue : value
 
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
     instance.selectFromQuery = instance.selectFromQuery.whereRef(column, operator, actualValue)
 
     return instance
@@ -1037,7 +1057,7 @@ export class UserModel {
   }
 
   static whereRef(column: keyof UsersTable, ...args: string[]): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return instance.applyWhereRef(column, ...args)
   }
@@ -1049,7 +1069,7 @@ export class UserModel {
   }
 
   static whereRaw(sqlStatement: string): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where(sql`${sqlStatement}`)
 
@@ -1083,7 +1103,7 @@ export class UserModel {
   }
 
   static orWhere(...conditions: [string, any][]): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return instance.applyOrWhere(...conditions)
   }
@@ -1099,7 +1119,7 @@ export class UserModel {
     condition: boolean,
     callback: (query: UserModel) => UserModel,
   ): UserModel {
-    let instance = new UserModel(null)
+    let instance = new UserModel(undefined)
 
     if (condition)
       instance = callback(instance)
@@ -1124,7 +1144,7 @@ export class UserModel {
   }
 
   static whereNotNull(column: keyof UsersTable): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
       eb(column, '=', '').or(column, 'is not', null),
@@ -1158,7 +1178,7 @@ export class UserModel {
   }
 
   static whereNull(column: keyof UsersTable): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
       eb(column, '=', '').or(column, 'is', null),
@@ -1176,7 +1196,7 @@ export class UserModel {
   }
 
   static whereName(value: string): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('name', '=', value)
 
@@ -1184,7 +1204,7 @@ export class UserModel {
   }
 
   static whereEmail(value: string): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('email', '=', value)
 
@@ -1192,7 +1212,7 @@ export class UserModel {
   }
 
   static whereJobTitle(value: string): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('jobTitle', '=', value)
 
@@ -1200,7 +1220,7 @@ export class UserModel {
   }
 
   static wherePassword(value: string): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.where('password', '=', value)
 
@@ -1222,7 +1242,7 @@ export class UserModel {
   }
 
   static whereIn<V = number>(column: keyof UsersTable, values: V[]): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return instance.applyWhereIn<V>(column, values)
   }
@@ -1246,7 +1266,7 @@ export class UserModel {
   }
 
   static whereBetween<V = number>(column: keyof UsersTable, range: [V, V]): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return instance.applyWhereBetween<V>(column, range)
   }
@@ -1266,7 +1286,7 @@ export class UserModel {
   }
 
   static whereLike(column: keyof UsersTable, value: string): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return instance.applyWhereLike(column, value)
   }
@@ -1286,7 +1306,7 @@ export class UserModel {
   }
 
   static whereNotIn<V = number>(column: keyof UsersTable, values: V[]): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     return instance.applyWhereNotIn<V>(column, values)
   }
@@ -1304,8 +1324,8 @@ export class UserModel {
     return model !== null && model !== undefined
   }
 
-  static async latest(): Promise<UserType | undefined> {
-    const instance = new UserModel(null)
+  static async latest(): Promise<UserModel | undefined> {
+    const instance = new UserModel(undefined)
 
     const model = await DB.instance.selectFrom('users')
       .selectAll()
@@ -1317,13 +1337,13 @@ export class UserModel {
 
     instance.mapCustomGetters(model)
 
-    const data = new UserModel(model as UserType)
+    const data = new UserModel(model)
 
     return data
   }
 
-  static async oldest(): Promise<UserType | undefined> {
-    const instance = new UserModel(null)
+  static async oldest(): Promise<UserModel | undefined> {
+    const instance = new UserModel(undefined)
 
     const model = await DB.instance.selectFrom('users')
       .selectAll()
@@ -1335,18 +1355,18 @@ export class UserModel {
 
     instance.mapCustomGetters(model)
 
-    const data = new UserModel(model as UserType)
+    const data = new UserModel(model)
 
     return data
   }
 
   static async firstOrCreate(
-    condition: Partial<UserType>,
+    condition: Partial<UserJsonResponse>,
     newUser: NewUser,
   ): Promise<UserModel> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
-    const key = Object.keys(condition)[0] as keyof UserType
+    const key = Object.keys(condition)[0] as keyof UserJsonResponse
 
     if (!key) {
       throw new HttpError(500, 'Condition must contain at least one key-value pair')
@@ -1364,7 +1384,7 @@ export class UserModel {
       instance.mapCustomGetters(existingUser)
       await instance.loadRelations(existingUser)
 
-      return new UserModel(existingUser as UserType)
+      return new UserModel(existingUser as UserJsonResponse)
     }
     else {
       return await instance.create(newUser)
@@ -1372,12 +1392,12 @@ export class UserModel {
   }
 
   static async updateOrCreate(
-    condition: Partial<UserType>,
+    condition: Partial<UserJsonResponse>,
     newUser: NewUser,
   ): Promise<UserModel> {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
-    const key = Object.keys(condition)[0] as keyof UserType
+    const key = Object.keys(condition)[0] as keyof UserJsonResponse
 
     if (!key) {
       throw new HttpError(500, 'Condition must contain at least one key-value pair')
@@ -1410,7 +1430,7 @@ export class UserModel {
 
       instance.hasSaved = true
 
-      return new UserModel(updatedUser as UserType)
+      return new UserModel(updatedUser as UserJsonResponse)
     }
     else {
       // If not found, create a new record
@@ -1460,15 +1480,15 @@ export class UserModel {
   }
 
   static with(relations: string[]): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.withRelations = relations
 
     return instance
   }
 
-  async last(): Promise<UserType | undefined> {
-    let model: UserModel | undefined
+  async last(): Promise<UserModel | undefined> {
+    let model: UserJsonResponse | undefined
 
     if (this.hasSelect) {
       model = await this.selectFromQuery.executeTakeFirst()
@@ -1482,18 +1502,18 @@ export class UserModel {
       await this.loadRelations(model)
     }
 
-    const data = new UserModel(model as UserType)
+    const data = new UserModel(model)
 
     return data
   }
 
-  static async last(): Promise<UserType | undefined> {
+  static async last(): Promise<UserModel | undefined> {
     const model = await DB.instance.selectFrom('users').selectAll().orderBy('id', 'desc').executeTakeFirst()
 
     if (!model)
       return undefined
 
-    const data = new UserModel(model as UserType)
+    const data = new UserModel(model)
 
     return data
   }
@@ -1505,7 +1525,7 @@ export class UserModel {
   }
 
   static orderBy(column: keyof UsersTable, order: 'asc' | 'desc'): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(column, order)
 
@@ -1519,7 +1539,7 @@ export class UserModel {
   }
 
   static groupBy(column: keyof UsersTable): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.groupBy(column)
 
@@ -1533,7 +1553,7 @@ export class UserModel {
   }
 
   static having<V = string>(column: keyof UsersTable, operator: Operator, value: V): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.having(column, operator, value)
 
@@ -1547,7 +1567,7 @@ export class UserModel {
   }
 
   static inRandomOrder(): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(sql` ${sql.raw('RANDOM()')} `)
 
@@ -1561,7 +1581,7 @@ export class UserModel {
   }
 
   static orderByDesc(column: keyof UsersTable): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'desc')
 
@@ -1575,7 +1595,7 @@ export class UserModel {
   }
 
   static orderByAsc(column: keyof UsersTable): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'asc')
 
@@ -1652,7 +1672,7 @@ export class UserModel {
     this.hasSaved = true
   }
 
-  fill(data: Partial<UserType>): UserModel {
+  fill(data: Partial<UserJsonResponse>): UserModel {
     const filteredValues = Object.fromEntries(
       Object.entries(data).filter(([key]) =>
         !this.guarded.includes(key) && this.fillable.includes(key),
@@ -1667,7 +1687,7 @@ export class UserModel {
     return this
   }
 
-  forceFill(data: Partial<UserType>): UserModel {
+  forceFill(data: Partial<UserJsonResponse>): UserModel {
     this.attributes = {
       ...this.attributes,
       ...data,
@@ -1708,7 +1728,7 @@ export class UserModel {
     return relationResults
   }
 
-  toSearchableObject(): Partial<UsersTable> {
+  toSearchableObject(): Partial<UserJsonResponse> {
     return {
       id: this.id,
       job_title: this.job_title,
@@ -1750,7 +1770,7 @@ export class UserModel {
     return customer
   }
 
-  async defaultPaymentMethod(): Promise<PaymentMethodsTable | undefined> {
+  async defaultPaymentMethod(): Promise<PaymentMethodModel | undefined> {
     const defaultPaymentMethod = await managePaymentMethod.retrieveDefaultPaymentMethod(this)
 
     return defaultPaymentMethod
@@ -1960,7 +1980,7 @@ export class UserModel {
     return await manageCheckout.create(this, mergedOptions)
   }
 
-  distinct(column: keyof UserType): UserModel {
+  distinct(column: keyof UserJsonResponse): UserModel {
     this.selectFromQuery = this.selectFromQuery.select(column).distinct()
 
     this.hasSelect = true
@@ -1968,8 +1988,8 @@ export class UserModel {
     return this
   }
 
-  static distinct(column: keyof UserType): UserModel {
-    const instance = new UserModel(null)
+  static distinct(column: keyof UserJsonResponse): UserModel {
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.select(column).distinct()
 
@@ -1985,15 +2005,17 @@ export class UserModel {
   }
 
   static join(table: string, firstCol: string, secondCol: string): UserModel {
-    const instance = new UserModel(null)
+    const instance = new UserModel(undefined)
 
     instance.selectFromQuery = instance.selectFromQuery.innerJoin(table, firstCol, secondCol)
 
     return instance
   }
 
-  toJSON(): Partial<UserJsonResponse> {
-    const output: Partial<UserJsonResponse> = {
+  toJSON(): UserJsonResponse {
+    const output = {
+
+      uuid: this.uuid,
 
       id: this.id,
       name: this.name,
@@ -2005,9 +2027,11 @@ export class UserModel {
 
       updated_at: this.updated_at,
 
+      deployments: this.deployments,
       subscriptions: this.subscriptions,
       payment_methods: this.payment_methods,
-      transactions: this.transactions,
+      posts: this.posts,
+      payment_transactions: this.payment_transactions,
       ...this.customColumns,
     }
 
@@ -2060,30 +2084,30 @@ export async function remove(id: number): Promise<void> {
 
 export async function whereName(value: string): Promise<UserModel[]> {
   const query = DB.instance.selectFrom('users').where('name', '=', value)
-  const results = await query.execute()
+  const results: UserJsonResponse = await query.execute()
 
-  return results.map((modelItem: UserModel) => new UserModel(modelItem))
+  return results.map((modelItem: UserJsonResponse) => new UserModel(modelItem))
 }
 
 export async function whereEmail(value: string): Promise<UserModel[]> {
   const query = DB.instance.selectFrom('users').where('email', '=', value)
-  const results = await query.execute()
+  const results: UserJsonResponse = await query.execute()
 
-  return results.map((modelItem: UserModel) => new UserModel(modelItem))
+  return results.map((modelItem: UserJsonResponse) => new UserModel(modelItem))
 }
 
 export async function whereJobTitle(value: string): Promise<UserModel[]> {
   const query = DB.instance.selectFrom('users').where('job_title', '=', value)
-  const results = await query.execute()
+  const results: UserJsonResponse = await query.execute()
 
-  return results.map((modelItem: UserModel) => new UserModel(modelItem))
+  return results.map((modelItem: UserJsonResponse) => new UserModel(modelItem))
 }
 
 export async function wherePassword(value: string): Promise<UserModel[]> {
   const query = DB.instance.selectFrom('users').where('password', '=', value)
-  const results = await query.execute()
+  const results: UserJsonResponse = await query.execute()
 
-  return results.map((modelItem: UserModel) => new UserModel(modelItem))
+  return results.map((modelItem: UserJsonResponse) => new UserModel(modelItem))
 }
 
 export const User = UserModel
