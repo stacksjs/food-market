@@ -1,5 +1,17 @@
 import { route } from '@stacksjs/router'
 
+route.get('payments', 'PaymentIndexOrmAction')
+
+route.post('payments', 'PaymentStoreOrmAction')
+
+route.get('payments/{id}', 'PaymentShowOrmAction')
+
+route.get('product-manufacturers', 'ManufacturerIndexOrmAction')
+
+route.post('product-manufacturers', 'ManufacturerStoreOrmAction')
+
+route.get('product-manufacturers/{id}', 'ManufacturerShowOrmAction')
+
 route.get('customers', 'CustomerIndexOrmAction')
 
 route.post('customers', 'CustomerStoreOrmAction')
@@ -21,16 +33,6 @@ route.get('products', 'ProductIndexOrmAction')
 route.post('products', 'ProductStoreOrmAction')
 
 route.get('products/{id}', 'ProductShowOrmAction')
-
-route.get('requests', 'storage/framework/actions/src/RequestIndexOrmAction.ts')
-
-route.get('requests/{id}', 'storage/framework/actions/src/RequestShowOrmAction.ts')
-
-route.post('requests', 'storage/framework/actions/src/RequestStoreOrmAction.ts')
-
-route.patch('requests/{id}', 'storage/framework/actions/src/RequestUpdateOrmAction.ts')
-
-route.delete('requests/{id}', 'storage/framework/actions/src/RequestDestroyOrmAction.ts')
 
 route.get('gift-cards', 'GiftCardIndexOrmAction')
 
@@ -62,6 +64,12 @@ route.post('loyalty-points', 'LoyaltyPointStoreOrmAction')
 
 route.get('loyalty-points/{id}', 'LoyaltyPointShowOrmAction')
 
+route.get('product-items', 'ProductItemIndexOrmAction')
+
+route.post('product-items', 'ProductItemStoreOrmAction')
+
+route.get('product-items/{id}', 'ProductItemShowOrmAction')
+
 route.get('loyalty-rewards', 'LoyaltyRewardIndexOrmAction')
 
 route.post('loyalty-rewards', 'LoyaltyRewardStoreOrmAction')
@@ -73,3 +81,13 @@ route.get('product-categories', 'ProductCategoryIndexOrmAction')
 route.post('product-categories', 'ProductCategoryStoreOrmAction')
 
 route.get('product-categories/{id}', 'ProductCategoryShowOrmAction')
+
+route.get('requests', 'storage/framework/actions/src/RequestIndexOrmAction.ts')
+
+route.get('requests/{id}', 'storage/framework/actions/src/RequestShowOrmAction.ts')
+
+route.post('requests', 'storage/framework/actions/src/RequestStoreOrmAction.ts')
+
+route.patch('requests/{id}', 'storage/framework/actions/src/RequestUpdateOrmAction.ts')
+
+route.delete('requests/{id}', 'storage/framework/actions/src/RequestDestroyOrmAction.ts')

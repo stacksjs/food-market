@@ -29,14 +29,23 @@ export interface Attributes {
   password: string
   title: string
   body: string
+  amount: number
+  method: string
+  date: Date | string
+  currency: string
+  reference_number: string
+  card_last_four: string
+  card_brand: string
+  transaction_id: string
+  payment_provider: string
+  refund_amount: number
+  notes: string
+  manufacturer: string
+  country: string
+  featured: boolean
   quantity: number
   price: number
   special_instructions: string
-  connection: string
-  queue: string
-  payload: string
-  exception: string
-  failed_at: Date | string
   phone: string
   total_spent: number
   last_order: string
@@ -56,24 +65,9 @@ export interface Attributes {
   preparation_time: number
   allergens: string
   nutritional_info: string
-  type: string
-  last_four: number
-  brand: string
-  exp_month: number
-  exp_year: number
-  is_default: boolean
-  provider_id: string
-  amount: number
-  method: string | string[]
-  status_code: number
-  duration_ms: number
-  memory_usage: number
-  user_agent: string
-  error_message: string
   code: string
   initial_balance: number
   current_balance: number
-  currency: string
   purchaser_id: string
   recipient_email: string
   recipient_name: string
@@ -81,8 +75,8 @@ export interface Attributes {
   is_digital: boolean
   is_reloadable: boolean
   is_active: boolean
-  expiry_date: string
-  last_used_date: string
+  expiry_date: Date | string
+  last_used_date: Date | string
   template_id: string
   total_amount: number
   tax_amount: number
@@ -100,8 +94,8 @@ export interface Attributes {
   free_product_id: string
   usage_limit: number
   usage_count: number
-  start_date: string
-  end_date: string
+  start_date: Date | string
+  end_date: Date | string
   applicable_products: string
   applicable_categories: string
   payment_method: string
@@ -114,6 +108,33 @@ export interface Attributes {
   source: string
   source_reference_id: string
   is_used: boolean
+  size: string
+  color: string
+  sku: string
+  custom_options: string
+  points_required: number
+  reward_type: string
+  discount_percentage: number
+  expiry_days: number
+  parent_category_id: string
+  display_order: number
+  connection: string
+  queue: string
+  payload: string
+  exception: string
+  failed_at: Date | string
+  type: string
+  last_four: number
+  brand: string
+  exp_month: number
+  exp_year: number
+  is_default: boolean
+  provider_id: string
+  status_code: number
+  duration_ms: number
+  memory_usage: number
+  user_agent: string
+  error_message: string
   attempts: number
   available_at: number
   reserved_at: Date | string
@@ -125,13 +146,7 @@ export interface Attributes {
   ends_at: string
   key: number
   image: string
-  points_required: number
-  reward_type: string
-  discount_percentage: number
-  expiry_days: number
   message: string
   stack: string
   additional_info: string
-  parent_category_id: string
-  display_order: number
 }

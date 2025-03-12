@@ -16,7 +16,7 @@ import type {
 import { generator, parser, traverse } from '@stacksjs/build'
 import { italic, log } from '@stacksjs/cli'
 import { handleError } from '@stacksjs/error-handling'
-import { path } from '@stacksjs/path'
+import { findCoreModel, findUserModel, path } from '@stacksjs/path'
 import { fs, globSync } from '@stacksjs/storage'
 import { camelCase, kebabCase, plural, singular, snakeCase } from '@stacksjs/strings'
 import { isString } from '@stacksjs/validation'
@@ -122,10 +122,10 @@ async function processHasThrough(relationInstance: ModelNames | BaseHasOneThroug
     throughForeignKey = relationInstance.throughForeignKey || ''
   }
 
-  const modelRelationPath = path.userModelsPath(`${relationModel}.ts`)
-  const userModelPath = path.userModelsPath(`${modelName}.ts`)
-  const coreModelPath = path.storagePath(`framework/defaults/models/${modelName}.ts`)
-  const coreModelRelationPath = path.storagePath(`framework/defaults/models/${relationModel}.ts`)
+  const modelRelationPath = findUserModel(`${relationModel}.ts`)
+  const userModelPath = findUserModel(`${modelName}.ts`)
+  const coreModelPath = findCoreModel(`${modelName}.ts`)
+  const coreModelRelationPath = findCoreModel(`${relationModel}.ts`)
 
   if (fs.existsSync(modelRelationPath))
     modelRelation = (await import(modelRelationPath)).default as Model
@@ -179,10 +179,10 @@ async function processBelongsToMany(relationInstance: ModelNames | BaseBelongsTo
     pivotForeign = relationInstance.firstForeignKey || `${formattedModelName}_id`
   }
 
-  const modelRelationPath = path.userModelsPath(`${relationModel}.ts`)
-  const userModelPath = path.userModelsPath(`${modelName}.ts`)
-  const coreModelPath = path.storagePath(`framework/defaults/models/${modelName}.ts`)
-  const coreModelRelationPath = path.storagePath(`framework/defaults/models/${relationModel}.ts`)
+  const modelRelationPath = findUserModel(`${relationModel}.ts`)
+  const userModelPath = findUserModel(`${modelName}.ts`)
+  const coreModelPath = findCoreModel(`${modelName}.ts`)
+  const coreModelRelationPath = findCoreModel(`${relationModel}.ts`)
 
   if (fs.existsSync(modelRelationPath))
     modelRelation = (await import(modelRelationPath)).default as Model
@@ -238,10 +238,10 @@ async function processMorphOne(relationInstance: ModelNames | MorphOne<ModelName
   }
 
   // Load the related model
-  const modelRelationPath = path.userModelsPath(`${relationModel}.ts`)
-  const userModelPath = path.userModelsPath(`${modelName}.ts`)
-  const coreModelPath = path.storagePath(`framework/defaults/models/${modelName}.ts`)
-  const coreModelRelationPath = path.storagePath(`framework/defaults/models/${relationModel}.ts`)
+  const modelRelationPath = findUserModel(`${relationModel}.ts`)
+  const userModelPath = findUserModel(`${modelName}.ts`)
+  const coreModelPath = findCoreModel(`${modelName}.ts`)
+  const coreModelRelationPath = findCoreModel(`${relationModel}.ts`)
 
   let modelRelation: Model
   if (fs.existsSync(modelRelationPath)) {
@@ -291,10 +291,10 @@ async function processHasOneAndMany(relationInstance: ModelNames | Relation<Mode
     relationName = relationInstance.relationName || ''
   }
 
-  const modelRelationPath = path.userModelsPath(`${relationModel}.ts`)
-  const userModelPath = path.userModelsPath(`${modelName}.ts`)
-  const coreModelPath = path.storagePath(`framework/defaults/models/${modelName}.ts`)
-  const coreModelRelationPath = path.storagePath(`framework/defaults/models/${relationModel}.ts`)
+  const modelRelationPath = findUserModel(`${relationModel}.ts`)
+  const userModelPath = findUserModel(`${modelName}.ts`)
+  const coreModelPath = findCoreModel(`${modelName}.ts`)
+  const coreModelRelationPath = findCoreModel(`${relationModel}.ts`)
 
   if (fs.existsSync(modelRelationPath))
     modelRelation = (await import(modelRelationPath)).default as Model
@@ -419,7 +419,7 @@ export async function getPivotTables(
 }
 
 export async function fetchOtherModelRelations(modelName?: string): Promise<RelationConfig[]> {
-  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/*.ts')], { absolute: true })
+  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
 
   const modelRelations = []
 
@@ -512,7 +512,7 @@ export function getFillableAttributes(model: Model, otherModelRelations: Relatio
 }
 
 export async function writeModelNames(): Promise<void> {
-  const models = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/*.ts')], { absolute: true })
+  const models = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
   let fileString = `export type ModelNames = `
 
   for (let i = 0; i < models.length; i++) {
@@ -537,7 +537,7 @@ export async function writeModelNames(): Promise<void> {
 }
 
 export async function writeTableNames(): Promise<void> {
-  const models = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/*.ts')], { absolute: true })
+  const models = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
 
   let fileString = `export type TableNames = `
 
@@ -570,7 +570,7 @@ export async function writeTableNames(): Promise<void> {
 }
 
 export async function writeModelAttributes(): Promise<void> {
-  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/*.ts')], { absolute: true })
+  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
   let fieldString = `export interface Attributes { \n`
   const attributesTypeFile = path.frameworkPath('types/attributes.ts')
 
@@ -606,7 +606,7 @@ export async function writeModelAttributes(): Promise<void> {
 }
 
 export async function writeModelEvents(): Promise<void> {
-  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/*.ts')], { absolute: true })
+  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
   let eventString = ``
   let observerString = ``
   let observerImports = ``
@@ -646,7 +646,7 @@ export async function writeModelEvents(): Promise<void> {
 }
 
 export async function writeModelRequest(): Promise<void> {
-  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/*.ts')], { absolute: true })
+  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
 
   let importTypes = ``
   let importTypesString = ``
@@ -1174,7 +1174,7 @@ export async function deleteExistingOrmRoute(): Promise<void> {
 }
 
 export async function generateKyselyTypes(): Promise<void> {
-  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/*.ts')], { absolute: true })
+  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
 
   let text = ``
 
@@ -1351,7 +1351,7 @@ export async function generateModelFiles(modelStringFile?: string): Promise<void
 
     log.info('Generating API Routes...')
     const modelFiles = globSync([path.userModelsPath('**/*.ts')], { absolute: true })
-    const coreModelFiles = globSync([path.storagePath('framework/defaults/models/*.ts')], { absolute: true })
+    const coreModelFiles = globSync([path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
     await generateApiRoutes(modelFiles)
     await generateApiRoutes(coreModelFiles)
     log.success('Generated API Routes')

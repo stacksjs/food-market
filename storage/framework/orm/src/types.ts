@@ -8,14 +8,17 @@ import type { GiftCardsTable } from '../src/models/GiftCard'
 import type { JobsTable } from '../src/models/Job'
 import type { LoyaltyPointsTable } from '../src/models/LoyaltyPoint'
 import type { LoyaltyRewardsTable } from '../src/models/LoyaltyReward'
+import type { ManufacturersTable } from '../src/models/Manufacturer'
 import type { OrdersTable } from '../src/models/Order'
 import type { OrderItemsTable } from '../src/models/OrderItem'
+import type { PaymentsTable } from '../src/models/Payment'
 import type { PaymentMethodsTable } from '../src/models/PaymentMethod'
 import type { PaymentProductsTable } from '../src/models/PaymentProduct'
 import type { PaymentTransactionsTable } from '../src/models/PaymentTransaction'
 import type { PostsTable } from '../src/models/Post'
 import type { ProductsTable } from '../src/models/Product'
 import type { ProductCategoriesTable } from '../src/models/ProductCategory'
+import type { ProductItemsTable } from '../src/models/ProductItem'
 import type { ProductReviewsTable } from '../src/models/ProductReview'
 import type { ProjectsTable } from '../src/models/Project'
 import type { ReleasesTable } from '../src/models/Release'
@@ -69,25 +72,28 @@ export interface Database {
   releases: ReleasesTable
   users: UsersTable
   posts: PostsTable
+  payments: PaymentsTable
+  manufacturers: ManufacturersTable
   order_items: OrderItemsTable
-  failed_jobs: FailedJobsTable
   customers: CustomersTable
   product_reviews: ProductReviewsTable
   products: ProductsTable
-  payment_methods: PaymentMethodsTable
-  payment_transactions: PaymentTransactionsTable
-  requests: RequestsTable
   gift_cards: GiftCardsTable
   orders: OrdersTable
   coupons: CouponsTable
   transactions: TransactionsTable
   loyalty_points: LoyaltyPointsTable
+  product_items: ProductItemsTable
+  loyalty_rewards: LoyaltyRewardsTable
+  product_categories: ProductCategoriesTable
+  failed_jobs: FailedJobsTable
+  payment_methods: PaymentMethodsTable
+  payment_transactions: PaymentTransactionsTable
+  requests: RequestsTable
   jobs: JobsTable
   subscriptions: SubscriptionsTable
   payment_products: PaymentProductsTable
-  loyalty_rewards: LoyaltyRewardsTable
   errors: ErrorsTable
-  product_categories: ProductCategoriesTable
   passkeys: PasskeysTable
   migrations: MigrationsTable
 }

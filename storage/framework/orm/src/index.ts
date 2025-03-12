@@ -18,9 +18,13 @@ export { default as LoyaltyPoint } from './LoyaltyPoint'
 
 export { default as LoyaltyReward } from './LoyaltyReward'
 
+export { default as Manufacturer } from './Manufacturer'
+
 export { default as Order } from './Order'
 
 export { default as OrderItem } from './OrderItem'
+
+export { default as Payment } from './Payment'
 
 export { default as PaymentMethod } from './PaymentMethod'
 
@@ -33,6 +37,8 @@ export { default as Post } from './Post'
 export { default as Product } from './Product'
 
 export { default as ProductCategory } from './ProductCategory'
+
+export { default as ProductItem } from './ProductItem'
 
 export { default as ProductReview } from './ProductReview'
 

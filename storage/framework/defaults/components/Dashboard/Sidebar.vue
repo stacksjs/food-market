@@ -8,6 +8,7 @@ interface Team {
   name: string
   email: string
   type: 'Personal' | 'Professional'
+  logo?: string
 }
 
 interface SidebarItem {
@@ -261,19 +262,20 @@ const sectionContent: Record<string, SectionContent> = {
   },
   data: {
     items: [
-      { to: '/models', icon: 'i-hugeicons-dashboard-speed-01', text: 'Dashboard' },
-      { to: '/models/users', letter: 'U', text: 'Users' },
-      { to: '/models/teams', letter: 'T', text: 'Teams' },
-      { to: '/models/subscribers', letter: 'S', text: 'Subscribers' }
+      { to: '/data/dashboard', icon: 'i-hugeicons-dashboard-speed-01', text: 'Dashboard' },
+      { to: '/data/activity', icon: 'i-hugeicons-activity-01', text: 'Activity' },
+      { to: '/data/users', letter: 'U', text: 'Users' },
+      { to: '/data/teams', letter: 'T', text: 'Teams' },
+      { to: '/data/subscribers', letter: 'S', text: 'Subscribers' }
     ]
   },
   marketing: {
     items: [
-      { to: '/marketing', icon: 'i-hugeicons-dashboard-speed-01', text: 'Dashboard' },
+      // { to: '/marketing/dashboard', icon: 'i-hugeicons-dashboard-speed-01', text: 'Dashboard' },
+      { to: '/marketing/lists', icon: 'i-hugeicons-list-setting', text: 'Lists' },
       { to: '/marketing/social-posts', icon: 'i-hugeicons-time-schedule', text: 'Social Posts' },
       { to: '/marketing/campaigns', icon: 'i-hugeicons-rocket-01', text: 'Campaigns' },
       { to: '/marketing/reviews', icon: 'i-hugeicons-star', text: 'Reviews' },
-      { to: '/marketing/settings', icon: 'i-hugeicons-settings-02', text: 'Settings' }
     ]
   },
   analytics: {
@@ -300,7 +302,6 @@ const sectionContent: Record<string, SectionContent> = {
   },
   management: {
     items: [
-      { to: '/activity', icon: 'i-hugeicons-activity-01', text: 'Activity' },
       {
         to: '/cloud',
         icon: 'i-hugeicons-cloud',
@@ -311,6 +312,7 @@ const sectionContent: Record<string, SectionContent> = {
         ]
       },
       { to: '/dns', icon: 'i-hugeicons-global-search', text: 'DNS' },
+      { to: '/management/permissions', icon: 'i-hugeicons-lock-key', text: 'Permissions' },
       { to: '/mailboxes', icon: 'i-hugeicons-mailbox-01', text: 'Mailboxes' },
       { to: '/logs', icon: 'i-hugeicons-search-list-01', text: 'Logs' }
     ]
@@ -328,15 +330,28 @@ onClickOutside(teamSwitcherRef, () => {
 
 // Mock teams data with proper typing
 const teams = ref<Team[]>([
-  { id: 1, name: 'Stacks.js', email: 'chris@stacksjs.org', type: 'Personal' },
-  { id: 2, name: 'Jetbrains', email: 'support@jetbrains.com', type: 'Professional' }
+  {
+    id: 1,
+    name: 'Stacks.js',
+    email: 'chris@stacksjs.org',
+    type: 'Personal',
+    logo: '/images/logos/logo.svg'
+  },
+  {
+    id: 2,
+    name: 'Jetbrains',
+    email: 'support@jetbrains.com',
+    type: 'Professional',
+    logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSJMFMsdKNyFFDlff2bj1WT06bM8n-bFcnBLw&s'
+  }
 ])
 
 const currentTeam = ref<Team>(teams.value[0] ?? {
   id: 1,
   name: 'Stacks.js',
   email: 'chris@stacksjs.org',
-  type: 'Personal'
+  type: 'Personal',
+  logo: '/images/logos/logo.svg'
 })
 
 const switchTeam = (team: Team) => {
@@ -511,6 +526,24 @@ const endAccordionTransition = (el: Element, done: () => void) => {
   // Call done when transition completes
   el.addEventListener('transitionend', done, { once: true })
 }
+
+// Add color mapping for section icons
+const sectionColors: Record<string, string> = {
+  library: 'text-blue-600 dark:text-blue-400',
+  content: 'text-blue-600 dark:text-blue-400',
+  app: 'text-blue-600 dark:text-blue-400',
+  data: 'text-blue-600 dark:text-blue-400',
+  commerce: 'text-cyan-600 dark:text-cyan-400',
+  marketing: 'text-purple-600 dark:text-purple-400',
+  analytics: 'text-emerald-600 dark:text-emerald-400',
+  management: 'text-blue-600 dark:text-blue-400'
+}
+
+// Function to get icon color based on section
+const getIconColor = (sectionKey: string, isActive: boolean = false) => {
+  if (isActive) return 'text-blue-600 dark:text-blue-400'
+  return sectionColors[sectionKey] || 'text-gray-400 dark:text-gray-200'
+}
 </script>
 
 <template>
@@ -521,7 +554,7 @@ const endAccordionTransition = (el: Element, done: () => void) => {
       :class="isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'"
     >
       <div
-        class="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white dark:border-gray-600 dark:bg-blue-gray-900 transition-all duration-300"
+        class="flex grow flex-col gap-y-3 overflow-y-auto border-r border-gray-200 bg-white dark:border-gray-600 dark:bg-blue-gray-900 transition-all duration-300"
         :class="{
           'items-center px-2 pb-4': isSidebarCollapsed,
           'px-6 pb-4': !isSidebarCollapsed
@@ -529,7 +562,7 @@ const endAccordionTransition = (el: Element, done: () => void) => {
       >
         <div class="pt-4 h-10 flex shrink-0 items-center justify-between rounded-lg">
           <RouterLink to="/" :class="isSidebarCollapsed ? 'hidden' : ''">
-            <img class="h-10 w-auto rounded-lg cursor-pointer" src="/images/logos/logo.svg" alt="Stacks Logo">
+            <img class="h-10 w-auto rounded-lg cursor-pointer" :src="currentTeam.logo" :alt="`${currentTeam.name} Logo`">
           </RouterLink>
 
           <div class="flex items-center space-x-2">
@@ -585,8 +618,8 @@ const endAccordionTransition = (el: Element, done: () => void) => {
                         <div class="flex items-center">
                           <div class="h-8 w-8 flex-shrink-0">
                             <img
-                              src="/images/logos/logo.svg"
-                              alt=""
+                              :src="team.logo"
+                              :alt="`${team.name} logo`"
                               class="h-8 w-8 rounded-full"
                             >
                           </div>
@@ -621,7 +654,7 @@ const endAccordionTransition = (el: Element, done: () => void) => {
         </div>
 
         <nav class="flex flex-1 flex-col w-full">
-          <ul role="list" class="flex flex-1 flex-col gap-y-6">
+          <ul role="list" class="flex flex-1 flex-col gap-y-4">
             <!-- Dashboard section -->
             <li>
               <ul role="list" class="mt-1 -mx-2 space-y-1" :class="{ 'mx-0 flex flex-col items-center': isSidebarCollapsed }">
@@ -703,15 +736,15 @@ const endAccordionTransition = (el: Element, done: () => void) => {
                       <li v-if="!item.children" class="w-full">
                         <Tooltip v-if="isSidebarCollapsed" :text="item.text" position="right" :dark="isDark" :usePortal="true">
                           <RouterLink :to="item.to" class="group sidebar-links justify-center">
-                            <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700']" />
-                            <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-gray-200 bg-white text-[10px] font-medium text-gray-400 dark:border-gray-700 dark:bg-blue-gray-800">
+                            <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 transition duration-150 ease-in-out group-hover:text-gray-700', getIconColor(sectionKey, route.path === item.to)]" />
+                            <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-blue-600 bg-white text-[10px] font-medium text-blue-600 dark:border-blue-500 dark:bg-blue-gray-800 dark:text-blue-400">
                               {{ item.letter }}
                             </div>
                           </RouterLink>
                         </Tooltip>
                         <RouterLink v-else :to="item.to" class="group sidebar-links w-full">
-                          <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700']" />
-                          <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-gray-200 bg-white text-[10px] font-medium text-gray-400 dark:border-gray-700 dark:bg-blue-gray-800">
+                          <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 transition duration-150 ease-in-out group-hover:text-gray-700', getIconColor(sectionKey, route.path === item.to)]" />
+                          <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-blue-600 bg-white text-[10px] font-medium text-blue-600 dark:border-blue-500 dark:bg-blue-gray-800 dark:text-blue-400">
                             {{ item.letter }}
                           </div>
                           <span class="flex-1">{{ item.text }}</span>
@@ -728,8 +761,8 @@ const endAccordionTransition = (el: Element, done: () => void) => {
                           class="group sidebar-links w-full text-left sidebar-dropdown-trigger"
                           :class="{ 'parent-active': isChildRouteActive(item) }"
                         >
-                          <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700']" />
-                          <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-gray-200 bg-white text-[10px] font-medium text-gray-400 dark:border-gray-700 dark:bg-blue-gray-800">
+                          <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 transition duration-150 ease-in-out group-hover:text-gray-700', getIconColor(sectionKey, isChildRouteActive(item))]" />
+                          <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-blue-600 bg-white text-[10px] font-medium text-blue-600 dark:border-blue-500 dark:bg-blue-gray-800 dark:text-blue-400">
                             {{ item.letter }}
                           </div>
                           <span class="flex-1">{{ item.text }}</span>
@@ -747,7 +780,7 @@ const endAccordionTransition = (el: Element, done: () => void) => {
                         >
                           <div
                             v-if="expandedItems[item.to]"
-                            class="dropdown-list mt-0.5 space-y-0.5 pl-6 ml-2.5 w-full"
+                            class="dropdown-list mt-0.5 space-y-0.5 pl-6 ml-0 w-full"
                             :data-dropdown-id="item.to"
                             :style="{ maxHeight: 'none' }"
                           >
@@ -760,7 +793,7 @@ const endAccordionTransition = (el: Element, done: () => void) => {
                                 :to="child.to"
                                 class="sidebar-child-link w-full"
                               >
-                                <div v-if="child.icon" :class="[child.icon, 'h-4 w-4 text-gray-400 mr-2']" />
+                                <div v-if="child.icon" :class="[child.icon, 'h-4 w-4 mr-2', getIconColor(sectionKey, route.path === child.to)]" />
                                 <span class="flex-1">{{ child.text }}</span>
                               </RouterLink>
                             </div>
@@ -786,15 +819,15 @@ const endAccordionTransition = (el: Element, done: () => void) => {
                   >
                     <div
                       v-if="sections[sectionKey]"
-                      class="w-full flex flex-col items-center space-y-1 accordion-content overflow-hidden"
+                      class="w-full flex flex-col items-center space-y-0.5 accordion-content overflow-hidden"
                     >
                       <template v-for="item in sectionContent[sectionKey]?.items" :key="item.to">
                         <!-- Regular item -->
                         <li v-if="!item.children" class="flex justify-center w-full">
                           <Tooltip v-if="isSidebarCollapsed" :text="item.text" position="right" :dark="isDark" :usePortal="true">
                             <RouterLink :to="item.to" class="group sidebar-links justify-center">
-                              <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700']" />
-                              <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-gray-200 bg-white text-[10px] font-medium text-gray-400 dark:border-gray-700 dark:bg-blue-gray-800">
+                              <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 transition duration-150 ease-in-out group-hover:text-gray-700', getIconColor(sectionKey, route.path === item.to)]" />
+                              <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-blue-600 bg-white text-[10px] font-medium text-blue-600 dark:border-blue-500 dark:bg-blue-gray-800 dark:text-blue-400">
                                 {{ item.letter }}
                               </div>
                             </RouterLink>
@@ -814,8 +847,8 @@ const endAccordionTransition = (el: Element, done: () => void) => {
                                 class="group sidebar-links justify-center sidebar-dropdown-trigger"
                                 :class="{ 'parent-active': isChildRouteActive(item) }"
                               >
-                                <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 text-gray-400 transition duration-150 ease-in-out dark:text-gray-200 group-hover:text-gray-700']" />
-                                <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-gray-200 bg-white text-[10px] font-medium text-gray-400 dark:border-gray-700 dark:bg-blue-gray-800">
+                                <div v-if="item.icon" :class="[item.icon, 'h-5 w-5 transition duration-150 ease-in-out group-hover:text-gray-700', getIconColor(sectionKey, isChildRouteActive(item))]" />
+                                <div v-else-if="item.letter" class="flex h-5 w-5 items-center justify-center rounded-md border border-blue-600 bg-white text-[10px] font-medium text-blue-600 dark:border-blue-500 dark:bg-blue-gray-800 dark:text-blue-400">
                                   {{ item.letter }}
                                 </div>
                               </button>
@@ -847,7 +880,7 @@ const endAccordionTransition = (el: Element, done: () => void) => {
                                     @click="expandedItems[item.to] = false"
                                   >
                                     <div class="flex items-center">
-                                      <div v-if="child.icon" :class="[child.icon, 'h-4 w-4 mr-2 text-gray-400']" />
+                                      <div v-if="child.icon" :class="[child.icon, 'h-4 w-4 mr-2', getIconColor(sectionKey, route.path === child.to)]" />
                                       <span>{{ child.text }}</span>
                                     </div>
                                   </RouterLink>
@@ -922,13 +955,13 @@ const endAccordionTransition = (el: Element, done: () => void) => {
 <style scoped>
 /* Add transition for sidebar collapse */
 .sidebar-links {
-  @apply flex items-center gap-x-3 p-1.5 text-sm leading-6 text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-blue-gray-800 rounded-lg;
+  @apply flex items-center gap-x-2 p-1 text-sm leading-6 text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-blue-gray-800 rounded-md;
   transition: all 0.3s ease;
 }
 
 /* When sidebar is collapsed, adjust links */
 :deep(.lg\:w-20) .sidebar-links {
-  @apply justify-center px-0 rounded-lg;
+  @apply justify-center px-0 rounded-md;
   width: 32px;
   height: 32px;
   margin: 0 auto;
@@ -937,11 +970,11 @@ const endAccordionTransition = (el: Element, done: () => void) => {
 
 /* Active state styling */
 .router-link-active {
-  @apply bg-gray-100 text-blue-600 dark:bg-blue-gray-800 dark:text-blue-400 rounded-lg;
+  @apply bg-gray-100 text-blue-600 dark:bg-blue-gray-800 dark:text-blue-400 rounded-md;
 }
 
 .router-link-exact-active {
-  @apply bg-gray-100 text-blue-600 dark:bg-blue-gray-800 dark:text-blue-400 font-medium rounded-lg;
+  @apply bg-gray-100 text-blue-600 dark:bg-blue-gray-800 dark:text-blue-400 font-medium rounded-md;
 }
 
 .router-link-active div[class^="i-hugeicons"],
@@ -965,6 +998,7 @@ const endAccordionTransition = (el: Element, done: () => void) => {
   @apply border-l border-gray-200 dark:border-blue-gray-700;
   width: 100%;
   position: relative;
+  padding-left: 0.75rem;
 }
 
 .dropdown-item {
@@ -973,13 +1007,15 @@ const endAccordionTransition = (el: Element, done: () => void) => {
 }
 
 .sidebar-child-link {
-  @apply flex items-center rounded-lg py-1 px-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-blue-gray-800;
+  @apply flex items-center rounded-md py-0.5 px-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-blue-gray-800;
   transition: all 0.2s ease;
-  width: calc(100% - 8px);
+  width: calc(100% - 16px);
+  margin-left: 0;
+  margin-right: auto;
 }
 
 .sidebar-child-link.router-link-active {
-  @apply text-blue-600 dark:text-blue-400 font-medium;
+  @apply text-blue-600 dark:text-blue-400 font-medium bg-gray-100 dark:bg-blue-gray-800;
 }
 
 /* Dropdown transition */
@@ -1015,7 +1051,7 @@ const endAccordionTransition = (el: Element, done: () => void) => {
 
 /* Bottom links styling */
 .sidebar-bottom-link {
-  @apply flex items-center p-1.5 text-gray-400 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100 rounded-lg;
+  @apply flex items-center p-1.5 text-gray-400 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100 rounded-md;
   transition: all 0.2s ease;
 }
 
@@ -1046,7 +1082,7 @@ img.rounded-lg {
 
 /* Special styling for home link */
 .home-link {
-  @apply rounded-xl bg-gray-100;
+  @apply rounded-md bg-gray-100;
 }
 
 .dark .home-link {
