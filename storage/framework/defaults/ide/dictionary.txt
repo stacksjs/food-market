@@ -99,6 +99,7 @@ domainkey
 dont
 Dorell
 dotenv
+dotenvx
 Doyon
 dprint
 Drasner
@@ -303,6 +304,7 @@ singlestore
 sisteransi
 sizecheck
 slidev
+softprops
 solana
 sonner
 Spatie
@@ -351,6 +353,7 @@ unimport
 universalify
 unmanaged
 unocss
+unplugin
 Unprefix
 Unprefixed
 unstorage
@@ -391,4 +394,3 @@ yourdomain
 zixuanchen
 Zoltan
 zoomable
-dotenvx

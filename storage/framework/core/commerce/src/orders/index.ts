@@ -6,15 +6,16 @@ export {
 } from './destroy'
 
 export {
-  fetchAll,
-  fetchByCustomer,
-  fetchById,
-  fetchByStatus,
-  fetchStats,
-} from './fetch'
+  downloadOrders,
+  exportOrders,
+  storeOrdersExport,
+} from './export'
 
 export {
-  bulkStore,
-  calculateOrderTotals,
-  store,
-} from './store'
+  calculateOrderMetrics,
+  compareOrdersByPeriod,
+  fetchAll,
+  fetchById,
+  fetchDailyOrderTrends,
+  fetchStats,
+} from './fetch'

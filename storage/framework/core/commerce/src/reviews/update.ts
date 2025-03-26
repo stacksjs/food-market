@@ -1,5 +1,4 @@
-import type { ProductReviewRequestType } from '@stacksjs/orm'
-import type { ProductReviewJsonResponse } from '../../../../orm/src/models/ProductReview'
+import type { ReviewJsonResponse, ReviewRequestType } from '@stacksjs/orm'
 import { db } from '@stacksjs/database'
 import { fetchById } from './fetch'
 
@@ -10,7 +9,7 @@ import { fetchById } from './fetch'
  * @param request The updated review data
  * @returns The updated review record
  */
-export async function update(id: number, request: ProductReviewRequestType): Promise<ProductReviewJsonResponse | undefined> {
+export async function update(id: number, request: ReviewRequestType): Promise<ReviewJsonResponse | undefined> {
   // Validate the request data
   await request.validate()
 
@@ -26,6 +25,7 @@ export async function update(id: number, request: ProductReviewRequestType): Pro
     customer_id: request.get<number>('customer_id'),
     rating: request.get<number>('rating'),
     title: request.get('title'),
+    is_featured: request.get<boolean>('is_featured'),
     content: request.get('content'),
     is_verified_purchase: request.get<boolean>('is_verified_purchase'),
     is_approved: request.get<boolean>('is_approved'),
@@ -34,7 +34,7 @@ export async function update(id: number, request: ProductReviewRequestType): Pro
     purchase_date: request.get('purchase_date'),
     images: request.get('images'),
     uuid: request.get('uuid'),
-    updated_at: new Date(),
+    updated_at: new Date().toISOString(),
   }
 
   // If no fields to update, just return the existing review
@@ -45,7 +45,7 @@ export async function update(id: number, request: ProductReviewRequestType): Pro
   try {
     // Update the review
     await db
-      .updateTable('product_reviews')
+      .updateTable('reviews')
       .set(updateData)
       .where('id', '=', id)
       .execute()
@@ -74,7 +74,7 @@ export async function updateVotes(
   id: number,
   voteType: 'helpful' | 'unhelpful',
   increment: boolean = true,
-): Promise<ProductReviewJsonResponse | undefined> {
+): Promise<ReviewJsonResponse | undefined> {
   // Check if review exists
   const review = await fetchById(id)
 
@@ -91,10 +91,10 @@ export async function updateVotes(
   try {
     // Update the review vote count
     await db
-      .updateTable('product_reviews')
+      .updateTable('reviews')
       .set({
         [field]: newValue,
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       })
       .where('id', '=', id)
       .execute()

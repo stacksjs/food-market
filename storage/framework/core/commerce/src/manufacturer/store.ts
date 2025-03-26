@@ -1,5 +1,5 @@
-import type { ManufacturerRequestType } from '@stacksjs/orm'
-import type { ManufacturerJsonResponse, NewManufacturer } from '../../../../orm/src/models/Manufacturer'
+import type { ManufacturerJsonResponse, ManufacturerRequestType, NewManufacturer } from '@stacksjs/orm'
+import { randomUUIDv7 } from 'bun'
 import { db } from '@stacksjs/database'
 
 /**
@@ -13,11 +13,13 @@ export async function store(request: ManufacturerRequestType): Promise<Manufactu
   await request.validate()
 
   const manufacturerData: NewManufacturer = {
-    manufacturer: request.get<string>('manufacturer'),
-    description: request.get<string>('description'),
-    country: request.get<string>('country'),
+    manufacturer: request.get('manufacturer'),
+    description: request.get('description'),
+    country: request.get('country'),
     featured: request.get<boolean>('featured') || false,
   }
+
+  manufacturerData.uuid = randomUUIDv7()
 
   try {
     // Insert the manufacturer record
@@ -26,11 +28,12 @@ export async function store(request: ManufacturerRequestType): Promise<Manufactu
       .values(manufacturerData)
       .executeTakeFirst()
 
-    // If insert was successful, retrieve the newly created manufacturer
-    if (createdManufacturer.insertId) {
+    const insertId = Number(createdManufacturer.insertId) || Number(createdManufacturer.numInsertedOrUpdatedRows)
+
+    if (insertId) {
       const manufacturer = await db
         .selectFrom('manufacturers')
-        .where('id', '=', Number(createdManufacturer.insertId))
+        .where('id', '=', insertId)
         .selectAll()
         .executeTakeFirst()
 
@@ -74,9 +77,9 @@ export async function bulkStore(requests: ManufacturerRequestType[]): Promise<nu
 
         // Prepare manufacturer data
         const manufacturerData: NewManufacturer = {
-          manufacturer: request.get<string>('manufacturer'),
-          description: request.get<string>('description'),
-          country: request.get<string>('country'),
+          manufacturer: request.get('manufacturer'),
+          description: request.get('description'),
+          country: request.get('country'),
           featured: request.get<boolean>('featured') || false,
         }
 

@@ -19,12 +19,11 @@ interface RequestDataProduct {
   image_url: string
   is_available: boolean
   inventory_count: number
-  category_id: string
   preparation_time: number
   allergens: string
   nutritional_info: string
+  category_id: number
   manufacturer_id: number
-  product_category_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -36,12 +35,11 @@ export class ProductRequest extends Request<RequestDataProduct> implements Produ
   public image_url = ''
   public is_available = false
   public inventory_count = 0
-  public category_id = ''
   public preparation_time = 0
   public allergens = ''
   public nutritional_info = ''
+  public category_id = 0
   public manufacturer_id = 0
-  public product_category_id = 0
   public created_at = new Date()
   public updated_at = new Date()
   public uuid = ''

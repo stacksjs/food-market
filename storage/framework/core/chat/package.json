@@ -1,7 +1,7 @@
 {
   "name": "@stacksjs/chat",
   "type": "module",
-  "version": "0.69.5",
+  "version": "0.70.10",
   "description": "Easily interact with chat APIs.",
   "author": "Chris Breuer",
   "contributors": ["Chris Breuer <chris@stacksjs.org>"],
@@ -32,9 +32,6 @@
     "build": "bun build.ts",
     "typecheck": "bun tsc --noEmit",
     "prepublishOnly": "bun run build"
-  },
-  "dependencies": {
-    "@novu/slack": "^0.24.1"
   },
   "devDependencies": {
     "@stacksjs/cli": "workspace:*",

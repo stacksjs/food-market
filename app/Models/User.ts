@@ -39,8 +39,8 @@ export default {
     billable: true,
   },
 
-  hasOne: ['Subscriber'],
-  hasMany: ['Deployment', 'Subscription', 'PaymentMethod', 'Post', 'PaymentTransaction'],
+  hasOne: ['Subscriber', 'Driver'],
+  hasMany: ['Deployment', 'Subscription', 'PaymentMethod', 'Post', 'PaymentTransaction', 'Customer'],
 
   belongsToMany: ['Team'],
 
@@ -112,7 +112,7 @@ export default {
   },
 
   set: {
-    password: (attributes: Attributes) => Bun.password.hash(attributes.password),
+    password: (attributes: Attributes) => Bun.password.hash(String(attributes.password)),
   },
   dashboard: {
     highlight: true,

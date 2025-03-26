@@ -16,10 +16,12 @@ import type {
 import { generator, parser, traverse } from '@stacksjs/build'
 import { italic, log } from '@stacksjs/cli'
 import { handleError } from '@stacksjs/error-handling'
-import { findCoreModel, findUserModel, path } from '@stacksjs/path'
-import { fs, globSync } from '@stacksjs/storage'
-import { camelCase, kebabCase, plural, singular, snakeCase } from '@stacksjs/strings'
+import { path } from '@stacksjs/path'
+import { fs } from '@stacksjs/storage'
+import { camelCase, kebabCase, plural, singular, slugify, snakeCase } from '@stacksjs/strings'
 import { isString } from '@stacksjs/validation'
+
+import { globSync } from 'tinyglobby'
 import { generateModelString } from './generate'
 
 type ModelPath = string
@@ -203,8 +205,8 @@ async function processBelongsToMany(relationInstance: ModelNames | BaseBelongsTo
     model: relationModel,
     table: modelRelationTable as TableNames,
     relationTable: table as TableNames,
-    foreignKey: '',
-    modelKey: `${modelRelationName}_id`,
+    foreignKey: typeof relationInstance === 'string' ? `${formattedModelName}_id` : relationInstance.firstForeignKey || `${formattedModelName}_id`,
+    modelKey: typeof relationInstance === 'string' ? `${modelRelationName}_id` : relationInstance.secondForeignKey || `${modelRelationName}_id`,
     relationName: '',
     relationModel: modelName,
     throughModel: '',
@@ -316,7 +318,7 @@ async function processHasOneAndMany(relationInstance: ModelNames | Relation<Mode
     model: relationModel,
     table: modelRelationTable as TableNames,
     relationTable: table as TableNames,
-    foreignKey: `${formattedModelName}_id`,
+    foreignKey: typeof relationInstance === 'string' ? `${formattedModelName}_id` : relationInstance.foreignKey || `${formattedModelName}_id`,
     modelKey: `${modelRelationName}_id`,
     relationName,
     relationModel: modelName,
@@ -512,7 +514,7 @@ export function getFillableAttributes(model: Model, otherModelRelations: Relatio
 }
 
 export async function writeModelNames(): Promise<void> {
-  const models = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
+  const models = globSync([path.userModelsPath('**/*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
   let fileString = `export type ModelNames = `
 
   for (let i = 0; i < models.length; i++) {
@@ -537,7 +539,7 @@ export async function writeModelNames(): Promise<void> {
 }
 
 export async function writeTableNames(): Promise<void> {
-  const models = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
+  const models = globSync([path.userModelsPath('**/*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
 
   let fileString = `export type TableNames = `
 
@@ -570,7 +572,7 @@ export async function writeTableNames(): Promise<void> {
 }
 
 export async function writeModelAttributes(): Promise<void> {
-  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
+  const modelFiles = globSync([path.userModelsPath('**/*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
   let fieldString = `export interface Attributes { \n`
   const attributesTypeFile = path.frameworkPath('types/attributes.ts')
 
@@ -606,7 +608,7 @@ export async function writeModelAttributes(): Promise<void> {
 }
 
 export async function writeModelEvents(): Promise<void> {
-  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
+  const modelFiles = globSync([path.userModelsPath('**/*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
   let eventString = ``
   let observerString = ``
   let observerImports = ``
@@ -618,7 +620,7 @@ export async function writeModelEvents(): Promise<void> {
 
     const modelName = getModelName(model, modelPath)
 
-    const formattedModelName = modelName.toLocaleLowerCase()
+    const formattedModelName = slugify(modelName)
 
     const observer = model?.traits?.observe
 
@@ -646,7 +648,7 @@ export async function writeModelEvents(): Promise<void> {
 }
 
 export async function writeModelRequest(): Promise<void> {
-  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
+  const modelFiles = globSync([path.userModelsPath('**/*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
 
   let importTypes = ``
   let importTypesString = ``
@@ -685,12 +687,14 @@ export async function writeModelRequest(): Promise<void> {
     // Group attributes by their entity type
     for (const attribute of attributes) {
       const entity = attribute.fieldArray?.entity === 'enum' ? 'string[]' : attribute.fieldArray?.entity
-      let defaultValue: any = `''`
+      let defaultValue: string | boolean | number | string[] = `''`
 
       if (attribute.fieldArray?.entity === 'boolean')
         defaultValue = false
       if (attribute.fieldArray?.entity === 'number')
         defaultValue = 0
+      if (attribute.fieldArray?.entity === 'enum')
+        defaultValue = '[]'
 
       // Convert the field name to snake_case
       const snakeField = snakeCase(attribute.field)
@@ -819,7 +823,7 @@ export async function writeOrmActions(apiRoute: string, modelName: string, actio
   }
 
   if (apiRoute === 'show') {
-    actionString += `  import type { ${modelName}RequestType } from '@stacksjs/orm'\n import { response } from '@stacksjs/router'\n\n`
+    actionString += `  import type { ${modelName}RequestType } from '@stacksjs/orm'\n import { ${modelName} } from '@stacksjs/orm'\n import { response } from '@stacksjs/router'\n\n`
     handleString += `async handle(request: ${modelName}RequestType) {
         const id = request.getParam('id')
 
@@ -832,7 +836,7 @@ export async function writeOrmActions(apiRoute: string, modelName: string, actio
   }
 
   if (apiRoute === 'destroy') {
-    actionString += `  import type { ${modelName}RequestType } from '@stacksjs/orm'\n\n`
+    actionString += `  import type { ${modelName}RequestType } from '@stacksjs/orm'\n import { ${modelName} } from '@stacksjs/orm'\n import { response } from '@stacksjs/router'\n\n`
     handleString += `async handle(request: ${modelName}RequestType) {
         const id = request.getParam('id')
 
@@ -840,14 +844,14 @@ export async function writeOrmActions(apiRoute: string, modelName: string, actio
 
         model.delete()
 
-        return 'Model deleted!'
+        return response.json({ message: 'Model deleted!' })
       },`
 
     method = 'DELETE'
   }
 
   if (apiRoute === 'store') {
-    actionString += `  import type { ${modelName}RequestType } from '@stacksjs/orm'\n import { response } from '@stacksjs/router'\n\n`
+    actionString += `  import type { ${modelName}RequestType } from '@stacksjs/orm'\n import { ${modelName} } from '@stacksjs/orm'\n import { response } from '@stacksjs/router'\n\n`
     handleString += `async handle(request: ${modelName}RequestType) {
         await request.validate()
         const model = await ${modelName}.create(request.all())
@@ -859,7 +863,7 @@ export async function writeOrmActions(apiRoute: string, modelName: string, actio
   }
 
   if (apiRoute === 'update') {
-    actionString += `  import type { ${modelName}RequestType } from '@stacksjs/orm'\n import { response } from '@stacksjs/router'\n\n`
+    actionString += `  import type { ${modelName}RequestType } from '@stacksjs/orm'\n  import { ${modelName} } from '@stacksjs/orm'\n import { response } from '@stacksjs/router'\n\n`
     handleString += `async handle(request: ${modelName}RequestType) {
         await request.validate()
 
@@ -1174,7 +1178,7 @@ export async function deleteExistingOrmRoute(): Promise<void> {
 }
 
 export async function generateKyselyTypes(): Promise<void> {
-  const modelFiles = globSync([path.userModelsPath('*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
+  const modelFiles = globSync([path.userModelsPath('**/*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
 
   let text = ``
 
@@ -1350,13 +1354,11 @@ export async function generateModelFiles(modelStringFile?: string): Promise<void
     }
 
     log.info('Generating API Routes...')
-    const modelFiles = globSync([path.userModelsPath('**/*.ts')], { absolute: true })
-    const coreModelFiles = globSync([path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
+    const modelFiles = globSync([path.userModelsPath('**/*.ts'), path.storagePath('framework/defaults/models/**/*.ts')], { absolute: true })
     await generateApiRoutes(modelFiles)
-    await generateApiRoutes(coreModelFiles)
     log.success('Generated API Routes')
 
-    await writeModelOrmImports([...modelFiles, ...coreModelFiles])
+    await writeModelOrmImports(modelFiles)
 
     for (const modelFile of modelFiles) {
       if (modelStringFile && modelStringFile !== modelFile)
@@ -1368,25 +1370,6 @@ export async function generateModelFiles(modelStringFile?: string): Promise<void
       const modelName = getModelName(model, modelFile)
       const file = Bun.file(path.frameworkPath(`orm/src/models/${modelName}.ts`))
       const fields = await extractFields(model, modelFile)
-      const classString = await generateModelString(tableName, modelName, model, fields)
-
-      const writer = file.writer()
-      log.info(`Writing API Endpoints for: ${italic(modelName)}`)
-      writer.write(classString)
-      log.success(`Wrote API endpoints for: ${italic(modelName)}`)
-      await writer.end()
-    }
-
-    for (const coreModelFile of coreModelFiles) {
-      if (modelStringFile && modelStringFile !== coreModelFile)
-        continue
-      log.info(`Processing Model: ${italic(coreModelFile)}`)
-
-      const model = (await import(coreModelFile)).default as Model
-      const tableName = getTableName(model, coreModelFile)
-      const modelName = getModelName(model, coreModelFile)
-      const file = Bun.file(path.frameworkPath(`orm/src/models/${modelName}.ts`))
-      const fields = await extractFields(model, coreModelFile)
       const classString = await generateModelString(tableName, modelName, model, fields)
 
       const writer = file.writer()
@@ -1417,7 +1400,7 @@ async function writeModelOrmImports(modelFiles: string[]): Promise<void> {
 
     const modelName = getModelName(model, modelFile)
 
-    ormImportString += `export { default as ${modelName} } from './${modelName}'\n\n`
+    ormImportString += `export { default as ${modelName}, type ${modelName}JsonResponse, type New${modelName}, type ${modelName}Update } from './models/${modelName}'\n\n`
   }
 
   const file = Bun.file(path.frameworkPath(`orm/src/index.ts`))
@@ -1463,6 +1446,7 @@ export async function extractAttributesFromModel(filePath: string): Promise<Attr
 
 async function ensureCodeStyle(): Promise<void> {
   log.info('Linting code style...')
+
   const proc = Bun.spawn(['bunx', '--bun', 'eslint', '.', '--fix'], {
     stdio: ['ignore', 'pipe', 'pipe'],
     cwd: path.projectPath(),
@@ -1492,4 +1476,24 @@ async function ensureCodeStyle(): Promise<void> {
   else {
     log.debug('Code style fixed successfully.')
   }
+}
+
+export function findCoreModel(modelName: string): string {
+  const rootPath = path.join(path.storagePath('framework/defaults/models'), '/')
+
+  const matches = globSync(`${rootPath}**/${modelName}`, {
+    absolute: true,
+  })
+
+  return matches[0] ?? ''
+}
+
+export function findUserModel(modelName: string): string {
+  const rootPath = path.join(path.userModelsPath('/'), '/')
+
+  const matches = globSync(`${rootPath}**/${modelName}`, {
+    absolute: true,
+  })
+
+  return matches[0] ?? ''
 }

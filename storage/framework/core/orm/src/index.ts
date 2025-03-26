@@ -12,6 +12,7 @@
 // })
 // }
 
+export * from '../../../orm/src'
 export * from '../../../orm/src/types'
 export * from './db'
 export * from './requests'

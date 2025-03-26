@@ -1,5 +1,4 @@
-import type { ManufacturerRequestType } from '@stacksjs/orm'
-import type { ManufacturerJsonResponse } from '../../../../orm/src/models/Manufacturer'
+import type { ManufacturerJsonResponse, ManufacturerRequestType } from '@stacksjs/orm'
 import { db } from '@stacksjs/database'
 import { fetchById } from './fetch'
 
@@ -22,11 +21,11 @@ export async function update(id: number, request: ManufacturerRequestType): Prom
 
   // Create update data object using request fields
   const updateData: Record<string, any> = {
-    manufacturer: request.get<string>('manufacturer'),
-    description: request.get<string>('description'),
-    country: request.get<string>('country'),
+    manufacturer: request.get('manufacturer'),
+    description: request.get('description'),
+    country: request.get('country'),
     featured: request.get<boolean>('featured'),
-    updated_at: new Date(),
+    updated_at: new Date().toISOString(),
   }
 
   // Remove undefined fields to avoid overwriting with null values
@@ -93,7 +92,7 @@ export async function updateFeaturedStatus(
       .updateTable('manufacturers')
       .set({
         featured: newFeaturedStatus,
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       })
       .where('id', '=', id)
       .execute()

@@ -29,9 +29,12 @@ export interface Attributes {
   password: string
   title: string
   body: string
+  image_url: string
+  is_active: boolean
+  parent_category_id: string
+  display_order: number
   amount: number
   method: string
-  date: Date | string
   currency: string
   reference_number: string
   card_last_four: string
@@ -40,31 +43,50 @@ export interface Attributes {
   payment_provider: string
   refund_amount: number
   notes: string
+  phone: string
+  vehicle_number: string
+  license: string
+  party_size: number
+  notification_preference: string | string[]
+  source: string
+  download_limit: number
+  expiry_days: number
+  requires_login: boolean
+  automatic_delivery: boolean
   manufacturer: string
   country: string
   featured: boolean
   quantity: number
   price: number
   special_instructions: string
-  phone: string
+  countries: string
+  regions: string
+  postal_codes: string
   total_spent: number
   last_order: string
   avatar: string
+  is_available: boolean
+  inventory_count: number
+  preparation_time: number
+  allergens: string
+  nutritional_info: string
+  variant: string
+  type: string
+  options: string
+  key: string
+  template: string | string[]
+  expiry_date: Date | string
   rating: number
   content: string
   is_verified_purchase: boolean
   is_approved: boolean
+  is_featured: boolean
   helpful_votes: number
   unhelpful_votes: number
   purchase_date: string
   images: string
-  image_url: string
-  is_available: boolean
-  inventory_count: number
-  category_id: string
-  preparation_time: number
-  allergens: string
-  nutritional_info: string
+  abbreviation: string
+  is_default: boolean
   code: string
   initial_balance: number
   current_balance: number
@@ -74,8 +96,6 @@ export interface Attributes {
   personal_message: string
   is_digital: boolean
   is_reloadable: boolean
-  is_active: boolean
-  expiry_date: Date | string
   last_used_date: Date | string
   template_id: string
   total_amount: number
@@ -98,6 +118,8 @@ export interface Attributes {
   end_date: Date | string
   applicable_products: string
   applicable_categories: string
+  rate: number
+  region: string | string[]
   payment_method: string
   payment_details: string
   transaction_reference: string
@@ -105,7 +127,6 @@ export interface Attributes {
   loyalty_points_redeemed: number
   wallet_id: string
   points: number
-  source: string
   source_reference_id: string
   is_used: boolean
   size: string
@@ -115,20 +136,26 @@ export interface Attributes {
   points_required: number
   reward_type: string
   discount_percentage: number
-  expiry_days: number
-  parent_category_id: string
-  display_order: number
+  base_rate: number
+  free_shipping: number
+  zone: string
+  weight_from: number
+  weight_to: number
+  driver: string
+  vehicle: string
+  stops: number
+  delivery_time: number
+  total_distance: number
+  last_active: Date | string
   connection: string
   queue: string
   payload: string
   exception: string
   failed_at: Date | string
-  type: string
   last_four: number
   brand: string
   exp_month: number
   exp_year: number
-  is_default: boolean
   provider_id: string
   status_code: number
   duration_ms: number
@@ -138,13 +165,13 @@ export interface Attributes {
   attempts: number
   available_at: number
   reserved_at: Date | string
+  plan: string
   provider_status: string
   unit_price: number
   provider_type: string
   provider_price_id: string
   trial_ends_at: string
   ends_at: string
-  key: number
   image: string
   message: string
   stack: string

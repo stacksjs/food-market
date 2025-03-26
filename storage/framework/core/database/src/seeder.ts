@@ -2,8 +2,8 @@ import type { Model, RelationConfig } from '@stacksjs/types'
 import { italic, log } from '@stacksjs/cli'
 import { db } from '@stacksjs/database'
 import { faker } from '@stacksjs/faker'
-import { fetchOtherModelRelations, getModelName, getRelationType, getTableName } from '@stacksjs/orm'
-import { findCoreModel, findUserModel, path } from '@stacksjs/path'
+import { fetchOtherModelRelations, findCoreModel, findUserModel, getModelName, getRelationType, getTableName } from '@stacksjs/orm'
+import { path } from '@stacksjs/path'
 import { makeHash } from '@stacksjs/security'
 import { fs } from '@stacksjs/storage'
 import { snakeCase } from '@stacksjs/strings'
@@ -181,7 +181,7 @@ export async function seed(): Promise<void> {
   const coreModelsDir = path.storagePath('framework/defaults/models')
 
   // Use glob to find all .ts files recursively in core models
-  const coreModelFiles = globSync(`${coreModelsDir}**/*.ts`, { absolute: true })
+  const coreModelFiles = globSync(`${coreModelsDir}/**/*.ts`, { absolute: true })
 
   // Original user models seeding
   const modelFiles = fs.readdirSync(modelsDir).filter(file => file.endsWith('.ts'))

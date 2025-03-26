@@ -1,53 +1,13 @@
-import type { ProductReviewJsonResponse } from '../../../../orm/src/models/ProductReview'
-import type { FetchProductReviewsOptions, ProductReviewResponse, ProductReviewStats } from '../../types'
+import type { ReviewJsonResponse } from '@stacksjs/orm'
+import type { FetchReviewsOptions, ReviewResponse, ReviewStats } from '../types'
 import { db } from '@stacksjs/database'
-
-/**
- * Fetch product reviews with pagination
- */
-export async function fetchPaginated(options: FetchProductReviewsOptions = {}): Promise<ProductReviewResponse> {
-  // Set default values
-  const page = options.page || 1
-  const limit = options.limit || 10
-
-  // Start building the query
-  const query = db.selectFrom('product_reviews')
-  const countQuery = db.selectFrom('product_reviews')
-
-  // Get total count for pagination
-  const countResult = await countQuery
-    .select(eb => eb.fn.count('id').as('total'))
-    .executeTakeFirst()
-
-  const total = Number(countResult?.total || 0)
-
-  // Apply pagination
-  const productReviews = await query
-    .selectAll()
-    .limit(limit)
-    .offset((page - 1) * limit)
-    .execute()
-
-  // Calculate pagination info
-  const totalPages = Math.ceil(total / limit)
-
-  return {
-    data: productReviews,
-    paging: {
-      total_records: total,
-      page,
-      total_pages: totalPages,
-    },
-    next_cursor: page < totalPages ? page + 1 : null,
-  }
-}
 
 /**
  * Fetch a product review by ID
  */
-export async function fetchById(id: number): Promise<ProductReviewJsonResponse | undefined> {
+export async function fetchById(id: number): Promise<ReviewJsonResponse | undefined> {
   return await db
-    .selectFrom('product_reviews')
+    .selectFrom('reviews')
     .where('id', '=', id)
     .selectAll()
     .executeTakeFirst()
@@ -56,16 +16,16 @@ export async function fetchById(id: number): Promise<ProductReviewJsonResponse |
 /**
  * Fetch reviews for a specific product
  */
-export async function fetchByProductId(productId: number, options: FetchProductReviewsOptions = {}): Promise<ProductReviewResponse> {
+export async function fetchByProductId(productId: number, options: FetchReviewsOptions = {}): Promise<ReviewResponse> {
   // Set default values
   const page = options.page || 1
   const limit = options.limit || 10
 
   // Start building the query
-  const query = db.selectFrom('product_reviews')
+  const query = db.selectFrom('reviews')
     .where('product_id', '=', productId)
 
-  const countQuery = db.selectFrom('product_reviews')
+  const countQuery = db.selectFrom('reviews')
     .where('product_id', '=', productId)
 
   // Get total count for pagination
@@ -76,7 +36,7 @@ export async function fetchByProductId(productId: number, options: FetchProductR
   const total = Number(countResult?.total || 0)
 
   // Apply pagination
-  const productReviews = await query
+  const reviews = await query
     .selectAll()
     .limit(limit)
     .offset((page - 1) * limit)
@@ -86,7 +46,7 @@ export async function fetchByProductId(productId: number, options: FetchProductR
   const totalPages = Math.ceil(total / limit)
 
   return {
-    data: productReviews,
+    data: reviews,
     paging: {
       total_records: total,
       page,
@@ -99,16 +59,16 @@ export async function fetchByProductId(productId: number, options: FetchProductR
 /**
  * Fetch reviews by user ID
  */
-export async function fetchByUserId(userId: number, options: FetchProductReviewsOptions = {}): Promise<ProductReviewResponse> {
+export async function fetchByUserId(userId: number, options: FetchReviewsOptions = {}): Promise<ReviewResponse> {
   // Set default values
   const page = options.page || 1
   const limit = options.limit || 10
 
   // Start building the query
-  const query = db.selectFrom('product_reviews')
+  const query = db.selectFrom('reviews')
     .where('customer_id', '=', userId)
 
-  const countQuery = db.selectFrom('product_reviews')
+  const countQuery = db.selectFrom('reviews')
     .where('customer_id', '=', userId)
 
   // Get total count for pagination
@@ -119,7 +79,7 @@ export async function fetchByUserId(userId: number, options: FetchProductReviews
   const total = Number(countResult?.total || 0)
 
   // Apply pagination
-  const productReviews = await query
+  const reviews = await query
     .selectAll()
     .limit(limit)
     .offset((page - 1) * limit)
@@ -129,7 +89,7 @@ export async function fetchByUserId(userId: number, options: FetchProductReviews
   const totalPages = Math.ceil(total / limit)
 
   return {
-    data: productReviews,
+    data: reviews,
     paging: {
       total_records: total,
       page,
@@ -142,17 +102,17 @@ export async function fetchByUserId(userId: number, options: FetchProductReviews
 /**
  * Fetch approved reviews for a product
  */
-export async function fetchApprovedByProductId(productId: number, options: FetchProductReviewsOptions = {}): Promise<ProductReviewResponse> {
+export async function fetchApprovedByProductId(productId: number, options: FetchReviewsOptions = {}): Promise<ReviewResponse> {
   // Set default values
   const page = options.page || 1
   const limit = options.limit || 10
 
   // Start building the query
-  const query = db.selectFrom('product_reviews')
+  const query = db.selectFrom('reviews')
     .where('product_id', '=', productId)
     .where('is_approved', '=', true)
 
-  const countQuery = db.selectFrom('product_reviews')
+  const countQuery = db.selectFrom('reviews')
     .where('product_id', '=', productId)
     .where('is_approved', '=', true)
 
@@ -164,7 +124,7 @@ export async function fetchApprovedByProductId(productId: number, options: Fetch
   const total = Number(countResult?.total || 0)
 
   // Apply pagination
-  const productReviews = await query
+  const reviews = await query
     .selectAll()
     .limit(limit)
     .offset((page - 1) * limit)
@@ -174,7 +134,7 @@ export async function fetchApprovedByProductId(productId: number, options: Fetch
   const totalPages = Math.ceil(total / limit)
 
   return {
-    data: productReviews,
+    data: reviews,
     paging: {
       total_records: total,
       page,
@@ -187,10 +147,10 @@ export async function fetchApprovedByProductId(productId: number, options: Fetch
 /**
  * Get review statistics for a product
  */
-export async function fetchProductReviewStats(productId: number): Promise<ProductReviewStats> {
+export async function fetchReviewStats(productId: number): Promise<ReviewStats> {
   // Total reviews for the product
   const totalReviews = await db
-    .selectFrom('product_reviews')
+    .selectFrom('reviews')
     .where('product_id', '=', productId)
     .where('is_approved', '=', true)
     .select(eb => eb.fn.count('id').as('count'))
@@ -198,7 +158,7 @@ export async function fetchProductReviewStats(productId: number): Promise<Produc
 
   // Average rating
   const avgRating = await db
-    .selectFrom('product_reviews')
+    .selectFrom('reviews')
     .where('product_id', '=', productId)
     .where('is_approved', '=', true)
     .select(eb => eb.fn.avg('rating').as('avg_rating'))
@@ -206,7 +166,7 @@ export async function fetchProductReviewStats(productId: number): Promise<Produc
 
   // Rating distribution
   const oneStarCount = await db
-    .selectFrom('product_reviews')
+    .selectFrom('reviews')
     .where('product_id', '=', productId)
     .where('is_approved', '=', true)
     .where('rating', '=', 1)
@@ -214,7 +174,7 @@ export async function fetchProductReviewStats(productId: number): Promise<Produc
     .executeTakeFirst()
 
   const twoStarCount = await db
-    .selectFrom('product_reviews')
+    .selectFrom('reviews')
     .where('product_id', '=', productId)
     .where('is_approved', '=', true)
     .where('rating', '=', 2)
@@ -222,7 +182,7 @@ export async function fetchProductReviewStats(productId: number): Promise<Produc
     .executeTakeFirst()
 
   const threeStarCount = await db
-    .selectFrom('product_reviews')
+    .selectFrom('reviews')
     .where('product_id', '=', productId)
     .where('is_approved', '=', true)
     .where('rating', '=', 3)
@@ -230,7 +190,7 @@ export async function fetchProductReviewStats(productId: number): Promise<Produc
     .executeTakeFirst()
 
   const fourStarCount = await db
-    .selectFrom('product_reviews')
+    .selectFrom('reviews')
     .where('product_id', '=', productId)
     .where('is_approved', '=', true)
     .where('rating', '=', 4)
@@ -238,7 +198,7 @@ export async function fetchProductReviewStats(productId: number): Promise<Produc
     .executeTakeFirst()
 
   const fiveStarCount = await db
-    .selectFrom('product_reviews')
+    .selectFrom('reviews')
     .where('product_id', '=', productId)
     .where('is_approved', '=', true)
     .where('rating', '=', 5)
@@ -247,7 +207,7 @@ export async function fetchProductReviewStats(productId: number): Promise<Produc
 
   // Recent reviews
   const recentReviews = await db
-    .selectFrom('product_reviews')
+    .selectFrom('reviews')
     .where('product_id', '=', productId)
     .where('is_approved', '=', true)
     .selectAll()
@@ -272,9 +232,9 @@ export async function fetchProductReviewStats(productId: number): Promise<Produc
 /**
  * Fetch most helpful reviews for a product
  */
-export async function fetchMostHelpfulByProductId(productId: number, limit: number = 5): Promise<ProductReviewJsonResponse[]> {
+export async function fetchMostHelpfulByProductId(productId: number, limit: number = 5): Promise<ReviewJsonResponse[]> {
   return await db
-    .selectFrom('product_reviews')
+    .selectFrom('reviews')
     .where('product_id', '=', productId)
     .where('is_approved', '=', true)
     .selectAll()

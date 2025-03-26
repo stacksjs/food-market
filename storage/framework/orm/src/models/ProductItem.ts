@@ -1,28 +1,22 @@
 import type { Generated, Insertable, RawBuilder, Selectable, Updateable } from '@stacksjs/database'
 import type { Operator } from '@stacksjs/orm'
+import type { CategoryModel } from './Category'
 import type { ManufacturerModel } from './Manufacturer'
 import type { ProductModel } from './Product'
-import type { ProductCategoryModel } from './ProductCategory'
 import { randomUUIDv7 } from 'bun'
-import { cache } from '@stacksjs/cache'
 import { sql } from '@stacksjs/database'
-import { HttpError, ModelNotFoundException } from '@stacksjs/error-handling'
-
+import { HttpError } from '@stacksjs/error-handling'
 import { dispatch } from '@stacksjs/events'
 
-import { DB, SubqueryBuilder } from '@stacksjs/orm'
+import { DB } from '@stacksjs/orm'
 
-import Manufacturer from './Manufacturer'
-
-import Product from './Product'
-
-import ProductCategory from './ProductCategory'
+import { BaseOrm } from '../utils/base'
 
 export interface ProductItemsTable {
   id: Generated<number>
   product_id: number
   manufacturer_id: number
-  product_category_id: number
+  category_id: number
   name: string
   size?: string
   color?: string
@@ -34,9 +28,9 @@ export interface ProductItemsTable {
   custom_options?: string
   uuid?: string
 
-  created_at?: Date
+  created_at?: string
 
-  updated_at?: Date
+  updated_at?: string
 
 }
 
@@ -57,17 +51,7 @@ export interface ProductItemJsonResponse extends Omit<Selectable<ProductItemsTab
 export type NewProductItem = Insertable<ProductItemsTable>
 export type ProductItemUpdate = Updateable<ProductItemsTable>
 
-      type SortDirection = 'asc' | 'desc'
-interface SortOptions { column: ProductItemJsonResponse, order: SortDirection }
-// Define a type for the options parameter
-interface QueryOptions {
-  sort?: SortOptions
-  limit?: number
-  offset?: number
-  page?: number
-}
-
-export class ProductItemModel {
+export class ProductItemModel extends BaseOrm<ProductItemModel, ProductItemsTable, ProductItemJsonResponse> {
   private readonly hidden: Array<keyof ProductItemJsonResponse> = []
   private readonly fillable: Array<keyof ProductItemJsonResponse> = ['name', 'size', 'color', 'price', 'image_url', 'is_available', 'inventory_count', 'sku', 'custom_options', 'uuid']
   private readonly guarded: Array<keyof ProductItemJsonResponse> = []
@@ -75,14 +59,21 @@ export class ProductItemModel {
   protected originalAttributes = {} as ProductItemJsonResponse
 
   protected selectFromQuery: any
-  protected withRelations: string[]
   protected updateFromQuery: any
   protected deleteFromQuery: any
   protected hasSelect: boolean
-  private hasSaved: boolean
   private customColumns: Record<string, unknown> = {}
 
+  /**
+   * This model inherits many query methods from BaseOrm:
+   * - pluck, chunk, whereExists, has, doesntHave, whereHas, whereDoesntHave
+   * - inRandomOrder, max, min, avg, paginate, get, and more
+   *
+   * See BaseOrm class for the full list of inherited methods.
+   */
+
   constructor(productItem: ProductItemJsonResponse | undefined) {
+    super('product_items')
     if (productItem) {
       this.attributes = { ...productItem }
       this.originalAttributes = { ...productItem }
@@ -102,7 +93,48 @@ export class ProductItemModel {
     this.hasSaved = false
   }
 
-  mapCustomGetters(models: ProductItemJsonResponse | ProductItemJsonResponse[]): void {
+  protected async loadRelations(models: ProductItemJsonResponse | ProductItemJsonResponse[]): Promise<void> {
+    // Handle both single model and array of models
+    const modelArray = Array.isArray(models) ? models : [models]
+    if (!modelArray.length)
+      return
+
+    const modelIds = modelArray.map(model => model.id)
+
+    for (const relation of this.withRelations) {
+      const relatedRecords = await DB.instance
+        .selectFrom(relation)
+        .where('productItem_id', 'in', modelIds)
+        .selectAll()
+        .execute()
+
+      if (Array.isArray(models)) {
+        models.map((model: ProductItemJsonResponse) => {
+          const records = relatedRecords.filter((record: { productItem_id: number }) => {
+            return record.productItem_id === model.id
+          })
+
+          model[relation] = records.length === 1 ? records[0] : records
+          return model
+        })
+      }
+      else {
+        const records = relatedRecords.filter((record: { productItem_id: number }) => {
+          return record.productItem_id === models.id
+        })
+
+        models[relation] = records.length === 1 ? records[0] : records
+      }
+    }
+  }
+
+  static with(relations: string[]): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyWith(relations)
+  }
+
+  protected mapCustomGetters(models: ProductItemJsonResponse | ProductItemJsonResponse[]): void {
     const data = models
 
     if (Array.isArray(data)) {
@@ -114,7 +146,7 @@ export class ProductItemModel {
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
-          model[key] = fn()
+          (model as any)[key] = fn()
         }
 
         return model
@@ -130,12 +162,12 @@ export class ProductItemModel {
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
-        model[key] = fn()
+        (model as any)[key] = fn()
       }
     }
   }
 
-  async mapCustomSetters(model: NewProductItem): Promise<void> {
+  async mapCustomSetters(model: NewProductItem | ProductItemUpdate): Promise<void> {
     const customSetter = {
       default: () => {
       },
@@ -143,7 +175,7 @@ export class ProductItemModel {
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      model[key] = await fn()
+      (model as any)[key] = await fn()
     }
   }
 
@@ -163,12 +195,12 @@ export class ProductItemModel {
     return this.attributes.manufacturer
   }
 
-  get product_category_id(): number {
-    return this.attributes.product_category_id
+  get category_id(): number {
+    return this.attributes.category_id
   }
 
-  get product_category(): ProductCategoryModel | undefined {
-    return this.attributes.product_category
+  get category(): CategoryModel | undefined {
+    return this.attributes.category
   }
 
   get id(): number {
@@ -215,11 +247,11 @@ export class ProductItemModel {
     return this.attributes.custom_options
   }
 
-  get created_at(): Date | undefined {
+  get created_at(): string | undefined {
     return this.attributes.created_at
   }
 
-  get updated_at(): Date | undefined {
+  get updated_at(): string | undefined {
     return this.attributes.updated_at
   }
 
@@ -263,149 +295,48 @@ export class ProductItemModel {
     this.attributes.custom_options = value
   }
 
-  set updated_at(value: Date) {
+  set updated_at(value: string) {
     this.attributes.updated_at = value
-  }
-
-  getOriginal(column?: keyof ProductItemJsonResponse): Partial<ProductItemJsonResponse> {
-    if (column) {
-      return this.originalAttributes[column]
-    }
-
-    return this.originalAttributes
-  }
-
-  getChanges(): Partial<ProductItemJsonResponse> {
-    return this.fillable.reduce<Partial<ProductItemJsonResponse>>((changes, key) => {
-      const currentValue = this.attributes[key as keyof ProductItemsTable]
-      const originalValue = this.originalAttributes[key as keyof ProductItemsTable]
-
-      if (currentValue !== originalValue) {
-        changes[key] = currentValue
-      }
-
-      return changes
-    }, {})
-  }
-
-  isDirty(column?: keyof ProductItemJsonResponse): boolean {
-    if (column) {
-      return this.attributes[column] !== this.originalAttributes[column]
-    }
-
-    return Object.entries(this.originalAttributes).some(([key, originalValue]) => {
-      const currentValue = (this.attributes as any)[key]
-
-      return currentValue !== originalValue
-    })
-  }
-
-  isClean(column?: keyof ProductItemJsonResponse): boolean {
-    return !this.isDirty(column)
-  }
-
-  wasChanged(column?: keyof ProductItemJsonResponse): boolean {
-    return this.hasSaved && this.isDirty(column)
-  }
-
-  select(params: (keyof ProductItemJsonResponse)[] | RawBuilder<string> | string): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.select(params)
-
-    this.hasSelect = true
-
-    return this
   }
 
   static select(params: (keyof ProductItemJsonResponse)[] | RawBuilder<string> | string): ProductItemModel {
     const instance = new ProductItemModel(undefined)
 
-    // Initialize a query with the table name and selected fields
-    instance.selectFromQuery = instance.selectFromQuery.select(params)
-
-    instance.hasSelect = true
-
-    return instance
-  }
-
-  async applyFind(id: number): Promise<ProductItemModel | undefined> {
-    const model = await DB.instance.selectFrom('product_items').where('id', '=', id).selectAll().executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    this.mapCustomGetters(model)
-    await this.loadRelations(model)
-
-    const data = new ProductItemModel(model)
-
-    cache.getOrSet(`productItem:${id}`, JSON.stringify(model))
-
-    return data
-  }
-
-  async find(id: number): Promise<ProductItemModel | undefined> {
-    return await this.applyFind(id)
+    return instance.applySelect(params)
   }
 
   // Method to find a ProductItem by ID
   static async find(id: number): Promise<ProductItemModel | undefined> {
+    const query = DB.instance.selectFrom('product_items').where('id', '=', id).selectAll()
+
+    const model = await query.executeTakeFirst()
+
+    if (!model)
+      return undefined
+
     const instance = new ProductItemModel(undefined)
-
-    return await instance.applyFind(id)
-  }
-
-  async first(): Promise<ProductItemModel | undefined> {
-    let model: ProductItemJsonResponse | undefined
-
-    if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
-    }
-    else {
-      model = await this.selectFromQuery.selectAll().executeTakeFirst()
-    }
-
-    if (model) {
-      this.mapCustomGetters(model)
-      await this.loadRelations(model)
-    }
-
-    const data = new ProductItemModel(model)
-
-    return data
+    return instance.createInstance(model)
   }
 
   static async first(): Promise<ProductItemModel | undefined> {
-    const instance = new ProductItemJsonResponse(null)
+    const instance = new ProductItemModel(undefined)
 
-    const model = await DB.instance.selectFrom('product_items')
-      .selectAll()
-      .executeTakeFirst()
-
-    instance.mapCustomGetters(model)
+    const model = await instance.applyFirst()
 
     const data = new ProductItemModel(model)
 
     return data
   }
 
-  async applyFirstOrFail(): Promise<ProductItemModel | undefined> {
-    const model = await this.selectFromQuery.executeTakeFirst()
+  static async last(): Promise<ProductItemModel | undefined> {
+    const instance = new ProductItemModel(undefined)
 
-    if (model === undefined)
-      throw new ModelNotFoundException(404, 'No ProductItemModel results found for query')
+    const model = await instance.applyLast()
 
-    if (model) {
-      this.mapCustomGetters(model)
-      await this.loadRelations(model)
-    }
+    if (!model)
+      return undefined
 
-    const data = new ProductItemModel(model)
-
-    return data
-  }
-
-  async firstOrFail(): Promise<ProductItemModel | undefined> {
-    return await this.applyFirstOrFail()
+    return new ProductItemModel(model)
   }
 
   static async firstOrFail(): Promise<ProductItemModel | undefined> {
@@ -428,511 +359,234 @@ export class ProductItemModel {
     return data
   }
 
-  async applyFindOrFail(id: number): Promise<ProductItemModel> {
-    const model = await DB.instance.selectFrom('product_items').where('id', '=', id).selectAll().executeTakeFirst()
-
-    if (model === undefined)
-      throw new ModelNotFoundException(404, `No ProductItemModel results for ${id}`)
-
-    cache.getOrSet(`productItem:${id}`, JSON.stringify(model))
-
-    this.mapCustomGetters(model)
-    await this.loadRelations(model)
-
-    const data = new ProductItemModel(model)
-
-    return data
-  }
-
-  async findOrFail(id: number): Promise<ProductItemModel> {
-    return await this.applyFindOrFail(id)
-  }
-
-  static async findOrFail(id: number): Promise<ProductItemModel> {
+  static async findOrFail(id: number): Promise<ProductItemModel | undefined> {
     const instance = new ProductItemModel(undefined)
 
     return await instance.applyFindOrFail(id)
   }
 
-  async applyFindMany(ids: number[]): Promise<ProductItemModel[]> {
-    let query = DB.instance.selectFrom('product_items').where('id', 'in', ids)
-
+  static async findMany(ids: number[]): Promise<ProductItemModel[]> {
     const instance = new ProductItemModel(undefined)
 
-    query = query.selectAll()
-
-    const models = await query.execute()
-
-    instance.mapCustomGetters(models)
-    await instance.loadRelations(models)
+    const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: ProductItemJsonResponse) => instance.parseResult(new ProductItemModel(modelItem)))
   }
 
-  static async findMany(ids: number[]): Promise<ProductItemModel[]> {
+  static async latest(column: keyof ProductItemsTable = 'created_at'): Promise<ProductItemModel | undefined> {
     const instance = new ProductItemModel(undefined)
 
-    return await instance.applyFindMany(ids)
+    const model = await instance.selectFromQuery
+      .selectAll()
+      .orderBy(column, 'desc')
+      .limit(1)
+      .executeTakeFirst()
+
+    if (!model)
+      return undefined
+
+    return new ProductItemModel(model)
   }
 
-  async findMany(ids: number[]): Promise<ProductItemModel[]> {
-    return await this.applyFindMany(ids)
-  }
+  static async oldest(column: keyof ProductItemsTable = 'created_at'): Promise<ProductItemModel | undefined> {
+    const instance = new ProductItemModel(undefined)
 
-  skip(count: number): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.offset(count)
+    const model = await instance.selectFromQuery
+      .selectAll()
+      .orderBy(column, 'asc')
+      .limit(1)
+      .executeTakeFirst()
 
-    return this
+    if (!model)
+      return undefined
+
+    return new ProductItemModel(model)
   }
 
   static skip(count: number): ProductItemModel {
     const instance = new ProductItemModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.offset(count)
-
-    return instance
-  }
-
-  async applyChunk(size: number, callback: (models: ProductItemModel[]) => Promise<void>): Promise<void> {
-    let page = 1
-    let hasMore = true
-
-    while (hasMore) {
-      // Get one batch
-      const models = await this.selectFromQuery
-        .selectAll()
-        .limit(size)
-        .offset((page - 1) * size)
-        .execute()
-
-      // If we got fewer results than chunk size, this is the last batch
-      if (models.length < size) {
-        hasMore = false
-      }
-
-      // Process this batch
-      if (models.length > 0) {
-        await callback(models)
-      }
-
-      page++
-    }
-  }
-
-  async chunk(size: number, callback: (models: ProductItemModel[]) => Promise<void>): Promise<void> {
-    await this.applyChunk(size, callback)
-  }
-
-  static async chunk(size: number, callback: (models: ProductItemModel[]) => Promise<void>): Promise<void> {
-    const instance = new ProductItemModel(undefined)
-
-    await instance.applyChunk(size, callback)
-  }
-
-  take(count: number): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.limit(count)
-
-    return this
+    return instance.applySkip(count)
   }
 
   static take(count: number): ProductItemModel {
     const instance = new ProductItemModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.limit(count)
-
-    return instance
+    return instance.applyTake(count)
   }
 
-  static async pluck<K extends keyof ProductItemModel>(field: K): Promise<ProductItemModel[K][]> {
+  static where<V = string>(column: keyof ProductItemsTable, ...args: [V] | [Operator, V]): ProductItemModel {
     const instance = new ProductItemModel(undefined)
 
-    if (instance.hasSelect) {
-      const model = await instance.selectFromQuery.execute()
-      return model.map((modelItem: ProductItemModel) => modelItem[field])
-    }
-
-    const model = await instance.selectFromQuery.selectAll().execute()
-
-    return model.map((modelItem: ProductItemModel) => modelItem[field])
+    return instance.applyWhere<V>(column, ...args)
   }
 
-  async pluck<K extends keyof ProductItemModel>(field: K): Promise<ProductItemModel[K][]> {
-    if (this.hasSelect) {
-      const model = await this.selectFromQuery.execute()
-      return model.map((modelItem: ProductItemModel) => modelItem[field])
-    }
+  static orWhere(...conditions: [string, any][]): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
 
-    const model = await this.selectFromQuery.selectAll().execute()
+    return instance.applyOrWhere(...conditions)
+  }
 
-    return model.map((modelItem: ProductItemModel) => modelItem[field])
+  static whereNotIn<V = number>(column: keyof ProductItemsTable, values: V[]): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyWhereNotIn<V>(column, values)
+  }
+
+  static whereBetween<V = number>(column: keyof ProductItemsTable, range: [V, V]): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyWhereBetween<V>(column, range)
+  }
+
+  static whereRef(column: keyof ProductItemsTable, ...args: string[]): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyWhereRef(column, ...args)
+  }
+
+  static when(condition: boolean, callback: (query: ProductItemModel) => ProductItemModel): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyWhen(condition, callback as any)
+  }
+
+  static whereNull(column: keyof ProductItemsTable): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyWhereNull(column)
+  }
+
+  static whereNotNull(column: keyof ProductItemsTable): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyWhereNotNull(column)
+  }
+
+  static whereLike(column: keyof ProductItemsTable, value: string): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyWhereLike(column, value)
+  }
+
+  static orderBy(column: keyof ProductItemsTable, order: 'asc' | 'desc'): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyOrderBy(column, order)
+  }
+
+  static orderByAsc(column: keyof ProductItemsTable): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyOrderByAsc(column)
+  }
+
+  static orderByDesc(column: keyof ProductItemsTable): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyOrderByDesc(column)
+  }
+
+  static groupBy(column: keyof ProductItemsTable): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyGroupBy(column)
+  }
+
+  static having<V = string>(column: keyof ProductItemsTable, operator: Operator, value: V): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyHaving<V>(column, operator, value)
+  }
+
+  static inRandomOrder(): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyInRandomOrder()
+  }
+
+  static whereColumn(first: keyof ProductItemsTable, operator: Operator, second: keyof ProductItemsTable): ProductItemModel {
+    const instance = new ProductItemModel(undefined)
+
+    return instance.applyWhereColumn(first, operator, second)
+  }
+
+  static async max(field: keyof ProductItemsTable): Promise<number> {
+    const instance = new ProductItemModel(undefined)
+
+    return await instance.applyMax(field)
+  }
+
+  static async min(field: keyof ProductItemsTable): Promise<number> {
+    const instance = new ProductItemModel(undefined)
+
+    return await instance.applyMin(field)
+  }
+
+  static async avg(field: keyof ProductItemsTable): Promise<number> {
+    const instance = new ProductItemModel(undefined)
+
+    return await instance.applyAvg(field)
+  }
+
+  static async sum(field: keyof ProductItemsTable): Promise<number> {
+    const instance = new ProductItemModel(undefined)
+
+    return await instance.applySum(field)
   }
 
   static async count(): Promise<number> {
     const instance = new ProductItemModel(undefined)
 
-    const result = await instance.selectFromQuery
-      .select(sql`COUNT(*) as count`)
-      .executeTakeFirst()
-
-    return result.count || 0
-  }
-
-  async count(): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`COUNT(*) as count`)
-      .executeTakeFirst()
-
-    return result.count || 0
-  }
-
-  static async max(field: keyof ProductItemModel): Promise<number> {
-    const instance = new ProductItemModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`MAX(${sql.raw(field as string)}) as max `)
-      .executeTakeFirst()
-
-    return result.max
-  }
-
-  async max(field: keyof ProductItemModel): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`MAX(${sql.raw(field as string)}) as max`)
-      .executeTakeFirst()
-
-    return result.max
-  }
-
-  static async min(field: keyof ProductItemModel): Promise<number> {
-    const instance = new ProductItemModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`MIN(${sql.raw(field as string)}) as min `)
-      .executeTakeFirst()
-
-    return result.min
-  }
-
-  async min(field: keyof ProductItemModel): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`MIN(${sql.raw(field as string)}) as min `)
-      .executeTakeFirst()
-
-    return result.min
-  }
-
-  static async avg(field: keyof ProductItemModel): Promise<number> {
-    const instance = new ProductItemModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`AVG(${sql.raw(field as string)}) as avg `)
-      .executeTakeFirst()
-
-    return result.avg
-  }
-
-  async avg(field: keyof ProductItemModel): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`AVG(${sql.raw(field as string)}) as avg `)
-      .executeTakeFirst()
-
-    return result.avg
-  }
-
-  static async sum(field: keyof ProductItemModel): Promise<number> {
-    const instance = new ProductItemModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`SUM(${sql.raw(field as string)}) as sum `)
-      .executeTakeFirst()
-
-    return result.sum
-  }
-
-  async sum(field: keyof ProductItemModel): Promise<number> {
-    const result = this.selectFromQuery
-      .select(sql`SUM(${sql.raw(field as string)}) as sum `)
-      .executeTakeFirst()
-
-    return result.sum
-  }
-
-  async applyGet(): Promise<ProductItemModel[]> {
-    let models
-
-    if (this.hasSelect) {
-      models = await this.selectFromQuery.execute()
-    }
-    else {
-      models = await this.selectFromQuery.selectAll().execute()
-    }
-
-    this.mapCustomGetters(models)
-    await this.loadRelations(models)
-
-    const data = await Promise.all(models.map(async (model: ProductItemJsonResponse) => {
-      return new ProductItemModel(model)
-    }))
-
-    return data
-  }
-
-  async get(): Promise<ProductItemModel[]> {
-    return await this.applyGet()
+    return instance.applyCount()
   }
 
   static async get(): Promise<ProductItemModel[]> {
     const instance = new ProductItemModel(undefined)
 
-    return await instance.applyGet()
+    const results = await instance.applyGet()
+
+    return results.map((item: ProductItemJsonResponse) => instance.createInstance(item))
   }
 
-  has(relation: string): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.where(({ exists, selectFrom }: any) =>
-      exists(
-        selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.productItem_id`, '=', 'product_items.id'),
-      ),
-    )
-
-    return this
-  }
-
-  static has(relation: string): ProductItemModel {
+  static async pluck<K extends keyof ProductItemModel>(field: K): Promise<ProductItemModel[K][]> {
     const instance = new ProductItemModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
-      exists(
-        selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.productItem_id`, '=', 'product_items.id'),
-      ),
-    )
-
-    return instance
+    return await instance.applyPluck(field)
   }
 
-  static whereExists(callback: (qb: any) => any): ProductItemModel {
+  static async chunk(size: number, callback: (models: ProductItemModel[]) => Promise<void>): Promise<void> {
     const instance = new ProductItemModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
-      exists(callback({ exists, selectFrom })),
-    )
-
-    return instance
-  }
-
-  applyWhereHas(
-    relation: string,
-    callback: (query: SubqueryBuilder<keyof ProductItemModel>) => void,
-  ): ProductItemModel {
-    const subqueryBuilder = new SubqueryBuilder()
-
-    callback(subqueryBuilder)
-    const conditions = subqueryBuilder.getConditions()
-
-    this.selectFromQuery = this.selectFromQuery
-      .where(({ exists, selectFrom }: any) => {
-        let subquery = selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.productItem_id`, '=', 'product_items.id')
-
-        conditions.forEach((condition) => {
-          switch (condition.method) {
-            case 'where':
-              if (condition.type === 'and') {
-                subquery = subquery.where(condition.column, condition.operator!, condition.value)
-              }
-              else {
-                subquery = subquery.orWhere(condition.column, condition.operator!, condition.value)
-              }
-              break
-
-            case 'whereIn':
-              if (condition.operator === 'is not') {
-                subquery = subquery.whereNotIn(condition.column, condition.values)
-              }
-              else {
-                subquery = subquery.whereIn(condition.column, condition.values)
-              }
-
-              break
-
-            case 'whereNull':
-              subquery = subquery.whereNull(condition.column)
-              break
-
-            case 'whereNotNull':
-              subquery = subquery.whereNotNull(condition.column)
-              break
-
-            case 'whereBetween':
-              subquery = subquery.whereBetween(condition.column, condition.values)
-              break
-
-            case 'whereExists': {
-              const nestedBuilder = new SubqueryBuilder()
-              condition.callback!(nestedBuilder)
-              break
-            }
-          }
-        })
-
-        return exists(subquery)
-      })
-
-    return this
-  }
-
-  whereHas(
-    relation: string,
-    callback: (query: SubqueryBuilder<keyof ProductItemModel>) => void,
-  ): ProductItemModel {
-    return this.applyWhereHas(relation, callback)
-  }
-
-  static whereHas(
-    relation: string,
-    callback: (query: SubqueryBuilder<keyof ProductItemModel>) => void,
-  ): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    return instance.applyWhereHas(relation, callback)
-  }
-
-  applyDoesntHave(relation: string): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.where(({ not, exists, selectFrom }: any) =>
-      not(
-        exists(
-          selectFrom(relation)
-            .select('1')
-            .whereRef(`${relation}.productItem_id`, '=', 'product_items.id'),
-        ),
-      ),
-    )
-
-    return this
-  }
-
-  doesntHave(relation: string): ProductItemModel {
-    return this.applyDoesntHave(relation)
-  }
-
-  static doesntHave(relation: string): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    return instance.applyDoesntHave(relation)
-  }
-
-  applyWhereDoesntHave(relation: string, callback: (query: SubqueryBuilder<ProductItemsTable>) => void): ProductItemModel {
-    const subqueryBuilder = new SubqueryBuilder()
-
-    callback(subqueryBuilder)
-    const conditions = subqueryBuilder.getConditions()
-
-    this.selectFromQuery = this.selectFromQuery
-      .where(({ exists, selectFrom, not }: any) => {
-        const subquery = selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.productItem_id`, '=', 'product_items.id')
-
-        return not(exists(subquery))
-      })
-
-    conditions.forEach((condition) => {
-      switch (condition.method) {
-        case 'where':
-          if (condition.type === 'and') {
-            this.where(condition.column, condition.operator!, condition.value || [])
-          }
-          break
-
-        case 'whereIn':
-          if (condition.operator === 'is not') {
-            this.whereNotIn(condition.column, condition.values || [])
-          }
-          else {
-            this.whereIn(condition.column, condition.values || [])
-          }
-
-          break
-
-        case 'whereNull':
-          this.whereNull(condition.column)
-          break
-
-        case 'whereNotNull':
-          this.whereNotNull(condition.column)
-          break
-
-        case 'whereBetween':
-          this.whereBetween(condition.column, condition.range || [0, 0])
-          break
-
-        case 'whereExists': {
-          const nestedBuilder = new SubqueryBuilder()
-          condition.callback!(nestedBuilder)
-          break
-        }
-      }
+    await instance.applyChunk(size, async (models) => {
+      const modelInstances = models.map((item: ProductItemJsonResponse) => instance.createInstance(item))
+      await callback(modelInstances)
     })
-
-    return this
   }
 
-  whereDoesntHave(relation: string, callback: (query: SubqueryBuilder<ProductItemsTable>) => void): ProductItemModel {
-    return this.applyWhereDoesntHave(relation, callback)
-  }
-
-  static whereDoesntHave(
-    relation: string,
-    callback: (query: SubqueryBuilder<ProductItemsTable>) => void,
-  ): ProductItemModel {
+  static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
+    data: ProductItemModel[]
+    paging: {
+      total_records: number
+      page: number
+      total_pages: number
+    }
+    next_cursor: number | null
+  }> {
     const instance = new ProductItemModel(undefined)
 
-    return instance.applyWhereDoesntHave(relation, callback)
-  }
-
-  async applyPaginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<ProductItemResponse> {
-    const totalRecordsResult = await DB.instance.selectFrom('product_items')
-      .select(DB.instance.fn.count('id').as('total')) // Use 'id' or another actual column name
-      .executeTakeFirst()
-
-    const totalRecords = Number(totalRecordsResult?.total) || 0
-    const totalPages = Math.ceil(totalRecords / (options.limit ?? 10))
-
-    const product_itemsWithExtra = await DB.instance.selectFrom('product_items')
-      .selectAll()
-      .orderBy('id', 'asc') // Assuming 'id' is used for cursor-based pagination
-      .limit((options.limit ?? 10) + 1) // Fetch one extra record
-      .offset(((options.page ?? 1) - 1) * (options.limit ?? 10)) // Ensure options.page is not undefined
-      .execute()
-
-    let nextCursor = null
-    if (product_itemsWithExtra.length > (options.limit ?? 10))
-      nextCursor = product_itemsWithExtra.pop()?.id ?? null
+    const result = await instance.applyPaginate(options)
 
     return {
-      data: product_itemsWithExtra,
-      paging: {
-        total_records: totalRecords,
-        page: options.page || 1,
-        total_pages: totalPages,
-      },
-      next_cursor: nextCursor,
+      data: result.data.map((item: ProductItemJsonResponse) => instance.createInstance(item)),
+      paging: result.paging,
+      next_cursor: result.next_cursor,
     }
   }
 
-  async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<ProductItemResponse> {
-    return await this.applyPaginate(options)
-  }
-
-  // Method to get all product_items
-  static async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<ProductItemResponse> {
-    const instance = new ProductItemModel(undefined)
-
-    return await instance.applyPaginate(options)
+  // Instance method for creating model instances
+  createInstance(data: ProductItemJsonResponse): ProductItemModel {
+    return new ProductItemModel(data)
   }
 
   async applyCreate(newProductItem: NewProductItem): Promise<ProductItemModel> {
@@ -950,12 +604,18 @@ export class ProductItemModel {
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await this.find(Number(result.numInsertedOrUpdatedRows)) as ProductItemModel
+    const model = await DB.instance.selectFrom('product_items')
+      .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
+      .selectAll()
+      .executeTakeFirst()
+
+    if (!model) {
+      throw new HttpError(500, 'Failed to retrieve created ProductItem')
+    }
 
     if (model)
       dispatch('productItem:created', model)
-
-    return model
+    return this.createInstance(model)
   }
 
   async create(newProductItem: NewProductItem): Promise<ProductItemModel> {
@@ -964,8 +624,167 @@ export class ProductItemModel {
 
   static async create(newProductItem: NewProductItem): Promise<ProductItemModel> {
     const instance = new ProductItemModel(undefined)
-
     return await instance.applyCreate(newProductItem)
+  }
+
+  static async firstOrCreate(search: Partial<ProductItemsTable>, values: NewProductItem = {} as NewProductItem): Promise<ProductItemModel> {
+    // First try to find a record matching the search criteria
+    const instance = new ProductItemModel(undefined)
+
+    // Apply all search conditions
+    for (const [key, value] of Object.entries(search)) {
+      instance.selectFromQuery = instance.selectFromQuery.where(key, '=', value)
+    }
+
+    // Try to find the record
+    const existingRecord = await instance.applyFirst()
+
+    if (existingRecord) {
+      return instance.createInstance(existingRecord)
+    }
+
+    // If no record exists, create a new one with combined search criteria and values
+    const createData = { ...search, ...values } as NewProductItem
+    return await ProductItemModel.create(createData)
+  }
+
+  static async updateOrCreate(search: Partial<ProductItemsTable>, values: NewProductItem = {} as NewProductItem): Promise<ProductItemModel> {
+    // First try to find a record matching the search criteria
+    const instance = new ProductItemModel(undefined)
+
+    // Apply all search conditions
+    for (const [key, value] of Object.entries(search)) {
+      instance.selectFromQuery = instance.selectFromQuery.where(key, '=', value)
+    }
+
+    // Try to find the record
+    const existingRecord = await instance.applyFirst()
+
+    if (existingRecord) {
+      // If record exists, update it with the new values
+      const model = instance.createInstance(existingRecord)
+      const updatedModel = await model.update(values as ProductItemUpdate)
+
+      // Return the updated model instance
+      if (updatedModel) {
+        return updatedModel
+      }
+
+      // If update didn't return a model, fetch it again to ensure we have latest data
+      const refreshedModel = await instance.applyFirst()
+      return instance.createInstance(refreshedModel!)
+    }
+
+    // If no record exists, create a new one with combined search criteria and values
+    const createData = { ...search, ...values } as NewProductItem
+    return await ProductItemModel.create(createData)
+  }
+
+  async update(newProductItem: ProductItemUpdate): Promise<ProductItemModel | undefined> {
+    const filteredValues = Object.fromEntries(
+      Object.entries(newProductItem).filter(([key]) =>
+        !this.guarded.includes(key) && this.fillable.includes(key),
+      ),
+    ) as ProductItemUpdate
+
+    await this.mapCustomSetters(filteredValues)
+
+    filteredValues.updated_at = new Date().toISOString()
+
+    await DB.instance.updateTable('product_items')
+      .set(filteredValues)
+      .where('id', '=', this.id)
+      .executeTakeFirst()
+
+    if (this.id) {
+      // Get the updated data
+      const model = await DB.instance.selectFrom('product_items')
+        .where('id', '=', this.id)
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve updated ProductItem')
+      }
+
+      if (model)
+        dispatch('productItem:updated', model)
+      return this.createInstance(model)
+    }
+
+    this.hasSaved = true
+
+    return undefined
+  }
+
+  async forceUpdate(newProductItem: ProductItemUpdate): Promise<ProductItemModel | undefined> {
+    await DB.instance.updateTable('product_items')
+      .set(newProductItem)
+      .where('id', '=', this.id)
+      .executeTakeFirst()
+
+    if (this.id) {
+      // Get the updated data
+      const model = await DB.instance.selectFrom('product_items')
+        .where('id', '=', this.id)
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve updated ProductItem')
+      }
+
+      if (this)
+        dispatch('productItem:updated', model)
+      return this.createInstance(model)
+    }
+
+    return undefined
+  }
+
+  async save(): Promise<ProductItemModel> {
+    // If the model has an ID, update it; otherwise, create a new record
+    if (this.id) {
+      // Update existing record
+      await DB.instance.updateTable('product_items')
+        .set(this.attributes as ProductItemUpdate)
+        .where('id', '=', this.id)
+        .executeTakeFirst()
+
+      // Get the updated data
+      const model = await DB.instance.selectFrom('product_items')
+        .where('id', '=', this.id)
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve updated ProductItem')
+      }
+
+      if (this)
+        dispatch('productItem:updated', model)
+      return this.createInstance(model)
+    }
+    else {
+      // Create new record
+      const result = await DB.instance.insertInto('product_items')
+        .values(this.attributes as NewProductItem)
+        .executeTakeFirst()
+
+      // Get the created data
+      const model = await DB.instance.selectFrom('product_items')
+        .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve created ProductItem')
+      }
+
+      if (this)
+        dispatch('productItem:created', model)
+      return this.createInstance(model)
+    }
   }
 
   static async createMany(newProductItem: NewProductItem[]): Promise<void> {
@@ -993,15 +812,38 @@ export class ProductItemModel {
       .values(newProductItem)
       .executeTakeFirst()
 
-    const model = await find(Number(result.numInsertedOrUpdatedRows)) as ProductItemModel
+    const instance = new ProductItemModel(undefined)
+    const model = await DB.instance.selectFrom('product_items')
+      .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
+      .selectAll()
+      .executeTakeFirst()
+
+    if (!model) {
+      throw new HttpError(500, 'Failed to retrieve created ProductItem')
+    }
 
     if (model)
       dispatch('productItem:created', model)
 
-    return model
+    return instance.createInstance(model)
   }
 
   // Method to remove a ProductItem
+  async delete(): Promise<number> {
+    if (this.id === undefined)
+      this.deleteFromQuery.execute()
+    const model = await this.find(Number(this.id))
+
+    if (model)
+      dispatch('productItem:deleted', model)
+
+    const deleted = await DB.instance.deleteFrom('product_items')
+      .where('id', '=', this.id)
+      .execute()
+
+    return deleted.numDeletedRows
+  }
+
   static async remove(id: number): Promise<any> {
     const instance = new ProductItemModel(undefined)
 
@@ -1013,201 +855,6 @@ export class ProductItemModel {
     return await DB.instance.deleteFrom('product_items')
       .where('id', '=', id)
       .execute()
-  }
-
-  applyWhere<V>(column: keyof ProductItemsTable, ...args: [V] | [Operator, V]): ProductItemModel {
-    if (args.length === 1) {
-      const [value] = args
-      this.selectFromQuery = this.selectFromQuery.where(column, '=', value)
-      this.updateFromQuery = this.updateFromQuery.where(column, '=', value)
-      this.deleteFromQuery = this.deleteFromQuery.where(column, '=', value)
-    }
-    else {
-      const [operator, value] = args as [Operator, V]
-      this.selectFromQuery = this.selectFromQuery.where(column, operator, value)
-      this.updateFromQuery = this.updateFromQuery.where(column, operator, value)
-      this.deleteFromQuery = this.deleteFromQuery.where(column, operator, value)
-    }
-
-    return this
-  }
-
-  where<V = string>(column: keyof ProductItemsTable, ...args: [V] | [Operator, V]): ProductItemModel {
-    return this.applyWhere<V>(column, ...args)
-  }
-
-  static where<V = string>(column: keyof ProductItemsTable, ...args: [V] | [Operator, V]): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    return instance.applyWhere<V>(column, ...args)
-  }
-
-  whereColumn(first: keyof ProductItemsTable, operator: Operator, second: keyof ProductItemsTable): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.whereRef(first, operator, second)
-
-    return this
-  }
-
-  static whereColumn(first: keyof ProductItemsTable, operator: Operator, second: keyof ProductItemsTable): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.whereRef(first, operator, second)
-
-    return instance
-  }
-
-  applyWhereRef(column: keyof ProductItemsTable, ...args: string[]): ProductItemModel {
-    const [operatorOrValue, value] = args
-    const operator = value === undefined ? '=' : operatorOrValue
-    const actualValue = value === undefined ? operatorOrValue : value
-
-    const instance = new ProductItemModel(undefined)
-    instance.selectFromQuery = instance.selectFromQuery.whereRef(column, operator, actualValue)
-
-    return instance
-  }
-
-  whereRef(column: keyof ProductItemsTable, ...args: string[]): ProductItemModel {
-    return this.applyWhereRef(column, ...args)
-  }
-
-  static whereRef(column: keyof ProductItemsTable, ...args: string[]): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    return instance.applyWhereRef(column, ...args)
-  }
-
-  whereRaw(sqlStatement: string): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.where(sql`${sqlStatement}`)
-
-    return this
-  }
-
-  static whereRaw(sqlStatement: string): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.where(sql`${sqlStatement}`)
-
-    return instance
-  }
-
-  applyOrWhere(...conditions: [string, any][]): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.where((eb: any) => {
-      return eb.or(
-        conditions.map(([column, value]) => eb(column, '=', value)),
-      )
-    })
-
-    this.updateFromQuery = this.updateFromQuery.where((eb: any) => {
-      return eb.or(
-        conditions.map(([column, value]) => eb(column, '=', value)),
-      )
-    })
-
-    this.deleteFromQuery = this.deleteFromQuery.where((eb: any) => {
-      return eb.or(
-        conditions.map(([column, value]) => eb(column, '=', value)),
-      )
-    })
-
-    return this
-  }
-
-  orWhere(...conditions: [string, any][]): ProductItemModel {
-    return this.applyOrWhere(...conditions)
-  }
-
-  static orWhere(...conditions: [string, any][]): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    return instance.applyOrWhere(...conditions)
-  }
-
-  when(
-    condition: boolean,
-    callback: (query: ProductItemModel) => ProductItemModel,
-  ): ProductItemModel {
-    return ProductItemModel.when(condition, callback)
-  }
-
-  static when(
-    condition: boolean,
-    callback: (query: ProductItemModel) => ProductItemModel,
-  ): ProductItemModel {
-    let instance = new ProductItemModel(undefined)
-
-    if (condition)
-      instance = callback(instance)
-
-    return instance
-  }
-
-  whereNotNull(column: keyof ProductItemsTable): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    this.updateFromQuery = this.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    this.deleteFromQuery = this.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    return this
-  }
-
-  static whereNotNull(column: keyof ProductItemsTable): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    instance.updateFromQuery = instance.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    instance.deleteFromQuery = instance.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    return instance
-  }
-
-  whereNull(column: keyof ProductItemsTable): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    this.updateFromQuery = this.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    this.deleteFromQuery = this.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    return this
-  }
-
-  static whereNull(column: keyof ProductItemsTable): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    instance.updateFromQuery = instance.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    instance.deleteFromQuery = instance.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    return instance
   }
 
   static whereName(value: string): ProductItemModel {
@@ -1282,486 +929,10 @@ export class ProductItemModel {
     return instance
   }
 
-  applyWhereIn<V>(column: keyof ProductItemsTable, values: V[]) {
-    this.selectFromQuery = this.selectFromQuery.where(column, 'in', values)
-
-    this.updateFromQuery = this.updateFromQuery.where(column, 'in', values)
-
-    this.deleteFromQuery = this.deleteFromQuery.where(column, 'in', values)
-
-    return this
-  }
-
-  whereIn<V = number>(column: keyof ProductItemsTable, values: V[]): ProductItemModel {
-    return this.applyWhereIn<V>(column, values)
-  }
-
   static whereIn<V = number>(column: keyof ProductItemsTable, values: V[]): ProductItemModel {
     const instance = new ProductItemModel(undefined)
 
     return instance.applyWhereIn<V>(column, values)
-  }
-
-  applyWhereBetween<V>(column: keyof ProductItemsTable, range: [V, V]): ProductItemModel {
-    if (range.length !== 2) {
-      throw new HttpError(500, 'Range must have exactly two values: [min, max]')
-    }
-
-    const query = sql` ${sql.raw(column as string)} between ${range[0]} and ${range[1]} `
-
-    this.selectFromQuery = this.selectFromQuery.where(query)
-    this.updateFromQuery = this.updateFromQuery.where(query)
-    this.deleteFromQuery = this.deleteFromQuery.where(query)
-
-    return this
-  }
-
-  whereBetween<V = number>(column: keyof ProductItemsTable, range: [V, V]): ProductItemModel {
-    return this.applyWhereBetween<V>(column, range)
-  }
-
-  static whereBetween<V = number>(column: keyof ProductItemsTable, range: [V, V]): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    return instance.applyWhereBetween<V>(column, range)
-  }
-
-  applyWhereLike(column: keyof ProductItemsTable, value: string): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.where(sql` ${sql.raw(column as string)} LIKE ${value}`)
-
-    this.updateFromQuery = this.updateFromQuery.where(sql` ${sql.raw(column as string)} LIKE ${value}`)
-
-    this.deleteFromQuery = this.deleteFromQuery.where(sql` ${sql.raw(column as string)} LIKE ${value}`)
-
-    return this
-  }
-
-  whereLike(column: keyof ProductItemsTable, value: string): ProductItemModel {
-    return this.applyWhereLike(column, value)
-  }
-
-  static whereLike(column: keyof ProductItemsTable, value: string): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    return instance.applyWhereLike(column, value)
-  }
-
-  applyWhereNotIn<V>(column: keyof ProductItemsTable, values: V[]): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.where(column, 'not in', values)
-
-    this.updateFromQuery = this.updateFromQuery.where(column, 'not in', values)
-
-    this.deleteFromQuery = this.deleteFromQuery.where(column, 'not in', values)
-
-    return this
-  }
-
-  whereNotIn<V>(column: keyof ProductItemsTable, values: V[]): ProductItemModel {
-    return this.applyWhereNotIn<V>(column, values)
-  }
-
-  static whereNotIn<V = number>(column: keyof ProductItemsTable, values: V[]): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    return instance.applyWhereNotIn<V>(column, values)
-  }
-
-  async exists(): Promise<boolean> {
-    let model
-
-    if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
-    }
-    else {
-      model = await this.selectFromQuery.selectAll().executeTakeFirst()
-    }
-
-    return model !== null && model !== undefined
-  }
-
-  static async latest(): Promise<ProductItemModel | undefined> {
-    const instance = new ProductItemModel(undefined)
-
-    const model = await DB.instance.selectFrom('product_items')
-      .selectAll()
-      .orderBy('id', 'desc')
-      .executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    instance.mapCustomGetters(model)
-
-    const data = new ProductItemModel(model)
-
-    return data
-  }
-
-  static async oldest(): Promise<ProductItemModel | undefined> {
-    const instance = new ProductItemModel(undefined)
-
-    const model = await DB.instance.selectFrom('product_items')
-      .selectAll()
-      .orderBy('id', 'asc')
-      .executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    instance.mapCustomGetters(model)
-
-    const data = new ProductItemModel(model)
-
-    return data
-  }
-
-  static async firstOrCreate(
-    condition: Partial<ProductItemJsonResponse>,
-    newProductItem: NewProductItem,
-  ): Promise<ProductItemModel> {
-    const instance = new ProductItemModel(undefined)
-
-    const key = Object.keys(condition)[0] as keyof ProductItemJsonResponse
-
-    if (!key) {
-      throw new HttpError(500, 'Condition must contain at least one key-value pair')
-    }
-
-    const value = condition[key]
-
-    // Attempt to find the first record matching the condition
-    const existingProductItem = await DB.instance.selectFrom('product_items')
-      .selectAll()
-      .where(key, '=', value)
-      .executeTakeFirst()
-
-    if (existingProductItem) {
-      instance.mapCustomGetters(existingProductItem)
-      await instance.loadRelations(existingProductItem)
-
-      return new ProductItemModel(existingProductItem as ProductItemJsonResponse)
-    }
-    else {
-      return await instance.create(newProductItem)
-    }
-  }
-
-  static async updateOrCreate(
-    condition: Partial<ProductItemJsonResponse>,
-    newProductItem: NewProductItem,
-  ): Promise<ProductItemModel> {
-    const instance = new ProductItemModel(undefined)
-
-    const key = Object.keys(condition)[0] as keyof ProductItemJsonResponse
-
-    if (!key) {
-      throw new HttpError(500, 'Condition must contain at least one key-value pair')
-    }
-
-    const value = condition[key]
-
-    // Attempt to find the first record matching the condition
-    const existingProductItem = await DB.instance.selectFrom('product_items')
-      .selectAll()
-      .where(key, '=', value)
-      .executeTakeFirst()
-
-    if (existingProductItem) {
-      // If found, update the existing record
-      await DB.instance.updateTable('product_items')
-        .set(newProductItem)
-        .where(key, '=', value)
-        .executeTakeFirstOrThrow()
-
-      // Fetch and return the updated record
-      const updatedProductItem = await DB.instance.selectFrom('product_items')
-        .selectAll()
-        .where(key, '=', value)
-        .executeTakeFirst()
-
-      if (!updatedProductItem) {
-        throw new HttpError(500, 'Failed to fetch updated record')
-      }
-
-      instance.hasSaved = true
-
-      return new ProductItemModel(updatedProductItem as ProductItemJsonResponse)
-    }
-    else {
-      // If not found, create a new record
-      return await instance.create(newProductItem)
-    }
-  }
-
-  async loadRelations(models: ProductItemJsonResponse | ProductItemJsonResponse[]): Promise<void> {
-    // Handle both single model and array of models
-    const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
-
-    const modelIds = modelArray.map(model => model.id)
-
-    for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
-        .selectFrom(relation)
-        .where('productItem_id', 'in', modelIds)
-        .selectAll()
-        .execute()
-
-      if (Array.isArray(models)) {
-        models.map((model: ProductItemJsonResponse) => {
-          const records = relatedRecords.filter((record: { productItem_id: number }) => {
-            return record.productItem_id === model.id
-          })
-
-          model[relation] = records.length === 1 ? records[0] : records
-          return model
-        })
-      }
-      else {
-        const records = relatedRecords.filter((record: { productItem_id: number }) => {
-          return record.productItem_id === models.id
-        })
-
-        models[relation] = records.length === 1 ? records[0] : records
-      }
-    }
-  }
-
-  with(relations: string[]): ProductItemModel {
-    this.withRelations = relations
-
-    return this
-  }
-
-  static with(relations: string[]): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    instance.withRelations = relations
-
-    return instance
-  }
-
-  async last(): Promise<ProductItemModel | undefined> {
-    let model: ProductItemJsonResponse | undefined
-
-    if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
-    }
-    else {
-      model = await this.selectFromQuery.selectAll().orderBy('id', 'desc').executeTakeFirst()
-    }
-
-    if (model) {
-      this.mapCustomGetters(model)
-      await this.loadRelations(model)
-    }
-
-    const data = new ProductItemModel(model)
-
-    return data
-  }
-
-  static async last(): Promise<ProductItemModel | undefined> {
-    const model = await DB.instance.selectFrom('product_items').selectAll().orderBy('id', 'desc').executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    const data = new ProductItemModel(model)
-
-    return data
-  }
-
-  orderBy(column: keyof ProductItemsTable, order: 'asc' | 'desc'): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(column, order)
-
-    return this
-  }
-
-  static orderBy(column: keyof ProductItemsTable, order: 'asc' | 'desc'): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(column, order)
-
-    return instance
-  }
-
-  groupBy(column: keyof ProductItemsTable): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.groupBy(column)
-
-    return this
-  }
-
-  static groupBy(column: keyof ProductItemsTable): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.groupBy(column)
-
-    return instance
-  }
-
-  having<V = string>(column: keyof ProductItemsTable, operator: Operator, value: V): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.having(column, operator, value)
-
-    return this
-  }
-
-  static having<V = string>(column: keyof ProductItemsTable, operator: Operator, value: V): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.having(column, operator, value)
-
-    return instance
-  }
-
-  inRandomOrder(): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(sql` ${sql.raw('RANDOM()')} `)
-
-    return this
-  }
-
-  static inRandomOrder(): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(sql` ${sql.raw('RANDOM()')} `)
-
-    return instance
-  }
-
-  orderByDesc(column: keyof ProductItemsTable): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(column, 'desc')
-
-    return this
-  }
-
-  static orderByDesc(column: keyof ProductItemsTable): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'desc')
-
-    return instance
-  }
-
-  orderByAsc(column: keyof ProductItemsTable): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(column, 'asc')
-
-    return this
-  }
-
-  static orderByAsc(column: keyof ProductItemsTable): ProductItemModel {
-    const instance = new ProductItemModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'asc')
-
-    return instance
-  }
-
-  async update(newProductItem: ProductItemUpdate): Promise<ProductItemModel | undefined> {
-    const filteredValues = Object.fromEntries(
-      Object.entries(newProductItem).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
-      ),
-    ) as NewProductItem
-
-    await this.mapCustomSetters(filteredValues)
-
-    await DB.instance.updateTable('product_items')
-      .set(filteredValues)
-      .where('id', '=', this.id)
-      .executeTakeFirst()
-
-    if (this.id) {
-      const model = await this.find(this.id)
-
-      if (model)
-        dispatch('productItem:updated', model)
-
-      return model
-    }
-
-    this.hasSaved = true
-
-    return undefined
-  }
-
-  async forceUpdate(productItem: ProductItemUpdate): Promise<ProductItemModel | undefined> {
-    if (this.id === undefined) {
-      this.updateFromQuery.set(productItem).execute()
-    }
-
-    await this.mapCustomSetters(productItem)
-
-    await DB.instance.updateTable('product_items')
-      .set(productItem)
-      .where('id', '=', this.id)
-      .executeTakeFirst()
-
-    if (this.id) {
-      const model = await this.find(this.id)
-
-      if (model)
-        dispatch('productItem:updated', model)
-
-      this.hasSaved = true
-
-      return model
-    }
-
-    return undefined
-  }
-
-  async save(): Promise<void> {
-    if (!this)
-      throw new HttpError(500, 'ProductItem data is undefined')
-
-    await this.mapCustomSetters(this.attributes)
-
-    if (this.id === undefined) {
-      await this.create(this.attributes)
-    }
-    else {
-      await this.update(this.attributes)
-    }
-
-    this.hasSaved = true
-  }
-
-  fill(data: Partial<ProductItemJsonResponse>): ProductItemModel {
-    const filteredValues = Object.fromEntries(
-      Object.entries(data).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
-      ),
-    ) as NewProductItem
-
-    this.attributes = {
-      ...this.attributes,
-      ...filteredValues,
-    }
-
-    return this
-  }
-
-  forceFill(data: Partial<ProductItemJsonResponse>): ProductItemModel {
-    this.attributes = {
-      ...this.attributes,
-      ...data,
-    }
-
-    return this
-  }
-
-  // Method to delete (soft delete) the productItem instance
-  async delete(): Promise<ProductItemsTable> {
-    if (this.id === undefined)
-      this.deleteFromQuery.execute()
-    const model = await this.find(Number(this.id))
-    if (model)
-      dispatch('productItem:deleted', model)
-
-    return await DB.instance.deleteFrom('product_items')
-      .where('id', '=', this.id)
-      .execute()
   }
 
   async productBelong(): Promise<ProductModel> {
@@ -1792,12 +963,12 @@ export class ProductItemModel {
     return model
   }
 
-  async productCategoryBelong(): Promise<ProductCategoryModel> {
-    if (this.product_category_id === undefined)
+  async categoryBelong(): Promise<CategoryModel> {
+    if (this.category_id === undefined)
       throw new HttpError(500, 'Relation Error!')
 
-    const model = await ProductCategory
-      .where('id', '=', this.product_category_id)
+    const model = await Category
+      .where('id', '=', this.category_id)
       .first()
 
     if (!model)
@@ -1819,36 +990,16 @@ export class ProductItemModel {
     }
   }
 
-  distinct(column: keyof ProductItemJsonResponse): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.select(column).distinct()
-
-    this.hasSelect = true
-
-    return this
-  }
-
   static distinct(column: keyof ProductItemJsonResponse): ProductItemModel {
     const instance = new ProductItemModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.select(column).distinct()
-
-    instance.hasSelect = true
-
-    return instance
-  }
-
-  join(table: string, firstCol: string, secondCol: string): ProductItemModel {
-    this.selectFromQuery = this.selectFromQuery.innerJoin(table, firstCol, secondCol)
-
-    return this
+    return instance.applyDistinct(column)
   }
 
   static join(table: string, firstCol: string, secondCol: string): ProductItemModel {
     const instance = new ProductItemModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.innerJoin(table, firstCol, secondCol)
-
-    return instance
+    return instance.applyJoin(table, firstCol, secondCol)
   }
 
   toJSON(): ProductItemJsonResponse {
@@ -1875,8 +1026,8 @@ export class ProductItemModel {
       product: this.product,
       manufacturer_id: this.manufacturer_id,
       manufacturer: this.manufacturer,
-      product_category_id: this.product_category_id,
-      product_category: this.product_category,
+      category_id: this.category_id,
+      category: this.category,
       ...this.customColumns,
     }
 
@@ -1890,9 +1041,27 @@ export class ProductItemModel {
 
     return model
   }
+
+  // Add a protected applyFind implementation
+  protected async applyFind(id: number): Promise<ProductItemModel | undefined> {
+    const model = await DB.instance.selectFrom(this.tableName)
+      .where('id', '=', id)
+      .selectAll()
+      .executeTakeFirst()
+
+    if (!model)
+      return undefined
+
+    this.mapCustomGetters(model)
+
+    await this.loadRelations(model)
+
+    // Return a proper instance using the factory method
+    return this.createInstance(model)
+  }
 }
 
-async function find(id: number): Promise<ProductItemModel | undefined> {
+export async function find(id: number): Promise<ProductItemModel | undefined> {
   const query = DB.instance.selectFrom('product_items').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
@@ -1900,7 +1069,8 @@ async function find(id: number): Promise<ProductItemModel | undefined> {
   if (!model)
     return undefined
 
-  return new ProductItemModel(model)
+  const instance = new ProductItemModel(undefined)
+  return instance.createInstance(model)
 }
 
 export async function count(): Promise<number> {
@@ -1910,11 +1080,8 @@ export async function count(): Promise<number> {
 }
 
 export async function create(newProductItem: NewProductItem): Promise<ProductItemModel> {
-  const result = await DB.instance.insertInto('product_items')
-    .values(newProductItem)
-    .executeTakeFirstOrThrow()
-
-  return await find(Number(result.numInsertedOrUpdatedRows)) as ProductItemModel
+  const instance = new ProductItemModel(undefined)
+  return await instance.applyCreate(newProductItem)
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {

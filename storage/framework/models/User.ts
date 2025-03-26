@@ -1,4 +1,3 @@
-import type { Faker } from '@stacksjs/faker'
 import type { Attributes, Model } from '@stacksjs/types'
 // soon, these will be auto-imported
 import { schema } from '@stacksjs/validation'
@@ -40,8 +39,8 @@ export default {
     billable: true,
   },
 
-  hasOne: ['Subscriber'],
-  hasMany: ['Deployment', 'Subscription', 'PaymentMethod', 'Post', 'PaymentTransaction'],
+  hasOne: ['Subscriber', 'Driver'],
+  hasMany: ['Deployment', 'Subscription', 'PaymentMethod', 'Post', 'PaymentTransaction', 'Customer'],
 
   belongsToMany: ['Team'],
 
@@ -58,7 +57,7 @@ export default {
         },
       },
 
-      factory: (faker: Faker) => faker.person.fullName(),
+      factory: faker => faker.person.fullName(),
     },
 
     email: {
@@ -73,7 +72,7 @@ export default {
         },
       },
 
-      factory: (faker: Faker) => faker.internet.email(),
+      factory: faker => faker.internet.email(),
     },
 
     jobTitle: {
@@ -88,7 +87,7 @@ export default {
         },
       },
 
-      factory: (faker: Faker) => faker.person.jobTitle(),
+      factory: faker => faker.person.jobTitle(),
     },
     password: {
       required: true,
@@ -103,7 +102,7 @@ export default {
         },
       },
 
-      factory: (faker: Faker) => faker.internet.password(),
+      factory: faker => faker.internet.password(),
     },
   },
   get: {
@@ -113,7 +112,7 @@ export default {
   },
 
   set: {
-    password: (attributes: Attributes) => Bun.password.hash(attributes.password),
+    password: (attributes: Attributes) => Bun.password.hash(String(attributes.password)),
   },
   dashboard: {
     highlight: true,

@@ -3,14 +3,12 @@ import type { Operator } from '@stacksjs/orm'
 import type { OrderModel } from './Order'
 import type { ProductModel } from './Product'
 import { randomUUIDv7 } from 'bun'
-import { cache } from '@stacksjs/cache'
 import { sql } from '@stacksjs/database'
-import { HttpError, ModelNotFoundException } from '@stacksjs/error-handling'
+import { HttpError } from '@stacksjs/error-handling'
 import { dispatch } from '@stacksjs/events'
+import { DB } from '@stacksjs/orm'
 
-import { DB, SubqueryBuilder } from '@stacksjs/orm'
-
-import Product from './Product'
+import { BaseOrm } from '../utils/base'
 
 export interface CouponsTable {
   id: Generated<number>
@@ -31,9 +29,9 @@ export interface CouponsTable {
   applicable_categories?: string
   uuid?: string
 
-  created_at?: Date
+  created_at?: string
 
-  updated_at?: Date
+  updated_at?: string
 
 }
 
@@ -54,17 +52,7 @@ export interface CouponJsonResponse extends Omit<Selectable<CouponsTable>, 'pass
 export type NewCoupon = Insertable<CouponsTable>
 export type CouponUpdate = Updateable<CouponsTable>
 
-      type SortDirection = 'asc' | 'desc'
-interface SortOptions { column: CouponJsonResponse, order: SortDirection }
-// Define a type for the options parameter
-interface QueryOptions {
-  sort?: SortOptions
-  limit?: number
-  offset?: number
-  page?: number
-}
-
-export class CouponModel {
+export class CouponModel extends BaseOrm<CouponModel, CouponsTable, CouponJsonResponse> {
   private readonly hidden: Array<keyof CouponJsonResponse> = []
   private readonly fillable: Array<keyof CouponJsonResponse> = ['code', 'description', 'discount_type', 'discount_value', 'min_order_amount', 'max_discount_amount', 'free_product_id', 'is_active', 'usage_limit', 'usage_count', 'start_date', 'end_date', 'applicable_products', 'applicable_categories', 'uuid']
   private readonly guarded: Array<keyof CouponJsonResponse> = []
@@ -72,14 +60,21 @@ export class CouponModel {
   protected originalAttributes = {} as CouponJsonResponse
 
   protected selectFromQuery: any
-  protected withRelations: string[]
   protected updateFromQuery: any
   protected deleteFromQuery: any
   protected hasSelect: boolean
-  private hasSaved: boolean
   private customColumns: Record<string, unknown> = {}
 
+  /**
+   * This model inherits many query methods from BaseOrm:
+   * - pluck, chunk, whereExists, has, doesntHave, whereHas, whereDoesntHave
+   * - inRandomOrder, max, min, avg, paginate, get, and more
+   *
+   * See BaseOrm class for the full list of inherited methods.
+   */
+
   constructor(coupon: CouponJsonResponse | undefined) {
+    super('coupons')
     if (coupon) {
       this.attributes = { ...coupon }
       this.originalAttributes = { ...coupon }
@@ -99,7 +94,48 @@ export class CouponModel {
     this.hasSaved = false
   }
 
-  mapCustomGetters(models: CouponJsonResponse | CouponJsonResponse[]): void {
+  protected async loadRelations(models: CouponJsonResponse | CouponJsonResponse[]): Promise<void> {
+    // Handle both single model and array of models
+    const modelArray = Array.isArray(models) ? models : [models]
+    if (!modelArray.length)
+      return
+
+    const modelIds = modelArray.map(model => model.id)
+
+    for (const relation of this.withRelations) {
+      const relatedRecords = await DB.instance
+        .selectFrom(relation)
+        .where('coupon_id', 'in', modelIds)
+        .selectAll()
+        .execute()
+
+      if (Array.isArray(models)) {
+        models.map((model: CouponJsonResponse) => {
+          const records = relatedRecords.filter((record: { coupon_id: number }) => {
+            return record.coupon_id === model.id
+          })
+
+          model[relation] = records.length === 1 ? records[0] : records
+          return model
+        })
+      }
+      else {
+        const records = relatedRecords.filter((record: { coupon_id: number }) => {
+          return record.coupon_id === models.id
+        })
+
+        models[relation] = records.length === 1 ? records[0] : records
+      }
+    }
+  }
+
+  static with(relations: string[]): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyWith(relations)
+  }
+
+  protected mapCustomGetters(models: CouponJsonResponse | CouponJsonResponse[]): void {
     const data = models
 
     if (Array.isArray(data)) {
@@ -111,7 +147,7 @@ export class CouponModel {
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
-          model[key] = fn()
+          (model as any)[key] = fn()
         }
 
         return model
@@ -127,7 +163,7 @@ export class CouponModel {
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
-        model[key] = fn()
+        (model as any)[key] = fn()
       }
     }
   }
@@ -140,7 +176,7 @@ export class CouponModel {
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      model[key] = await fn()
+      (model as any)[key] = await fn()
     }
   }
 
@@ -220,11 +256,11 @@ export class CouponModel {
     return this.attributes.applicable_categories
   }
 
-  get created_at(): Date | undefined {
+  get created_at(): string | undefined {
     return this.attributes.created_at
   }
 
-  get updated_at(): Date | undefined {
+  get updated_at(): string | undefined {
     return this.attributes.updated_at
   }
 
@@ -288,149 +324,48 @@ export class CouponModel {
     this.attributes.applicable_categories = value
   }
 
-  set updated_at(value: Date) {
+  set updated_at(value: string) {
     this.attributes.updated_at = value
-  }
-
-  getOriginal(column?: keyof CouponJsonResponse): Partial<CouponJsonResponse> {
-    if (column) {
-      return this.originalAttributes[column]
-    }
-
-    return this.originalAttributes
-  }
-
-  getChanges(): Partial<CouponJsonResponse> {
-    return this.fillable.reduce<Partial<CouponJsonResponse>>((changes, key) => {
-      const currentValue = this.attributes[key as keyof CouponsTable]
-      const originalValue = this.originalAttributes[key as keyof CouponsTable]
-
-      if (currentValue !== originalValue) {
-        changes[key] = currentValue
-      }
-
-      return changes
-    }, {})
-  }
-
-  isDirty(column?: keyof CouponJsonResponse): boolean {
-    if (column) {
-      return this.attributes[column] !== this.originalAttributes[column]
-    }
-
-    return Object.entries(this.originalAttributes).some(([key, originalValue]) => {
-      const currentValue = (this.attributes as any)[key]
-
-      return currentValue !== originalValue
-    })
-  }
-
-  isClean(column?: keyof CouponJsonResponse): boolean {
-    return !this.isDirty(column)
-  }
-
-  wasChanged(column?: keyof CouponJsonResponse): boolean {
-    return this.hasSaved && this.isDirty(column)
-  }
-
-  select(params: (keyof CouponJsonResponse)[] | RawBuilder<string> | string): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.select(params)
-
-    this.hasSelect = true
-
-    return this
   }
 
   static select(params: (keyof CouponJsonResponse)[] | RawBuilder<string> | string): CouponModel {
     const instance = new CouponModel(undefined)
 
-    // Initialize a query with the table name and selected fields
-    instance.selectFromQuery = instance.selectFromQuery.select(params)
-
-    instance.hasSelect = true
-
-    return instance
-  }
-
-  async applyFind(id: number): Promise<CouponModel | undefined> {
-    const model = await DB.instance.selectFrom('coupons').where('id', '=', id).selectAll().executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    this.mapCustomGetters(model)
-    await this.loadRelations(model)
-
-    const data = new CouponModel(model)
-
-    cache.getOrSet(`coupon:${id}`, JSON.stringify(model))
-
-    return data
-  }
-
-  async find(id: number): Promise<CouponModel | undefined> {
-    return await this.applyFind(id)
+    return instance.applySelect(params)
   }
 
   // Method to find a Coupon by ID
   static async find(id: number): Promise<CouponModel | undefined> {
+    const query = DB.instance.selectFrom('coupons').where('id', '=', id).selectAll()
+
+    const model = await query.executeTakeFirst()
+
+    if (!model)
+      return undefined
+
     const instance = new CouponModel(undefined)
-
-    return await instance.applyFind(id)
-  }
-
-  async first(): Promise<CouponModel | undefined> {
-    let model: CouponJsonResponse | undefined
-
-    if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
-    }
-    else {
-      model = await this.selectFromQuery.selectAll().executeTakeFirst()
-    }
-
-    if (model) {
-      this.mapCustomGetters(model)
-      await this.loadRelations(model)
-    }
-
-    const data = new CouponModel(model)
-
-    return data
+    return instance.createInstance(model)
   }
 
   static async first(): Promise<CouponModel | undefined> {
-    const instance = new CouponJsonResponse(null)
+    const instance = new CouponModel(undefined)
 
-    const model = await DB.instance.selectFrom('coupons')
-      .selectAll()
-      .executeTakeFirst()
-
-    instance.mapCustomGetters(model)
+    const model = await instance.applyFirst()
 
     const data = new CouponModel(model)
 
     return data
   }
 
-  async applyFirstOrFail(): Promise<CouponModel | undefined> {
-    const model = await this.selectFromQuery.executeTakeFirst()
+  static async last(): Promise<CouponModel | undefined> {
+    const instance = new CouponModel(undefined)
 
-    if (model === undefined)
-      throw new ModelNotFoundException(404, 'No CouponModel results found for query')
+    const model = await instance.applyLast()
 
-    if (model) {
-      this.mapCustomGetters(model)
-      await this.loadRelations(model)
-    }
+    if (!model)
+      return undefined
 
-    const data = new CouponModel(model)
-
-    return data
-  }
-
-  async firstOrFail(): Promise<CouponModel | undefined> {
-    return await this.applyFirstOrFail()
+    return new CouponModel(model)
   }
 
   static async firstOrFail(): Promise<CouponModel | undefined> {
@@ -453,511 +388,234 @@ export class CouponModel {
     return data
   }
 
-  async applyFindOrFail(id: number): Promise<CouponModel> {
-    const model = await DB.instance.selectFrom('coupons').where('id', '=', id).selectAll().executeTakeFirst()
-
-    if (model === undefined)
-      throw new ModelNotFoundException(404, `No CouponModel results for ${id}`)
-
-    cache.getOrSet(`coupon:${id}`, JSON.stringify(model))
-
-    this.mapCustomGetters(model)
-    await this.loadRelations(model)
-
-    const data = new CouponModel(model)
-
-    return data
-  }
-
-  async findOrFail(id: number): Promise<CouponModel> {
-    return await this.applyFindOrFail(id)
-  }
-
-  static async findOrFail(id: number): Promise<CouponModel> {
+  static async findOrFail(id: number): Promise<CouponModel | undefined> {
     const instance = new CouponModel(undefined)
 
     return await instance.applyFindOrFail(id)
   }
 
-  async applyFindMany(ids: number[]): Promise<CouponModel[]> {
-    let query = DB.instance.selectFrom('coupons').where('id', 'in', ids)
-
+  static async findMany(ids: number[]): Promise<CouponModel[]> {
     const instance = new CouponModel(undefined)
 
-    query = query.selectAll()
-
-    const models = await query.execute()
-
-    instance.mapCustomGetters(models)
-    await instance.loadRelations(models)
+    const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: CouponJsonResponse) => instance.parseResult(new CouponModel(modelItem)))
   }
 
-  static async findMany(ids: number[]): Promise<CouponModel[]> {
+  static async latest(column: keyof CouponsTable = 'created_at'): Promise<CouponModel | undefined> {
     const instance = new CouponModel(undefined)
 
-    return await instance.applyFindMany(ids)
+    const model = await instance.selectFromQuery
+      .selectAll()
+      .orderBy(column, 'desc')
+      .limit(1)
+      .executeTakeFirst()
+
+    if (!model)
+      return undefined
+
+    return new CouponModel(model)
   }
 
-  async findMany(ids: number[]): Promise<CouponModel[]> {
-    return await this.applyFindMany(ids)
-  }
+  static async oldest(column: keyof CouponsTable = 'created_at'): Promise<CouponModel | undefined> {
+    const instance = new CouponModel(undefined)
 
-  skip(count: number): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.offset(count)
+    const model = await instance.selectFromQuery
+      .selectAll()
+      .orderBy(column, 'asc')
+      .limit(1)
+      .executeTakeFirst()
 
-    return this
+    if (!model)
+      return undefined
+
+    return new CouponModel(model)
   }
 
   static skip(count: number): CouponModel {
     const instance = new CouponModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.offset(count)
-
-    return instance
-  }
-
-  async applyChunk(size: number, callback: (models: CouponModel[]) => Promise<void>): Promise<void> {
-    let page = 1
-    let hasMore = true
-
-    while (hasMore) {
-      // Get one batch
-      const models = await this.selectFromQuery
-        .selectAll()
-        .limit(size)
-        .offset((page - 1) * size)
-        .execute()
-
-      // If we got fewer results than chunk size, this is the last batch
-      if (models.length < size) {
-        hasMore = false
-      }
-
-      // Process this batch
-      if (models.length > 0) {
-        await callback(models)
-      }
-
-      page++
-    }
-  }
-
-  async chunk(size: number, callback: (models: CouponModel[]) => Promise<void>): Promise<void> {
-    await this.applyChunk(size, callback)
-  }
-
-  static async chunk(size: number, callback: (models: CouponModel[]) => Promise<void>): Promise<void> {
-    const instance = new CouponModel(undefined)
-
-    await instance.applyChunk(size, callback)
-  }
-
-  take(count: number): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.limit(count)
-
-    return this
+    return instance.applySkip(count)
   }
 
   static take(count: number): CouponModel {
     const instance = new CouponModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.limit(count)
-
-    return instance
+    return instance.applyTake(count)
   }
 
-  static async pluck<K extends keyof CouponModel>(field: K): Promise<CouponModel[K][]> {
+  static where<V = string>(column: keyof CouponsTable, ...args: [V] | [Operator, V]): CouponModel {
     const instance = new CouponModel(undefined)
 
-    if (instance.hasSelect) {
-      const model = await instance.selectFromQuery.execute()
-      return model.map((modelItem: CouponModel) => modelItem[field])
-    }
-
-    const model = await instance.selectFromQuery.selectAll().execute()
-
-    return model.map((modelItem: CouponModel) => modelItem[field])
+    return instance.applyWhere<V>(column, ...args)
   }
 
-  async pluck<K extends keyof CouponModel>(field: K): Promise<CouponModel[K][]> {
-    if (this.hasSelect) {
-      const model = await this.selectFromQuery.execute()
-      return model.map((modelItem: CouponModel) => modelItem[field])
-    }
+  static orWhere(...conditions: [string, any][]): CouponModel {
+    const instance = new CouponModel(undefined)
 
-    const model = await this.selectFromQuery.selectAll().execute()
+    return instance.applyOrWhere(...conditions)
+  }
 
-    return model.map((modelItem: CouponModel) => modelItem[field])
+  static whereNotIn<V = number>(column: keyof CouponsTable, values: V[]): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyWhereNotIn<V>(column, values)
+  }
+
+  static whereBetween<V = number>(column: keyof CouponsTable, range: [V, V]): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyWhereBetween<V>(column, range)
+  }
+
+  static whereRef(column: keyof CouponsTable, ...args: string[]): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyWhereRef(column, ...args)
+  }
+
+  static when(condition: boolean, callback: (query: CouponModel) => CouponModel): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyWhen(condition, callback as any)
+  }
+
+  static whereNull(column: keyof CouponsTable): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyWhereNull(column)
+  }
+
+  static whereNotNull(column: keyof CouponsTable): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyWhereNotNull(column)
+  }
+
+  static whereLike(column: keyof CouponsTable, value: string): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyWhereLike(column, value)
+  }
+
+  static orderBy(column: keyof CouponsTable, order: 'asc' | 'desc'): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyOrderBy(column, order)
+  }
+
+  static orderByAsc(column: keyof CouponsTable): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyOrderByAsc(column)
+  }
+
+  static orderByDesc(column: keyof CouponsTable): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyOrderByDesc(column)
+  }
+
+  static groupBy(column: keyof CouponsTable): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyGroupBy(column)
+  }
+
+  static having<V = string>(column: keyof CouponsTable, operator: Operator, value: V): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyHaving<V>(column, operator, value)
+  }
+
+  static inRandomOrder(): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyInRandomOrder()
+  }
+
+  static whereColumn(first: keyof CouponsTable, operator: Operator, second: keyof CouponsTable): CouponModel {
+    const instance = new CouponModel(undefined)
+
+    return instance.applyWhereColumn(first, operator, second)
+  }
+
+  static async max(field: keyof CouponsTable): Promise<number> {
+    const instance = new CouponModel(undefined)
+
+    return await instance.applyMax(field)
+  }
+
+  static async min(field: keyof CouponsTable): Promise<number> {
+    const instance = new CouponModel(undefined)
+
+    return await instance.applyMin(field)
+  }
+
+  static async avg(field: keyof CouponsTable): Promise<number> {
+    const instance = new CouponModel(undefined)
+
+    return await instance.applyAvg(field)
+  }
+
+  static async sum(field: keyof CouponsTable): Promise<number> {
+    const instance = new CouponModel(undefined)
+
+    return await instance.applySum(field)
   }
 
   static async count(): Promise<number> {
     const instance = new CouponModel(undefined)
 
-    const result = await instance.selectFromQuery
-      .select(sql`COUNT(*) as count`)
-      .executeTakeFirst()
-
-    return result.count || 0
-  }
-
-  async count(): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`COUNT(*) as count`)
-      .executeTakeFirst()
-
-    return result.count || 0
-  }
-
-  static async max(field: keyof CouponModel): Promise<number> {
-    const instance = new CouponModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`MAX(${sql.raw(field as string)}) as max `)
-      .executeTakeFirst()
-
-    return result.max
-  }
-
-  async max(field: keyof CouponModel): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`MAX(${sql.raw(field as string)}) as max`)
-      .executeTakeFirst()
-
-    return result.max
-  }
-
-  static async min(field: keyof CouponModel): Promise<number> {
-    const instance = new CouponModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`MIN(${sql.raw(field as string)}) as min `)
-      .executeTakeFirst()
-
-    return result.min
-  }
-
-  async min(field: keyof CouponModel): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`MIN(${sql.raw(field as string)}) as min `)
-      .executeTakeFirst()
-
-    return result.min
-  }
-
-  static async avg(field: keyof CouponModel): Promise<number> {
-    const instance = new CouponModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`AVG(${sql.raw(field as string)}) as avg `)
-      .executeTakeFirst()
-
-    return result.avg
-  }
-
-  async avg(field: keyof CouponModel): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`AVG(${sql.raw(field as string)}) as avg `)
-      .executeTakeFirst()
-
-    return result.avg
-  }
-
-  static async sum(field: keyof CouponModel): Promise<number> {
-    const instance = new CouponModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`SUM(${sql.raw(field as string)}) as sum `)
-      .executeTakeFirst()
-
-    return result.sum
-  }
-
-  async sum(field: keyof CouponModel): Promise<number> {
-    const result = this.selectFromQuery
-      .select(sql`SUM(${sql.raw(field as string)}) as sum `)
-      .executeTakeFirst()
-
-    return result.sum
-  }
-
-  async applyGet(): Promise<CouponModel[]> {
-    let models
-
-    if (this.hasSelect) {
-      models = await this.selectFromQuery.execute()
-    }
-    else {
-      models = await this.selectFromQuery.selectAll().execute()
-    }
-
-    this.mapCustomGetters(models)
-    await this.loadRelations(models)
-
-    const data = await Promise.all(models.map(async (model: CouponJsonResponse) => {
-      return new CouponModel(model)
-    }))
-
-    return data
-  }
-
-  async get(): Promise<CouponModel[]> {
-    return await this.applyGet()
+    return instance.applyCount()
   }
 
   static async get(): Promise<CouponModel[]> {
     const instance = new CouponModel(undefined)
 
-    return await instance.applyGet()
+    const results = await instance.applyGet()
+
+    return results.map((item: CouponJsonResponse) => instance.createInstance(item))
   }
 
-  has(relation: string): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.where(({ exists, selectFrom }: any) =>
-      exists(
-        selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.coupon_id`, '=', 'coupons.id'),
-      ),
-    )
-
-    return this
-  }
-
-  static has(relation: string): CouponModel {
+  static async pluck<K extends keyof CouponModel>(field: K): Promise<CouponModel[K][]> {
     const instance = new CouponModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
-      exists(
-        selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.coupon_id`, '=', 'coupons.id'),
-      ),
-    )
-
-    return instance
+    return await instance.applyPluck(field)
   }
 
-  static whereExists(callback: (qb: any) => any): CouponModel {
+  static async chunk(size: number, callback: (models: CouponModel[]) => Promise<void>): Promise<void> {
     const instance = new CouponModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
-      exists(callback({ exists, selectFrom })),
-    )
-
-    return instance
-  }
-
-  applyWhereHas(
-    relation: string,
-    callback: (query: SubqueryBuilder<keyof CouponModel>) => void,
-  ): CouponModel {
-    const subqueryBuilder = new SubqueryBuilder()
-
-    callback(subqueryBuilder)
-    const conditions = subqueryBuilder.getConditions()
-
-    this.selectFromQuery = this.selectFromQuery
-      .where(({ exists, selectFrom }: any) => {
-        let subquery = selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.coupon_id`, '=', 'coupons.id')
-
-        conditions.forEach((condition) => {
-          switch (condition.method) {
-            case 'where':
-              if (condition.type === 'and') {
-                subquery = subquery.where(condition.column, condition.operator!, condition.value)
-              }
-              else {
-                subquery = subquery.orWhere(condition.column, condition.operator!, condition.value)
-              }
-              break
-
-            case 'whereIn':
-              if (condition.operator === 'is not') {
-                subquery = subquery.whereNotIn(condition.column, condition.values)
-              }
-              else {
-                subquery = subquery.whereIn(condition.column, condition.values)
-              }
-
-              break
-
-            case 'whereNull':
-              subquery = subquery.whereNull(condition.column)
-              break
-
-            case 'whereNotNull':
-              subquery = subquery.whereNotNull(condition.column)
-              break
-
-            case 'whereBetween':
-              subquery = subquery.whereBetween(condition.column, condition.values)
-              break
-
-            case 'whereExists': {
-              const nestedBuilder = new SubqueryBuilder()
-              condition.callback!(nestedBuilder)
-              break
-            }
-          }
-        })
-
-        return exists(subquery)
-      })
-
-    return this
-  }
-
-  whereHas(
-    relation: string,
-    callback: (query: SubqueryBuilder<keyof CouponModel>) => void,
-  ): CouponModel {
-    return this.applyWhereHas(relation, callback)
-  }
-
-  static whereHas(
-    relation: string,
-    callback: (query: SubqueryBuilder<keyof CouponModel>) => void,
-  ): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    return instance.applyWhereHas(relation, callback)
-  }
-
-  applyDoesntHave(relation: string): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.where(({ not, exists, selectFrom }: any) =>
-      not(
-        exists(
-          selectFrom(relation)
-            .select('1')
-            .whereRef(`${relation}.coupon_id`, '=', 'coupons.id'),
-        ),
-      ),
-    )
-
-    return this
-  }
-
-  doesntHave(relation: string): CouponModel {
-    return this.applyDoesntHave(relation)
-  }
-
-  static doesntHave(relation: string): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    return instance.applyDoesntHave(relation)
-  }
-
-  applyWhereDoesntHave(relation: string, callback: (query: SubqueryBuilder<CouponsTable>) => void): CouponModel {
-    const subqueryBuilder = new SubqueryBuilder()
-
-    callback(subqueryBuilder)
-    const conditions = subqueryBuilder.getConditions()
-
-    this.selectFromQuery = this.selectFromQuery
-      .where(({ exists, selectFrom, not }: any) => {
-        const subquery = selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.coupon_id`, '=', 'coupons.id')
-
-        return not(exists(subquery))
-      })
-
-    conditions.forEach((condition) => {
-      switch (condition.method) {
-        case 'where':
-          if (condition.type === 'and') {
-            this.where(condition.column, condition.operator!, condition.value || [])
-          }
-          break
-
-        case 'whereIn':
-          if (condition.operator === 'is not') {
-            this.whereNotIn(condition.column, condition.values || [])
-          }
-          else {
-            this.whereIn(condition.column, condition.values || [])
-          }
-
-          break
-
-        case 'whereNull':
-          this.whereNull(condition.column)
-          break
-
-        case 'whereNotNull':
-          this.whereNotNull(condition.column)
-          break
-
-        case 'whereBetween':
-          this.whereBetween(condition.column, condition.range || [0, 0])
-          break
-
-        case 'whereExists': {
-          const nestedBuilder = new SubqueryBuilder()
-          condition.callback!(nestedBuilder)
-          break
-        }
-      }
+    await instance.applyChunk(size, async (models) => {
+      const modelInstances = models.map((item: CouponJsonResponse) => instance.createInstance(item))
+      await callback(modelInstances)
     })
-
-    return this
   }
 
-  whereDoesntHave(relation: string, callback: (query: SubqueryBuilder<CouponsTable>) => void): CouponModel {
-    return this.applyWhereDoesntHave(relation, callback)
-  }
-
-  static whereDoesntHave(
-    relation: string,
-    callback: (query: SubqueryBuilder<CouponsTable>) => void,
-  ): CouponModel {
+  static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
+    data: CouponModel[]
+    paging: {
+      total_records: number
+      page: number
+      total_pages: number
+    }
+    next_cursor: number | null
+  }> {
     const instance = new CouponModel(undefined)
 
-    return instance.applyWhereDoesntHave(relation, callback)
-  }
-
-  async applyPaginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<CouponResponse> {
-    const totalRecordsResult = await DB.instance.selectFrom('coupons')
-      .select(DB.instance.fn.count('id').as('total')) // Use 'id' or another actual column name
-      .executeTakeFirst()
-
-    const totalRecords = Number(totalRecordsResult?.total) || 0
-    const totalPages = Math.ceil(totalRecords / (options.limit ?? 10))
-
-    const couponsWithExtra = await DB.instance.selectFrom('coupons')
-      .selectAll()
-      .orderBy('id', 'asc') // Assuming 'id' is used for cursor-based pagination
-      .limit((options.limit ?? 10) + 1) // Fetch one extra record
-      .offset(((options.page ?? 1) - 1) * (options.limit ?? 10)) // Ensure options.page is not undefined
-      .execute()
-
-    let nextCursor = null
-    if (couponsWithExtra.length > (options.limit ?? 10))
-      nextCursor = couponsWithExtra.pop()?.id ?? null
+    const result = await instance.applyPaginate(options)
 
     return {
-      data: couponsWithExtra,
-      paging: {
-        total_records: totalRecords,
-        page: options.page || 1,
-        total_pages: totalPages,
-      },
-      next_cursor: nextCursor,
+      data: result.data.map((item: CouponJsonResponse) => instance.createInstance(item)),
+      paging: result.paging,
+      next_cursor: result.next_cursor,
     }
   }
 
-  async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<CouponResponse> {
-    return await this.applyPaginate(options)
-  }
-
-  // Method to get all coupons
-  static async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<CouponResponse> {
-    const instance = new CouponModel(undefined)
-
-    return await instance.applyPaginate(options)
+  // Instance method for creating model instances
+  createInstance(data: CouponJsonResponse): CouponModel {
+    return new CouponModel(data)
   }
 
   async applyCreate(newCoupon: NewCoupon): Promise<CouponModel> {
@@ -975,12 +633,18 @@ export class CouponModel {
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await this.find(Number(result.numInsertedOrUpdatedRows)) as CouponModel
+    const model = await DB.instance.selectFrom('coupons')
+      .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
+      .selectAll()
+      .executeTakeFirst()
+
+    if (!model) {
+      throw new HttpError(500, 'Failed to retrieve created Coupon')
+    }
 
     if (model)
       dispatch('coupon:created', model)
-
-    return model
+    return this.createInstance(model)
   }
 
   async create(newCoupon: NewCoupon): Promise<CouponModel> {
@@ -989,8 +653,167 @@ export class CouponModel {
 
   static async create(newCoupon: NewCoupon): Promise<CouponModel> {
     const instance = new CouponModel(undefined)
-
     return await instance.applyCreate(newCoupon)
+  }
+
+  static async firstOrCreate(search: Partial<CouponsTable>, values: NewCoupon = {} as NewCoupon): Promise<CouponModel> {
+    // First try to find a record matching the search criteria
+    const instance = new CouponModel(undefined)
+
+    // Apply all search conditions
+    for (const [key, value] of Object.entries(search)) {
+      instance.selectFromQuery = instance.selectFromQuery.where(key, '=', value)
+    }
+
+    // Try to find the record
+    const existingRecord = await instance.applyFirst()
+
+    if (existingRecord) {
+      return instance.createInstance(existingRecord)
+    }
+
+    // If no record exists, create a new one with combined search criteria and values
+    const createData = { ...search, ...values } as NewCoupon
+    return await CouponModel.create(createData)
+  }
+
+  static async updateOrCreate(search: Partial<CouponsTable>, values: NewCoupon = {} as NewCoupon): Promise<CouponModel> {
+    // First try to find a record matching the search criteria
+    const instance = new CouponModel(undefined)
+
+    // Apply all search conditions
+    for (const [key, value] of Object.entries(search)) {
+      instance.selectFromQuery = instance.selectFromQuery.where(key, '=', value)
+    }
+
+    // Try to find the record
+    const existingRecord = await instance.applyFirst()
+
+    if (existingRecord) {
+      // If record exists, update it with the new values
+      const model = instance.createInstance(existingRecord)
+      const updatedModel = await model.update(values as CouponUpdate)
+
+      // Return the updated model instance
+      if (updatedModel) {
+        return updatedModel
+      }
+
+      // If update didn't return a model, fetch it again to ensure we have latest data
+      const refreshedModel = await instance.applyFirst()
+      return instance.createInstance(refreshedModel!)
+    }
+
+    // If no record exists, create a new one with combined search criteria and values
+    const createData = { ...search, ...values } as NewCoupon
+    return await CouponModel.create(createData)
+  }
+
+  async update(newCoupon: CouponUpdate): Promise<CouponModel | undefined> {
+    const filteredValues = Object.fromEntries(
+      Object.entries(newCoupon).filter(([key]) =>
+        !this.guarded.includes(key) && this.fillable.includes(key),
+      ),
+    ) as CouponUpdate
+
+    await this.mapCustomSetters(filteredValues)
+
+    filteredValues.updated_at = new Date().toISOString()
+
+    await DB.instance.updateTable('coupons')
+      .set(filteredValues)
+      .where('id', '=', this.id)
+      .executeTakeFirst()
+
+    if (this.id) {
+      // Get the updated data
+      const model = await DB.instance.selectFrom('coupons')
+        .where('id', '=', this.id)
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve updated Coupon')
+      }
+
+      if (model)
+        dispatch('coupon:updated', model)
+      return this.createInstance(model)
+    }
+
+    this.hasSaved = true
+
+    return undefined
+  }
+
+  async forceUpdate(newCoupon: CouponUpdate): Promise<CouponModel | undefined> {
+    await DB.instance.updateTable('coupons')
+      .set(newCoupon)
+      .where('id', '=', this.id)
+      .executeTakeFirst()
+
+    if (this.id) {
+      // Get the updated data
+      const model = await DB.instance.selectFrom('coupons')
+        .where('id', '=', this.id)
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve updated Coupon')
+      }
+
+      if (this)
+        dispatch('coupon:updated', model)
+      return this.createInstance(model)
+    }
+
+    return undefined
+  }
+
+  async save(): Promise<CouponModel> {
+    // If the model has an ID, update it; otherwise, create a new record
+    if (this.id) {
+      // Update existing record
+      await DB.instance.updateTable('coupons')
+        .set(this.attributes as CouponUpdate)
+        .where('id', '=', this.id)
+        .executeTakeFirst()
+
+      // Get the updated data
+      const model = await DB.instance.selectFrom('coupons')
+        .where('id', '=', this.id)
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve updated Coupon')
+      }
+
+      if (this)
+        dispatch('coupon:updated', model)
+      return this.createInstance(model)
+    }
+    else {
+      // Create new record
+      const result = await DB.instance.insertInto('coupons')
+        .values(this.attributes as NewCoupon)
+        .executeTakeFirst()
+
+      // Get the created data
+      const model = await DB.instance.selectFrom('coupons')
+        .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve created Coupon')
+      }
+
+      if (this)
+        dispatch('coupon:created', model)
+      return this.createInstance(model)
+    }
   }
 
   static async createMany(newCoupon: NewCoupon[]): Promise<void> {
@@ -1018,15 +841,38 @@ export class CouponModel {
       .values(newCoupon)
       .executeTakeFirst()
 
-    const model = await find(Number(result.numInsertedOrUpdatedRows)) as CouponModel
+    const instance = new CouponModel(undefined)
+    const model = await DB.instance.selectFrom('coupons')
+      .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
+      .selectAll()
+      .executeTakeFirst()
+
+    if (!model) {
+      throw new HttpError(500, 'Failed to retrieve created Coupon')
+    }
 
     if (model)
       dispatch('coupon:created', model)
 
-    return model
+    return instance.createInstance(model)
   }
 
   // Method to remove a Coupon
+  async delete(): Promise<number> {
+    if (this.id === undefined)
+      this.deleteFromQuery.execute()
+    const model = await this.find(Number(this.id))
+
+    if (model)
+      dispatch('coupon:deleted', model)
+
+    const deleted = await DB.instance.deleteFrom('coupons')
+      .where('id', '=', this.id)
+      .execute()
+
+    return deleted.numDeletedRows
+  }
+
   static async remove(id: number): Promise<any> {
     const instance = new CouponModel(undefined)
 
@@ -1038,201 +884,6 @@ export class CouponModel {
     return await DB.instance.deleteFrom('coupons')
       .where('id', '=', id)
       .execute()
-  }
-
-  applyWhere<V>(column: keyof CouponsTable, ...args: [V] | [Operator, V]): CouponModel {
-    if (args.length === 1) {
-      const [value] = args
-      this.selectFromQuery = this.selectFromQuery.where(column, '=', value)
-      this.updateFromQuery = this.updateFromQuery.where(column, '=', value)
-      this.deleteFromQuery = this.deleteFromQuery.where(column, '=', value)
-    }
-    else {
-      const [operator, value] = args as [Operator, V]
-      this.selectFromQuery = this.selectFromQuery.where(column, operator, value)
-      this.updateFromQuery = this.updateFromQuery.where(column, operator, value)
-      this.deleteFromQuery = this.deleteFromQuery.where(column, operator, value)
-    }
-
-    return this
-  }
-
-  where<V = string>(column: keyof CouponsTable, ...args: [V] | [Operator, V]): CouponModel {
-    return this.applyWhere<V>(column, ...args)
-  }
-
-  static where<V = string>(column: keyof CouponsTable, ...args: [V] | [Operator, V]): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    return instance.applyWhere<V>(column, ...args)
-  }
-
-  whereColumn(first: keyof CouponsTable, operator: Operator, second: keyof CouponsTable): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.whereRef(first, operator, second)
-
-    return this
-  }
-
-  static whereColumn(first: keyof CouponsTable, operator: Operator, second: keyof CouponsTable): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.whereRef(first, operator, second)
-
-    return instance
-  }
-
-  applyWhereRef(column: keyof CouponsTable, ...args: string[]): CouponModel {
-    const [operatorOrValue, value] = args
-    const operator = value === undefined ? '=' : operatorOrValue
-    const actualValue = value === undefined ? operatorOrValue : value
-
-    const instance = new CouponModel(undefined)
-    instance.selectFromQuery = instance.selectFromQuery.whereRef(column, operator, actualValue)
-
-    return instance
-  }
-
-  whereRef(column: keyof CouponsTable, ...args: string[]): CouponModel {
-    return this.applyWhereRef(column, ...args)
-  }
-
-  static whereRef(column: keyof CouponsTable, ...args: string[]): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    return instance.applyWhereRef(column, ...args)
-  }
-
-  whereRaw(sqlStatement: string): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.where(sql`${sqlStatement}`)
-
-    return this
-  }
-
-  static whereRaw(sqlStatement: string): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.where(sql`${sqlStatement}`)
-
-    return instance
-  }
-
-  applyOrWhere(...conditions: [string, any][]): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.where((eb: any) => {
-      return eb.or(
-        conditions.map(([column, value]) => eb(column, '=', value)),
-      )
-    })
-
-    this.updateFromQuery = this.updateFromQuery.where((eb: any) => {
-      return eb.or(
-        conditions.map(([column, value]) => eb(column, '=', value)),
-      )
-    })
-
-    this.deleteFromQuery = this.deleteFromQuery.where((eb: any) => {
-      return eb.or(
-        conditions.map(([column, value]) => eb(column, '=', value)),
-      )
-    })
-
-    return this
-  }
-
-  orWhere(...conditions: [string, any][]): CouponModel {
-    return this.applyOrWhere(...conditions)
-  }
-
-  static orWhere(...conditions: [string, any][]): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    return instance.applyOrWhere(...conditions)
-  }
-
-  when(
-    condition: boolean,
-    callback: (query: CouponModel) => CouponModel,
-  ): CouponModel {
-    return CouponModel.when(condition, callback)
-  }
-
-  static when(
-    condition: boolean,
-    callback: (query: CouponModel) => CouponModel,
-  ): CouponModel {
-    let instance = new CouponModel(undefined)
-
-    if (condition)
-      instance = callback(instance)
-
-    return instance
-  }
-
-  whereNotNull(column: keyof CouponsTable): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    this.updateFromQuery = this.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    this.deleteFromQuery = this.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    return this
-  }
-
-  static whereNotNull(column: keyof CouponsTable): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    instance.updateFromQuery = instance.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    instance.deleteFromQuery = instance.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    return instance
-  }
-
-  whereNull(column: keyof CouponsTable): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    this.updateFromQuery = this.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    this.deleteFromQuery = this.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    return this
-  }
-
-  static whereNull(column: keyof CouponsTable): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    instance.updateFromQuery = instance.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    instance.deleteFromQuery = instance.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    return instance
   }
 
   static whereCode(value: string): CouponModel {
@@ -1347,486 +998,10 @@ export class CouponModel {
     return instance
   }
 
-  applyWhereIn<V>(column: keyof CouponsTable, values: V[]) {
-    this.selectFromQuery = this.selectFromQuery.where(column, 'in', values)
-
-    this.updateFromQuery = this.updateFromQuery.where(column, 'in', values)
-
-    this.deleteFromQuery = this.deleteFromQuery.where(column, 'in', values)
-
-    return this
-  }
-
-  whereIn<V = number>(column: keyof CouponsTable, values: V[]): CouponModel {
-    return this.applyWhereIn<V>(column, values)
-  }
-
   static whereIn<V = number>(column: keyof CouponsTable, values: V[]): CouponModel {
     const instance = new CouponModel(undefined)
 
     return instance.applyWhereIn<V>(column, values)
-  }
-
-  applyWhereBetween<V>(column: keyof CouponsTable, range: [V, V]): CouponModel {
-    if (range.length !== 2) {
-      throw new HttpError(500, 'Range must have exactly two values: [min, max]')
-    }
-
-    const query = sql` ${sql.raw(column as string)} between ${range[0]} and ${range[1]} `
-
-    this.selectFromQuery = this.selectFromQuery.where(query)
-    this.updateFromQuery = this.updateFromQuery.where(query)
-    this.deleteFromQuery = this.deleteFromQuery.where(query)
-
-    return this
-  }
-
-  whereBetween<V = number>(column: keyof CouponsTable, range: [V, V]): CouponModel {
-    return this.applyWhereBetween<V>(column, range)
-  }
-
-  static whereBetween<V = number>(column: keyof CouponsTable, range: [V, V]): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    return instance.applyWhereBetween<V>(column, range)
-  }
-
-  applyWhereLike(column: keyof CouponsTable, value: string): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.where(sql` ${sql.raw(column as string)} LIKE ${value}`)
-
-    this.updateFromQuery = this.updateFromQuery.where(sql` ${sql.raw(column as string)} LIKE ${value}`)
-
-    this.deleteFromQuery = this.deleteFromQuery.where(sql` ${sql.raw(column as string)} LIKE ${value}`)
-
-    return this
-  }
-
-  whereLike(column: keyof CouponsTable, value: string): CouponModel {
-    return this.applyWhereLike(column, value)
-  }
-
-  static whereLike(column: keyof CouponsTable, value: string): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    return instance.applyWhereLike(column, value)
-  }
-
-  applyWhereNotIn<V>(column: keyof CouponsTable, values: V[]): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.where(column, 'not in', values)
-
-    this.updateFromQuery = this.updateFromQuery.where(column, 'not in', values)
-
-    this.deleteFromQuery = this.deleteFromQuery.where(column, 'not in', values)
-
-    return this
-  }
-
-  whereNotIn<V>(column: keyof CouponsTable, values: V[]): CouponModel {
-    return this.applyWhereNotIn<V>(column, values)
-  }
-
-  static whereNotIn<V = number>(column: keyof CouponsTable, values: V[]): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    return instance.applyWhereNotIn<V>(column, values)
-  }
-
-  async exists(): Promise<boolean> {
-    let model
-
-    if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
-    }
-    else {
-      model = await this.selectFromQuery.selectAll().executeTakeFirst()
-    }
-
-    return model !== null && model !== undefined
-  }
-
-  static async latest(): Promise<CouponModel | undefined> {
-    const instance = new CouponModel(undefined)
-
-    const model = await DB.instance.selectFrom('coupons')
-      .selectAll()
-      .orderBy('id', 'desc')
-      .executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    instance.mapCustomGetters(model)
-
-    const data = new CouponModel(model)
-
-    return data
-  }
-
-  static async oldest(): Promise<CouponModel | undefined> {
-    const instance = new CouponModel(undefined)
-
-    const model = await DB.instance.selectFrom('coupons')
-      .selectAll()
-      .orderBy('id', 'asc')
-      .executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    instance.mapCustomGetters(model)
-
-    const data = new CouponModel(model)
-
-    return data
-  }
-
-  static async firstOrCreate(
-    condition: Partial<CouponJsonResponse>,
-    newCoupon: NewCoupon,
-  ): Promise<CouponModel> {
-    const instance = new CouponModel(undefined)
-
-    const key = Object.keys(condition)[0] as keyof CouponJsonResponse
-
-    if (!key) {
-      throw new HttpError(500, 'Condition must contain at least one key-value pair')
-    }
-
-    const value = condition[key]
-
-    // Attempt to find the first record matching the condition
-    const existingCoupon = await DB.instance.selectFrom('coupons')
-      .selectAll()
-      .where(key, '=', value)
-      .executeTakeFirst()
-
-    if (existingCoupon) {
-      instance.mapCustomGetters(existingCoupon)
-      await instance.loadRelations(existingCoupon)
-
-      return new CouponModel(existingCoupon as CouponJsonResponse)
-    }
-    else {
-      return await instance.create(newCoupon)
-    }
-  }
-
-  static async updateOrCreate(
-    condition: Partial<CouponJsonResponse>,
-    newCoupon: NewCoupon,
-  ): Promise<CouponModel> {
-    const instance = new CouponModel(undefined)
-
-    const key = Object.keys(condition)[0] as keyof CouponJsonResponse
-
-    if (!key) {
-      throw new HttpError(500, 'Condition must contain at least one key-value pair')
-    }
-
-    const value = condition[key]
-
-    // Attempt to find the first record matching the condition
-    const existingCoupon = await DB.instance.selectFrom('coupons')
-      .selectAll()
-      .where(key, '=', value)
-      .executeTakeFirst()
-
-    if (existingCoupon) {
-      // If found, update the existing record
-      await DB.instance.updateTable('coupons')
-        .set(newCoupon)
-        .where(key, '=', value)
-        .executeTakeFirstOrThrow()
-
-      // Fetch and return the updated record
-      const updatedCoupon = await DB.instance.selectFrom('coupons')
-        .selectAll()
-        .where(key, '=', value)
-        .executeTakeFirst()
-
-      if (!updatedCoupon) {
-        throw new HttpError(500, 'Failed to fetch updated record')
-      }
-
-      instance.hasSaved = true
-
-      return new CouponModel(updatedCoupon as CouponJsonResponse)
-    }
-    else {
-      // If not found, create a new record
-      return await instance.create(newCoupon)
-    }
-  }
-
-  async loadRelations(models: CouponJsonResponse | CouponJsonResponse[]): Promise<void> {
-    // Handle both single model and array of models
-    const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
-
-    const modelIds = modelArray.map(model => model.id)
-
-    for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
-        .selectFrom(relation)
-        .where('coupon_id', 'in', modelIds)
-        .selectAll()
-        .execute()
-
-      if (Array.isArray(models)) {
-        models.map((model: CouponJsonResponse) => {
-          const records = relatedRecords.filter((record: { coupon_id: number }) => {
-            return record.coupon_id === model.id
-          })
-
-          model[relation] = records.length === 1 ? records[0] : records
-          return model
-        })
-      }
-      else {
-        const records = relatedRecords.filter((record: { coupon_id: number }) => {
-          return record.coupon_id === models.id
-        })
-
-        models[relation] = records.length === 1 ? records[0] : records
-      }
-    }
-  }
-
-  with(relations: string[]): CouponModel {
-    this.withRelations = relations
-
-    return this
-  }
-
-  static with(relations: string[]): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    instance.withRelations = relations
-
-    return instance
-  }
-
-  async last(): Promise<CouponModel | undefined> {
-    let model: CouponJsonResponse | undefined
-
-    if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
-    }
-    else {
-      model = await this.selectFromQuery.selectAll().orderBy('id', 'desc').executeTakeFirst()
-    }
-
-    if (model) {
-      this.mapCustomGetters(model)
-      await this.loadRelations(model)
-    }
-
-    const data = new CouponModel(model)
-
-    return data
-  }
-
-  static async last(): Promise<CouponModel | undefined> {
-    const model = await DB.instance.selectFrom('coupons').selectAll().orderBy('id', 'desc').executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    const data = new CouponModel(model)
-
-    return data
-  }
-
-  orderBy(column: keyof CouponsTable, order: 'asc' | 'desc'): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(column, order)
-
-    return this
-  }
-
-  static orderBy(column: keyof CouponsTable, order: 'asc' | 'desc'): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(column, order)
-
-    return instance
-  }
-
-  groupBy(column: keyof CouponsTable): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.groupBy(column)
-
-    return this
-  }
-
-  static groupBy(column: keyof CouponsTable): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.groupBy(column)
-
-    return instance
-  }
-
-  having<V = string>(column: keyof CouponsTable, operator: Operator, value: V): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.having(column, operator, value)
-
-    return this
-  }
-
-  static having<V = string>(column: keyof CouponsTable, operator: Operator, value: V): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.having(column, operator, value)
-
-    return instance
-  }
-
-  inRandomOrder(): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(sql` ${sql.raw('RANDOM()')} `)
-
-    return this
-  }
-
-  static inRandomOrder(): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(sql` ${sql.raw('RANDOM()')} `)
-
-    return instance
-  }
-
-  orderByDesc(column: keyof CouponsTable): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(column, 'desc')
-
-    return this
-  }
-
-  static orderByDesc(column: keyof CouponsTable): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'desc')
-
-    return instance
-  }
-
-  orderByAsc(column: keyof CouponsTable): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(column, 'asc')
-
-    return this
-  }
-
-  static orderByAsc(column: keyof CouponsTable): CouponModel {
-    const instance = new CouponModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'asc')
-
-    return instance
-  }
-
-  async update(newCoupon: CouponUpdate): Promise<CouponModel | undefined> {
-    const filteredValues = Object.fromEntries(
-      Object.entries(newCoupon).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
-      ),
-    ) as NewCoupon
-
-    await this.mapCustomSetters(filteredValues)
-
-    await DB.instance.updateTable('coupons')
-      .set(filteredValues)
-      .where('id', '=', this.id)
-      .executeTakeFirst()
-
-    if (this.id) {
-      const model = await this.find(this.id)
-
-      if (model)
-        dispatch('coupon:updated', model)
-
-      return model
-    }
-
-    this.hasSaved = true
-
-    return undefined
-  }
-
-  async forceUpdate(coupon: CouponUpdate): Promise<CouponModel | undefined> {
-    if (this.id === undefined) {
-      this.updateFromQuery.set(coupon).execute()
-    }
-
-    await this.mapCustomSetters(coupon)
-
-    await DB.instance.updateTable('coupons')
-      .set(coupon)
-      .where('id', '=', this.id)
-      .executeTakeFirst()
-
-    if (this.id) {
-      const model = await this.find(this.id)
-
-      if (model)
-        dispatch('coupon:updated', model)
-
-      this.hasSaved = true
-
-      return model
-    }
-
-    return undefined
-  }
-
-  async save(): Promise<void> {
-    if (!this)
-      throw new HttpError(500, 'Coupon data is undefined')
-
-    await this.mapCustomSetters(this.attributes)
-
-    if (this.id === undefined) {
-      await this.create(this.attributes)
-    }
-    else {
-      await this.update(this.attributes)
-    }
-
-    this.hasSaved = true
-  }
-
-  fill(data: Partial<CouponJsonResponse>): CouponModel {
-    const filteredValues = Object.fromEntries(
-      Object.entries(data).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
-      ),
-    ) as NewCoupon
-
-    this.attributes = {
-      ...this.attributes,
-      ...filteredValues,
-    }
-
-    return this
-  }
-
-  forceFill(data: Partial<CouponJsonResponse>): CouponModel {
-    this.attributes = {
-      ...this.attributes,
-      ...data,
-    }
-
-    return this
-  }
-
-  // Method to delete (soft delete) the coupon instance
-  async delete(): Promise<CouponsTable> {
-    if (this.id === undefined)
-      this.deleteFromQuery.execute()
-    const model = await this.find(Number(this.id))
-    if (model)
-      dispatch('coupon:deleted', model)
-
-    return await DB.instance.deleteFrom('coupons')
-      .where('id', '=', this.id)
-      .execute()
   }
 
   async productBelong(): Promise<ProductModel> {
@@ -1855,36 +1030,16 @@ export class CouponModel {
     }
   }
 
-  distinct(column: keyof CouponJsonResponse): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.select(column).distinct()
-
-    this.hasSelect = true
-
-    return this
-  }
-
   static distinct(column: keyof CouponJsonResponse): CouponModel {
     const instance = new CouponModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.select(column).distinct()
-
-    instance.hasSelect = true
-
-    return instance
-  }
-
-  join(table: string, firstCol: string, secondCol: string): CouponModel {
-    this.selectFromQuery = this.selectFromQuery.innerJoin(table, firstCol, secondCol)
-
-    return this
+    return instance.applyDistinct(column)
   }
 
   static join(table: string, firstCol: string, secondCol: string): CouponModel {
     const instance = new CouponModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.innerJoin(table, firstCol, secondCol)
-
-    return instance
+    return instance.applyJoin(table, firstCol, secondCol)
   }
 
   toJSON(): CouponJsonResponse {
@@ -1928,9 +1083,27 @@ export class CouponModel {
 
     return model
   }
+
+  // Add a protected applyFind implementation
+  protected async applyFind(id: number): Promise<CouponModel | undefined> {
+    const model = await DB.instance.selectFrom(this.tableName)
+      .where('id', '=', id)
+      .selectAll()
+      .executeTakeFirst()
+
+    if (!model)
+      return undefined
+
+    this.mapCustomGetters(model)
+
+    await this.loadRelations(model)
+
+    // Return a proper instance using the factory method
+    return this.createInstance(model)
+  }
 }
 
-async function find(id: number): Promise<CouponModel | undefined> {
+export async function find(id: number): Promise<CouponModel | undefined> {
   const query = DB.instance.selectFrom('coupons').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
@@ -1938,7 +1111,8 @@ async function find(id: number): Promise<CouponModel | undefined> {
   if (!model)
     return undefined
 
-  return new CouponModel(model)
+  const instance = new CouponModel(undefined)
+  return instance.createInstance(model)
 }
 
 export async function count(): Promise<number> {
@@ -1948,11 +1122,8 @@ export async function count(): Promise<number> {
 }
 
 export async function create(newCoupon: NewCoupon): Promise<CouponModel> {
-  const result = await DB.instance.insertInto('coupons')
-    .values(newCoupon)
-    .executeTakeFirstOrThrow()
-
-  return await find(Number(result.numInsertedOrUpdatedRows)) as CouponModel
+  const instance = new CouponModel(undefined)
+  return await instance.applyCreate(newCoupon)
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {

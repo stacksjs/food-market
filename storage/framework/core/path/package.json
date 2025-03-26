@@ -1,7 +1,7 @@
 {
   "name": "@stacksjs/path",
   "type": "module",
-  "version": "0.69.5",
+  "version": "0.70.10",
   "description": "The Stacks path.",
   "author": "Chris Breuer",
   "contributors": ["Chris Breuer <chris@stacksjs.org>"],
@@ -31,8 +31,6 @@
     "prepublishOnly": "bun run build"
   },
   "devDependencies": {
-    "@stacksjs/development": "workspace:*",
-    "@stacksjs/logging": "workspace:*",
-    "@stacksjs/validation": "workspace:*"
+    "@stacksjs/development": "workspace:*"
   }
 }

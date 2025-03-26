@@ -1,10 +1,12 @@
 {
   "name": "stacks",
   "type": "module",
-  "version": "0.69.5",
+  "version": "0.70.10",
   "description": "The Stacks framework.",
   "author": "Chris Breuer",
-  "contributors": ["Chris Breuer <chris@stacksjs.org>"],
+  "contributors": [
+    "Chris Breuer <chris@stacksjs.org>"
+  ],
   "license": "MIT",
   "funding": "https://github.com/sponsors/chrisbbreuer",
   "homepage": "https://github.com/stacksjs/stacks/tree/main/stacks#readme",
@@ -340,7 +342,10 @@
     }
   },
   "types": "./types/dist/index.d.ts",
-  "files": ["README.md", "dist"],
+  "files": [
+    "README.md",
+    "dist"
+  ],
   "scripts": {
     "buddy": "bun run ./buddy/src/cli.ts",
     "build": "cd path && bun run build && cd .. && bun ./build.ts",
@@ -370,7 +375,7 @@
     "@stacksjs/enums": "workspace:*",
     "@stacksjs/env": "workspace:*",
     "@stacksjs/error-handling": "workspace:*",
-    "@stacksjs/eslint-config": "^4.2.1-beta.1",
+    "@stacksjs/eslint-config": "^4.10.2-beta.3",
     "@stacksjs/events": "workspace:*",
     "@stacksjs/faker": "workspace:*",
     "@stacksjs/git": "workspace:*",

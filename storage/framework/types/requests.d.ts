@@ -96,6 +96,7 @@ interface RequestDataTeam {
   description: string
   path: string
   is_personal: boolean
+  user_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -112,6 +113,7 @@ export interface TeamRequestType extends Request {
   description: string
   path: string
   is_personal: boolean
+  user_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -188,6 +190,7 @@ interface RequestDataUser {
   email: string
   job_title: string
   password: string
+  team_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -200,6 +203,7 @@ export interface UserRequestType extends Request {
   email: string
   job_title: string
   password: string
+  team_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -224,12 +228,37 @@ export interface PostRequestType extends Request {
   updated_at?: Date
 }
 
+interface RequestDataCategory {
+  id: number
+  name: string
+  description: string
+  image_url: string
+  is_active: boolean
+  parent_category_id: string
+  display_order: number
+  created_at?: Date
+  updated_at?: Date
+}
+export interface CategoryRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataCategory
+  id: number
+  name: string
+  description: string
+  image_url: string
+  is_active: boolean
+  parent_category_id: string
+  display_order: number
+  created_at?: Date
+  updated_at?: Date
+}
+
 interface RequestDataPayment {
   id: number
   amount: number
   method: string
   status: string
-  date: date
   currency: string
   reference_number: string
   card_last_four: string
@@ -239,6 +268,8 @@ interface RequestDataPayment {
   payment_provider: string
   refund_amount: number
   notes: string
+  customer_id: number
+  order_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -250,7 +281,6 @@ export interface PaymentRequestType extends Request {
   amount: number
   method: string
   status: string
-  date: date
   currency: string
   reference_number: string
   card_last_four: string
@@ -260,6 +290,96 @@ export interface PaymentRequestType extends Request {
   payment_provider: string
   refund_amount: number
   notes: string
+  customer_id: number
+  order_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+
+interface RequestDataDriver {
+  id: number
+  name: string
+  phone: string
+  vehicle_number: string
+  license: string
+  status: string[]
+  user_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+export interface DriverRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataDriver
+  id: number
+  name: string
+  phone: string
+  vehicle_number: string
+  license: string
+  status: string[]
+  user_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+
+interface RequestDataWaitlistProduct {
+  id: number
+  name: string
+  email: string
+  phone: string
+  party_size: number
+  notification_preference: string[]
+  source: string
+  notes: string
+  status: string[]
+  customer_id: number
+  product_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+export interface WaitlistProductRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataWaitlistProduct
+  id: number
+  name: string
+  email: string
+  phone: string
+  party_size: number
+  notification_preference: string[]
+  source: string
+  notes: string
+  status: string[]
+  customer_id: number
+  product_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+
+interface RequestDataDigitalDelivery {
+  id: number
+  name: string
+  description: string
+  download_limit: number
+  expiry_days: number
+  requires_login: boolean
+  automatic_delivery: boolean
+  status: string[]
+  created_at?: Date
+  updated_at?: Date
+}
+export interface DigitalDeliveryRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataDigitalDelivery
+  id: number
+  name: string
+  description: string
+  download_limit: number
+  expiry_days: number
+  requires_login: boolean
+  automatic_delivery: boolean
+  status: string[]
   created_at?: Date
   updated_at?: Date
 }
@@ -308,6 +428,32 @@ export interface OrderItemRequestType extends Request {
   updated_at?: Date
 }
 
+interface RequestDataShippingZone {
+  id: number
+  name: string
+  countries: string
+  regions: string
+  postal_codes: string
+  status: string[]
+  shipping_method_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+export interface ShippingZoneRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataShippingZone
+  id: number
+  name: string
+  countries: string
+  regions: string
+  postal_codes: string
+  status: string[]
+  shipping_method_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+
 interface RequestDataCustomer {
   id: number
   name: string
@@ -317,6 +463,7 @@ interface RequestDataCustomer {
   last_order: string
   status: string[]
   avatar: string
+  user_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -332,38 +479,7 @@ export interface CustomerRequestType extends Request {
   last_order: string
   status: string[]
   avatar: string
-  created_at?: Date
-  updated_at?: Date
-}
-
-interface RequestDataProductReview {
-  id: number
-  rating: number
-  title: string
-  content: string
-  is_verified_purchase: boolean
-  is_approved: boolean
-  helpful_votes: number
-  unhelpful_votes: number
-  purchase_date: string
-  images: string
-  created_at?: Date
-  updated_at?: Date
-}
-export interface ProductReviewRequestType extends Request {
-  validate: (attributes?: CustomAttributes) => void
-  get: <T = string>(key: string, defaultValue?: T) => T
-  all: () => RequestDataProductReview
-  id: number
-  rating: number
-  title: string
-  content: string
-  is_verified_purchase: boolean
-  is_approved: boolean
-  helpful_votes: number
-  unhelpful_votes: number
-  purchase_date: string
-  images: string
+  user_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -376,12 +492,11 @@ interface RequestDataProduct {
   image_url: string
   is_available: boolean
   inventory_count: number
-  category_id: string
   preparation_time: number
   allergens: string
   nutritional_info: string
+  category_id: number
   manufacturer_id: number
-  product_category_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -396,12 +511,129 @@ export interface ProductRequestType extends Request {
   image_url: string
   is_available: boolean
   inventory_count: number
-  category_id: string
   preparation_time: number
   allergens: string
   nutritional_info: string
+  category_id: number
   manufacturer_id: number
-  product_category_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+
+interface RequestDataProductVariant {
+  id: number
+  variant: string
+  type: string
+  description: string
+  options: string
+  status: string[]
+  product_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+export interface ProductVariantRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataProductVariant
+  id: number
+  variant: string
+  type: string
+  description: string
+  options: string
+  status: string[]
+  product_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+
+interface RequestDataLicenseKey {
+  id: number
+  key: string
+  template: string[]
+  expiry_date: date
+  status: string[]
+  customer_id: number
+  product_id: number
+  order_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+export interface LicenseKeyRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataLicenseKey
+  id: number
+  key: string
+  template: string[]
+  expiry_date: date
+  status: string[]
+  customer_id: number
+  product_id: number
+  order_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+
+interface RequestDataReview {
+  id: number
+  rating: number
+  title: string
+  content: string
+  is_verified_purchase: boolean
+  is_approved: boolean
+  is_featured: boolean
+  helpful_votes: number
+  unhelpful_votes: number
+  purchase_date: string
+  images: string
+  customer_id: number
+  product_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+export interface ReviewRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataReview
+  id: number
+  rating: number
+  title: string
+  content: string
+  is_verified_purchase: boolean
+  is_approved: boolean
+  is_featured: boolean
+  helpful_votes: number
+  unhelpful_votes: number
+  purchase_date: string
+  images: string
+  customer_id: number
+  product_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+
+interface RequestDataProductUnit {
+  id: number
+  name: string
+  abbreviation: string
+  type: string
+  description: string
+  is_default: boolean
+  product_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+export interface ProductUnitRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataProductUnit
+  id: number
+  name: string
+  abbreviation: string
+  type: string
+  description: string
+  is_default: boolean
+  product_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -423,6 +655,7 @@ interface RequestDataGiftCard {
   expiry_date: date
   last_used_date: date
   template_id: string
+  customer_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -446,6 +679,7 @@ export interface GiftCardRequestType extends Request {
   expiry_date: date
   last_used_date: date
   template_id: string
+  customer_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -530,6 +764,34 @@ export interface CouponRequestType extends Request {
   end_date: date
   applicable_products: string
   applicable_categories: string
+  created_at?: Date
+  updated_at?: Date
+}
+
+interface RequestDataTaxRate {
+  id: number
+  name: string
+  rate: number
+  type: string
+  country: string
+  region: string[]
+  status: string[]
+  is_default: boolean
+  created_at?: Date
+  updated_at?: Date
+}
+export interface TaxRateRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataTaxRate
+  id: number
+  name: string
+  rate: number
+  type: string
+  country: string
+  region: string[]
+  status: string[]
+  is_default: boolean
   created_at?: Date
   updated_at?: Date
 }
@@ -654,28 +916,78 @@ export interface LoyaltyRewardRequestType extends Request {
   updated_at?: Date
 }
 
-interface RequestDataProductCategory {
+interface RequestDataShippingMethod {
   id: number
   name: string
   description: string
-  image_url: string
-  is_active: boolean
-  parent_category_id: string
-  display_order: number
+  base_rate: number
+  free_shipping: number
+  status: string[]
   created_at?: Date
   updated_at?: Date
 }
-export interface ProductCategoryRequestType extends Request {
+export interface ShippingMethodRequestType extends Request {
   validate: (attributes?: CustomAttributes) => void
   get: <T = string>(key: string, defaultValue?: T) => T
-  all: () => RequestDataProductCategory
+  all: () => RequestDataShippingMethod
   id: number
   name: string
   description: string
-  image_url: string
-  is_active: boolean
-  parent_category_id: string
-  display_order: number
+  base_rate: number
+  free_shipping: number
+  status: string[]
+  created_at?: Date
+  updated_at?: Date
+}
+
+interface RequestDataShippingRate {
+  id: number
+  method: string
+  zone: string
+  weight_from: number
+  weight_to: number
+  rate: number
+  created_at?: Date
+  updated_at?: Date
+}
+export interface ShippingRateRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataShippingRate
+  id: number
+  method: string
+  zone: string
+  weight_from: number
+  weight_to: number
+  rate: number
+  created_at?: Date
+  updated_at?: Date
+}
+
+interface RequestDataDeliveryRoute {
+  id: number
+  driver: string
+  vehicle: string
+  stops: number
+  delivery_time: number
+  total_distance: number
+  last_active: date
+  driver_id: number
+  created_at?: Date
+  updated_at?: Date
+}
+export interface DeliveryRouteRequestType extends Request {
+  validate: (attributes?: CustomAttributes) => void
+  get: <T = string>(key: string, defaultValue?: T) => T
+  all: () => RequestDataDeliveryRoute
+  id: number
+  driver: string
+  vehicle: string
+  stops: number
+  delivery_time: number
+  total_distance: number
+  last_active: date
+  driver_id: number
   created_at?: Date
   updated_at?: Date
 }
@@ -821,6 +1133,7 @@ export interface JobRequestType extends Request {
 interface RequestDataSubscription {
   id: number
   type: string
+  plan: string
   provider_id: string
   provider_status: string
   unit_price: number
@@ -840,6 +1153,7 @@ export interface SubscriptionRequestType extends Request {
   all: () => RequestDataSubscription
   id: number
   type: string
+  plan: string
   provider_id: string
   provider_status: string
   unit_price: number
@@ -906,4 +1220,4 @@ export interface ErrorRequestType extends Request {
   updated_at?: Date
 }
 
-export type ModelRequest = ProjectRequestType | SubscriberEmailRequestType | AccessTokenRequestType | TeamRequestType | SubscriberRequestType | DeploymentRequestType | ReleaseRequestType | UserRequestType | PostRequestType | PaymentRequestType | ManufacturerRequestType | OrderItemRequestType | CustomerRequestType | ProductReviewRequestType | ProductRequestType | GiftCardRequestType | OrderRequestType | CouponRequestType | TransactionRequestType | LoyaltyPointRequestType | ProductItemRequestType | LoyaltyRewardRequestType | ProductCategoryRequestType | FailedJobRequestType | PaymentMethodRequestType | PaymentTransactionRequestType | RequestRequestType | JobRequestType | SubscriptionRequestType | PaymentProductRequestType | ErrorRequestType
+export type ModelRequest = ProjectRequestType | SubscriberEmailRequestType | AccessTokenRequestType | TeamRequestType | SubscriberRequestType | DeploymentRequestType | ReleaseRequestType | UserRequestType | PostRequestType | CategoryRequestType | PaymentRequestType | DriverRequestType | WaitlistProductRequestType | DigitalDeliveryRequestType | ManufacturerRequestType | OrderItemRequestType | ShippingZoneRequestType | CustomerRequestType | ProductRequestType | ProductVariantRequestType | LicenseKeyRequestType | ReviewRequestType | ProductUnitRequestType | GiftCardRequestType | OrderRequestType | CouponRequestType | TaxRateRequestType | TransactionRequestType | LoyaltyPointRequestType | ProductItemRequestType | LoyaltyRewardRequestType | ShippingMethodRequestType | ShippingRateRequestType | DeliveryRouteRequestType | FailedJobRequestType | PaymentMethodRequestType | PaymentTransactionRequestType | RequestRequestType | JobRequestType | SubscriptionRequestType | PaymentProductRequestType | ErrorRequestType

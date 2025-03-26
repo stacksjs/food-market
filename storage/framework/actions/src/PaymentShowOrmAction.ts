@@ -3,6 +3,8 @@ import { Action } from '@stacksjs/actions'
 
 import { response } from '@stacksjs/router'
 
+import Payment from '../../orm/src/models/Payment'
+
 export default new Action({
   name: 'Payment Show',
   description: 'Payment Show ORM Action',

@@ -1,5 +1,5 @@
-import type { ProductRequestType } from '@stacksjs/orm'
-import type { NewProductReview, ProductReviewJsonResponse } from '../../../../orm/src/models/ProductReview'
+import type { NewReview, ReviewJsonResponse, ReviewRequestType } from '@stacksjs/orm'
+import { randomUUIDv7 } from 'bun'
 import { db } from '@stacksjs/database'
 
 /**
@@ -8,10 +8,10 @@ import { db } from '@stacksjs/database'
  * @param request The gift card data to store
  * @returns The newly created gift card record
  */
-export async function store(request: ProductRequestType): Promise<ProductReviewJsonResponse | undefined> {
+export async function store(request: ReviewRequestType): Promise<ReviewJsonResponse | undefined> {
   await request.validate()
 
-  const productReviewData: NewProductReview = {
+  const reviewData: NewReview = {
     product_id: request.get<number>('product_id'),
     customer_id: request.get<number>('customer_id'),
     rating: request.get<number>('rating'),
@@ -20,27 +20,32 @@ export async function store(request: ProductRequestType): Promise<ProductReviewJ
     is_verified_purchase: request.get<boolean>('is_verified_purchase'),
     is_approved: request.get<boolean>('is_approved'),
     helpful_votes: request.get<number>('helpful_votes'),
+    is_featured: request.get<boolean>('is_featured'),
     unhelpful_votes: request.get<number>('unhelpful_votes'),
     purchase_date: request.get('purchase_date'),
     images: request.get('purchase_date'),
   }
 
+  reviewData.uuid = randomUUIDv7()
+
   try {
     // Insert the gift card record
-    const createdProductReview = await db
-      .insertInto('product_reviews')
-      .values(productReviewData)
+    const createdReview = await db
+      .insertInto('reviews')
+      .values(reviewData)
       .executeTakeFirst()
 
+    const insertId = Number(createdReview.insertId) || Number(createdReview.numInsertedOrUpdatedRows)
+
     // If insert was successful, retrieve the newly created gift card
-    if (createdProductReview.insertId) {
-      const productReview = await db
-        .selectFrom('product_reviews')
-        .where('id', '=', Number(createdProductReview.insertId))
+    if (insertId) {
+      const review = await db
+        .selectFrom('reviews')
+        .where('id', '=', insertId)
         .selectAll()
         .executeTakeFirst()
 
-      return productReview
+      return review
     }
 
     return undefined
@@ -48,10 +53,10 @@ export async function store(request: ProductRequestType): Promise<ProductReviewJ
   catch (error) {
     if (error instanceof Error) {
       if (error.message.includes('Duplicate entry') && error.message.includes('code')) {
-        throw new Error('A gift card with this code already exists')
+        throw new Error('A review with this code already exists')
       }
 
-      throw new Error(`Failed to create gift card: ${error.message}`)
+      throw new Error(`Failed to create review: ${error.message}`)
     }
 
     throw error

@@ -1,5 +1,4 @@
-import type { GiftCardRequestType } from '@stacksjs/orm'
-import type { GiftCardJsonResponse } from '../../../../orm/src/models/GiftCard'
+import type { GiftCardJsonResponse, GiftCardRequestType } from '@stacksjs/orm'
 import { db } from '@stacksjs/database'
 import { fetchById } from './fetch'
 
@@ -22,23 +21,23 @@ export async function update(id: number, request: GiftCardRequestType): Promise<
 
   // Create update data object using request fields
   const updateData: Record<string, any> = {
-    code: request.get<string>('code'),
+    code: request.get('code'),
     initial_balance: request.get<number>('initial_balance'),
     current_balance: request.get<number>('current_balance'),
-    currency: request.get<string>('currency'),
-    status: request.get<string>('status'),
+    currency: request.get('currency'),
+    status: request.get('status'),
     user_id: request.get<number>('user_id'),
-    purchaser_id: request.get<string>('purchaser_id'),
-    recipient_email: request.get<string>('recipient_email'),
-    recipient_name: request.get<string>('recipient_name'),
-    personal_message: request.get<string>('personal_message'),
+    purchaser_id: request.get('purchaser_id'),
+    recipient_email: request.get('recipient_email'),
+    recipient_name: request.get('recipient_name'),
+    personal_message: request.get('personal_message'),
     is_digital: request.get<boolean>('is_digital'),
     is_reloadable: request.get<boolean>('is_reloadable'),
     is_active: request.get<boolean>('is_active'),
-    expiry_date: request.get<string>('expiry_date'),
-    last_used_date: request.get<string>('last_used_date'),
-    template_id: request.get<string>('template_id'),
-    updated_at: new Date(),
+    expiry_date: request.get('expiry_date'),
+    last_used_date: request.get('last_used_date'),
+    template_id: request.get('template_id'),
+    updated_at: new Date().toISOString(),
   }
 
   // Remove undefined fields to avoid overwriting with null values
@@ -113,7 +112,7 @@ export async function updateBalance(id: number, amount: number): Promise<GiftCar
         current_balance: newBalance,
         last_used_date: new Date().toISOString(),
         status: newBalance === 0 ? 'USED' : 'ACTIVE',
-        updated_at: new Date(),
+        updated_at: new Date().toISOString(),
       })
       .where('id', '=', id)
       .execute()

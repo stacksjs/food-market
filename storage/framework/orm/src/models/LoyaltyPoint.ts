@@ -1,11 +1,11 @@
 import type { Generated, Insertable, RawBuilder, Selectable, Updateable } from '@stacksjs/database'
 import type { Operator } from '@stacksjs/orm'
 import { randomUUIDv7 } from 'bun'
-import { cache } from '@stacksjs/cache'
 import { sql } from '@stacksjs/database'
-import { HttpError, ModelNotFoundException } from '@stacksjs/error-handling'
+import { HttpError } from '@stacksjs/error-handling'
 import { dispatch } from '@stacksjs/events'
-import { DB, SubqueryBuilder } from '@stacksjs/orm'
+import { DB } from '@stacksjs/orm'
+import { BaseOrm } from '../utils/base'
 
 export interface LoyaltyPointsTable {
   id: Generated<number>
@@ -18,9 +18,9 @@ export interface LoyaltyPointsTable {
   is_used?: boolean
   uuid?: string
 
-  created_at?: Date
+  created_at?: string
 
-  updated_at?: Date
+  updated_at?: string
 
 }
 
@@ -41,17 +41,7 @@ export interface LoyaltyPointJsonResponse extends Omit<Selectable<LoyaltyPointsT
 export type NewLoyaltyPoint = Insertable<LoyaltyPointsTable>
 export type LoyaltyPointUpdate = Updateable<LoyaltyPointsTable>
 
-      type SortDirection = 'asc' | 'desc'
-interface SortOptions { column: LoyaltyPointJsonResponse, order: SortDirection }
-// Define a type for the options parameter
-interface QueryOptions {
-  sort?: SortOptions
-  limit?: number
-  offset?: number
-  page?: number
-}
-
-export class LoyaltyPointModel {
+export class LoyaltyPointModel extends BaseOrm<LoyaltyPointModel, LoyaltyPointsTable, LoyaltyPointJsonResponse> {
   private readonly hidden: Array<keyof LoyaltyPointJsonResponse> = []
   private readonly fillable: Array<keyof LoyaltyPointJsonResponse> = ['wallet_id', 'points', 'source', 'source_reference_id', 'description', 'expiry_date', 'is_used', 'uuid']
   private readonly guarded: Array<keyof LoyaltyPointJsonResponse> = []
@@ -59,14 +49,21 @@ export class LoyaltyPointModel {
   protected originalAttributes = {} as LoyaltyPointJsonResponse
 
   protected selectFromQuery: any
-  protected withRelations: string[]
   protected updateFromQuery: any
   protected deleteFromQuery: any
   protected hasSelect: boolean
-  private hasSaved: boolean
   private customColumns: Record<string, unknown> = {}
 
+  /**
+   * This model inherits many query methods from BaseOrm:
+   * - pluck, chunk, whereExists, has, doesntHave, whereHas, whereDoesntHave
+   * - inRandomOrder, max, min, avg, paginate, get, and more
+   *
+   * See BaseOrm class for the full list of inherited methods.
+   */
+
   constructor(loyaltyPoint: LoyaltyPointJsonResponse | undefined) {
+    super('loyalty_points')
     if (loyaltyPoint) {
       this.attributes = { ...loyaltyPoint }
       this.originalAttributes = { ...loyaltyPoint }
@@ -86,7 +83,48 @@ export class LoyaltyPointModel {
     this.hasSaved = false
   }
 
-  mapCustomGetters(models: LoyaltyPointJsonResponse | LoyaltyPointJsonResponse[]): void {
+  protected async loadRelations(models: LoyaltyPointJsonResponse | LoyaltyPointJsonResponse[]): Promise<void> {
+    // Handle both single model and array of models
+    const modelArray = Array.isArray(models) ? models : [models]
+    if (!modelArray.length)
+      return
+
+    const modelIds = modelArray.map(model => model.id)
+
+    for (const relation of this.withRelations) {
+      const relatedRecords = await DB.instance
+        .selectFrom(relation)
+        .where('loyaltyPoint_id', 'in', modelIds)
+        .selectAll()
+        .execute()
+
+      if (Array.isArray(models)) {
+        models.map((model: LoyaltyPointJsonResponse) => {
+          const records = relatedRecords.filter((record: { loyaltyPoint_id: number }) => {
+            return record.loyaltyPoint_id === model.id
+          })
+
+          model[relation] = records.length === 1 ? records[0] : records
+          return model
+        })
+      }
+      else {
+        const records = relatedRecords.filter((record: { loyaltyPoint_id: number }) => {
+          return record.loyaltyPoint_id === models.id
+        })
+
+        models[relation] = records.length === 1 ? records[0] : records
+      }
+    }
+  }
+
+  static with(relations: string[]): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyWith(relations)
+  }
+
+  protected mapCustomGetters(models: LoyaltyPointJsonResponse | LoyaltyPointJsonResponse[]): void {
     const data = models
 
     if (Array.isArray(data)) {
@@ -98,7 +136,7 @@ export class LoyaltyPointModel {
         }
 
         for (const [key, fn] of Object.entries(customGetter)) {
-          model[key] = fn()
+          (model as any)[key] = fn()
         }
 
         return model
@@ -114,7 +152,7 @@ export class LoyaltyPointModel {
       }
 
       for (const [key, fn] of Object.entries(customGetter)) {
-        model[key] = fn()
+        (model as any)[key] = fn()
       }
     }
   }
@@ -127,7 +165,7 @@ export class LoyaltyPointModel {
     }
 
     for (const [key, fn] of Object.entries(customSetter)) {
-      model[key] = await fn()
+      (model as any)[key] = await fn()
     }
   }
 
@@ -167,11 +205,11 @@ export class LoyaltyPointModel {
     return this.attributes.is_used
   }
 
-  get created_at(): Date | undefined {
+  get created_at(): string | undefined {
     return this.attributes.created_at
   }
 
-  get updated_at(): Date | undefined {
+  get updated_at(): string | undefined {
     return this.attributes.updated_at
   }
 
@@ -207,149 +245,48 @@ export class LoyaltyPointModel {
     this.attributes.is_used = value
   }
 
-  set updated_at(value: Date) {
+  set updated_at(value: string) {
     this.attributes.updated_at = value
-  }
-
-  getOriginal(column?: keyof LoyaltyPointJsonResponse): Partial<LoyaltyPointJsonResponse> {
-    if (column) {
-      return this.originalAttributes[column]
-    }
-
-    return this.originalAttributes
-  }
-
-  getChanges(): Partial<LoyaltyPointJsonResponse> {
-    return this.fillable.reduce<Partial<LoyaltyPointJsonResponse>>((changes, key) => {
-      const currentValue = this.attributes[key as keyof LoyaltyPointsTable]
-      const originalValue = this.originalAttributes[key as keyof LoyaltyPointsTable]
-
-      if (currentValue !== originalValue) {
-        changes[key] = currentValue
-      }
-
-      return changes
-    }, {})
-  }
-
-  isDirty(column?: keyof LoyaltyPointJsonResponse): boolean {
-    if (column) {
-      return this.attributes[column] !== this.originalAttributes[column]
-    }
-
-    return Object.entries(this.originalAttributes).some(([key, originalValue]) => {
-      const currentValue = (this.attributes as any)[key]
-
-      return currentValue !== originalValue
-    })
-  }
-
-  isClean(column?: keyof LoyaltyPointJsonResponse): boolean {
-    return !this.isDirty(column)
-  }
-
-  wasChanged(column?: keyof LoyaltyPointJsonResponse): boolean {
-    return this.hasSaved && this.isDirty(column)
-  }
-
-  select(params: (keyof LoyaltyPointJsonResponse)[] | RawBuilder<string> | string): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.select(params)
-
-    this.hasSelect = true
-
-    return this
   }
 
   static select(params: (keyof LoyaltyPointJsonResponse)[] | RawBuilder<string> | string): LoyaltyPointModel {
     const instance = new LoyaltyPointModel(undefined)
 
-    // Initialize a query with the table name and selected fields
-    instance.selectFromQuery = instance.selectFromQuery.select(params)
-
-    instance.hasSelect = true
-
-    return instance
-  }
-
-  async applyFind(id: number): Promise<LoyaltyPointModel | undefined> {
-    const model = await DB.instance.selectFrom('loyalty_points').where('id', '=', id).selectAll().executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    this.mapCustomGetters(model)
-    await this.loadRelations(model)
-
-    const data = new LoyaltyPointModel(model)
-
-    cache.getOrSet(`loyaltyPoint:${id}`, JSON.stringify(model))
-
-    return data
-  }
-
-  async find(id: number): Promise<LoyaltyPointModel | undefined> {
-    return await this.applyFind(id)
+    return instance.applySelect(params)
   }
 
   // Method to find a LoyaltyPoint by ID
   static async find(id: number): Promise<LoyaltyPointModel | undefined> {
+    const query = DB.instance.selectFrom('loyalty_points').where('id', '=', id).selectAll()
+
+    const model = await query.executeTakeFirst()
+
+    if (!model)
+      return undefined
+
     const instance = new LoyaltyPointModel(undefined)
-
-    return await instance.applyFind(id)
-  }
-
-  async first(): Promise<LoyaltyPointModel | undefined> {
-    let model: LoyaltyPointJsonResponse | undefined
-
-    if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
-    }
-    else {
-      model = await this.selectFromQuery.selectAll().executeTakeFirst()
-    }
-
-    if (model) {
-      this.mapCustomGetters(model)
-      await this.loadRelations(model)
-    }
-
-    const data = new LoyaltyPointModel(model)
-
-    return data
+    return instance.createInstance(model)
   }
 
   static async first(): Promise<LoyaltyPointModel | undefined> {
-    const instance = new LoyaltyPointJsonResponse(null)
+    const instance = new LoyaltyPointModel(undefined)
 
-    const model = await DB.instance.selectFrom('loyalty_points')
-      .selectAll()
-      .executeTakeFirst()
-
-    instance.mapCustomGetters(model)
+    const model = await instance.applyFirst()
 
     const data = new LoyaltyPointModel(model)
 
     return data
   }
 
-  async applyFirstOrFail(): Promise<LoyaltyPointModel | undefined> {
-    const model = await this.selectFromQuery.executeTakeFirst()
+  static async last(): Promise<LoyaltyPointModel | undefined> {
+    const instance = new LoyaltyPointModel(undefined)
 
-    if (model === undefined)
-      throw new ModelNotFoundException(404, 'No LoyaltyPointModel results found for query')
+    const model = await instance.applyLast()
 
-    if (model) {
-      this.mapCustomGetters(model)
-      await this.loadRelations(model)
-    }
+    if (!model)
+      return undefined
 
-    const data = new LoyaltyPointModel(model)
-
-    return data
-  }
-
-  async firstOrFail(): Promise<LoyaltyPointModel | undefined> {
-    return await this.applyFirstOrFail()
+    return new LoyaltyPointModel(model)
   }
 
   static async firstOrFail(): Promise<LoyaltyPointModel | undefined> {
@@ -372,511 +309,234 @@ export class LoyaltyPointModel {
     return data
   }
 
-  async applyFindOrFail(id: number): Promise<LoyaltyPointModel> {
-    const model = await DB.instance.selectFrom('loyalty_points').where('id', '=', id).selectAll().executeTakeFirst()
-
-    if (model === undefined)
-      throw new ModelNotFoundException(404, `No LoyaltyPointModel results for ${id}`)
-
-    cache.getOrSet(`loyaltyPoint:${id}`, JSON.stringify(model))
-
-    this.mapCustomGetters(model)
-    await this.loadRelations(model)
-
-    const data = new LoyaltyPointModel(model)
-
-    return data
-  }
-
-  async findOrFail(id: number): Promise<LoyaltyPointModel> {
-    return await this.applyFindOrFail(id)
-  }
-
-  static async findOrFail(id: number): Promise<LoyaltyPointModel> {
+  static async findOrFail(id: number): Promise<LoyaltyPointModel | undefined> {
     const instance = new LoyaltyPointModel(undefined)
 
     return await instance.applyFindOrFail(id)
   }
 
-  async applyFindMany(ids: number[]): Promise<LoyaltyPointModel[]> {
-    let query = DB.instance.selectFrom('loyalty_points').where('id', 'in', ids)
-
+  static async findMany(ids: number[]): Promise<LoyaltyPointModel[]> {
     const instance = new LoyaltyPointModel(undefined)
 
-    query = query.selectAll()
-
-    const models = await query.execute()
-
-    instance.mapCustomGetters(models)
-    await instance.loadRelations(models)
+    const models = await instance.applyFindMany(ids)
 
     return models.map((modelItem: LoyaltyPointJsonResponse) => instance.parseResult(new LoyaltyPointModel(modelItem)))
   }
 
-  static async findMany(ids: number[]): Promise<LoyaltyPointModel[]> {
+  static async latest(column: keyof LoyaltyPointsTable = 'created_at'): Promise<LoyaltyPointModel | undefined> {
     const instance = new LoyaltyPointModel(undefined)
 
-    return await instance.applyFindMany(ids)
+    const model = await instance.selectFromQuery
+      .selectAll()
+      .orderBy(column, 'desc')
+      .limit(1)
+      .executeTakeFirst()
+
+    if (!model)
+      return undefined
+
+    return new LoyaltyPointModel(model)
   }
 
-  async findMany(ids: number[]): Promise<LoyaltyPointModel[]> {
-    return await this.applyFindMany(ids)
-  }
+  static async oldest(column: keyof LoyaltyPointsTable = 'created_at'): Promise<LoyaltyPointModel | undefined> {
+    const instance = new LoyaltyPointModel(undefined)
 
-  skip(count: number): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.offset(count)
+    const model = await instance.selectFromQuery
+      .selectAll()
+      .orderBy(column, 'asc')
+      .limit(1)
+      .executeTakeFirst()
 
-    return this
+    if (!model)
+      return undefined
+
+    return new LoyaltyPointModel(model)
   }
 
   static skip(count: number): LoyaltyPointModel {
     const instance = new LoyaltyPointModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.offset(count)
-
-    return instance
-  }
-
-  async applyChunk(size: number, callback: (models: LoyaltyPointModel[]) => Promise<void>): Promise<void> {
-    let page = 1
-    let hasMore = true
-
-    while (hasMore) {
-      // Get one batch
-      const models = await this.selectFromQuery
-        .selectAll()
-        .limit(size)
-        .offset((page - 1) * size)
-        .execute()
-
-      // If we got fewer results than chunk size, this is the last batch
-      if (models.length < size) {
-        hasMore = false
-      }
-
-      // Process this batch
-      if (models.length > 0) {
-        await callback(models)
-      }
-
-      page++
-    }
-  }
-
-  async chunk(size: number, callback: (models: LoyaltyPointModel[]) => Promise<void>): Promise<void> {
-    await this.applyChunk(size, callback)
-  }
-
-  static async chunk(size: number, callback: (models: LoyaltyPointModel[]) => Promise<void>): Promise<void> {
-    const instance = new LoyaltyPointModel(undefined)
-
-    await instance.applyChunk(size, callback)
-  }
-
-  take(count: number): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.limit(count)
-
-    return this
+    return instance.applySkip(count)
   }
 
   static take(count: number): LoyaltyPointModel {
     const instance = new LoyaltyPointModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.limit(count)
-
-    return instance
+    return instance.applyTake(count)
   }
 
-  static async pluck<K extends keyof LoyaltyPointModel>(field: K): Promise<LoyaltyPointModel[K][]> {
+  static where<V = string>(column: keyof LoyaltyPointsTable, ...args: [V] | [Operator, V]): LoyaltyPointModel {
     const instance = new LoyaltyPointModel(undefined)
 
-    if (instance.hasSelect) {
-      const model = await instance.selectFromQuery.execute()
-      return model.map((modelItem: LoyaltyPointModel) => modelItem[field])
-    }
-
-    const model = await instance.selectFromQuery.selectAll().execute()
-
-    return model.map((modelItem: LoyaltyPointModel) => modelItem[field])
+    return instance.applyWhere<V>(column, ...args)
   }
 
-  async pluck<K extends keyof LoyaltyPointModel>(field: K): Promise<LoyaltyPointModel[K][]> {
-    if (this.hasSelect) {
-      const model = await this.selectFromQuery.execute()
-      return model.map((modelItem: LoyaltyPointModel) => modelItem[field])
-    }
+  static orWhere(...conditions: [string, any][]): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
 
-    const model = await this.selectFromQuery.selectAll().execute()
+    return instance.applyOrWhere(...conditions)
+  }
 
-    return model.map((modelItem: LoyaltyPointModel) => modelItem[field])
+  static whereNotIn<V = number>(column: keyof LoyaltyPointsTable, values: V[]): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyWhereNotIn<V>(column, values)
+  }
+
+  static whereBetween<V = number>(column: keyof LoyaltyPointsTable, range: [V, V]): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyWhereBetween<V>(column, range)
+  }
+
+  static whereRef(column: keyof LoyaltyPointsTable, ...args: string[]): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyWhereRef(column, ...args)
+  }
+
+  static when(condition: boolean, callback: (query: LoyaltyPointModel) => LoyaltyPointModel): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyWhen(condition, callback as any)
+  }
+
+  static whereNull(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyWhereNull(column)
+  }
+
+  static whereNotNull(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyWhereNotNull(column)
+  }
+
+  static whereLike(column: keyof LoyaltyPointsTable, value: string): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyWhereLike(column, value)
+  }
+
+  static orderBy(column: keyof LoyaltyPointsTable, order: 'asc' | 'desc'): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyOrderBy(column, order)
+  }
+
+  static orderByAsc(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyOrderByAsc(column)
+  }
+
+  static orderByDesc(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyOrderByDesc(column)
+  }
+
+  static groupBy(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyGroupBy(column)
+  }
+
+  static having<V = string>(column: keyof LoyaltyPointsTable, operator: Operator, value: V): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyHaving<V>(column, operator, value)
+  }
+
+  static inRandomOrder(): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyInRandomOrder()
+  }
+
+  static whereColumn(first: keyof LoyaltyPointsTable, operator: Operator, second: keyof LoyaltyPointsTable): LoyaltyPointModel {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return instance.applyWhereColumn(first, operator, second)
+  }
+
+  static async max(field: keyof LoyaltyPointsTable): Promise<number> {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return await instance.applyMax(field)
+  }
+
+  static async min(field: keyof LoyaltyPointsTable): Promise<number> {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return await instance.applyMin(field)
+  }
+
+  static async avg(field: keyof LoyaltyPointsTable): Promise<number> {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return await instance.applyAvg(field)
+  }
+
+  static async sum(field: keyof LoyaltyPointsTable): Promise<number> {
+    const instance = new LoyaltyPointModel(undefined)
+
+    return await instance.applySum(field)
   }
 
   static async count(): Promise<number> {
     const instance = new LoyaltyPointModel(undefined)
 
-    const result = await instance.selectFromQuery
-      .select(sql`COUNT(*) as count`)
-      .executeTakeFirst()
-
-    return result.count || 0
-  }
-
-  async count(): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`COUNT(*) as count`)
-      .executeTakeFirst()
-
-    return result.count || 0
-  }
-
-  static async max(field: keyof LoyaltyPointModel): Promise<number> {
-    const instance = new LoyaltyPointModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`MAX(${sql.raw(field as string)}) as max `)
-      .executeTakeFirst()
-
-    return result.max
-  }
-
-  async max(field: keyof LoyaltyPointModel): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`MAX(${sql.raw(field as string)}) as max`)
-      .executeTakeFirst()
-
-    return result.max
-  }
-
-  static async min(field: keyof LoyaltyPointModel): Promise<number> {
-    const instance = new LoyaltyPointModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`MIN(${sql.raw(field as string)}) as min `)
-      .executeTakeFirst()
-
-    return result.min
-  }
-
-  async min(field: keyof LoyaltyPointModel): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`MIN(${sql.raw(field as string)}) as min `)
-      .executeTakeFirst()
-
-    return result.min
-  }
-
-  static async avg(field: keyof LoyaltyPointModel): Promise<number> {
-    const instance = new LoyaltyPointModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`AVG(${sql.raw(field as string)}) as avg `)
-      .executeTakeFirst()
-
-    return result.avg
-  }
-
-  async avg(field: keyof LoyaltyPointModel): Promise<number> {
-    const result = await this.selectFromQuery
-      .select(sql`AVG(${sql.raw(field as string)}) as avg `)
-      .executeTakeFirst()
-
-    return result.avg
-  }
-
-  static async sum(field: keyof LoyaltyPointModel): Promise<number> {
-    const instance = new LoyaltyPointModel(undefined)
-
-    const result = await instance.selectFromQuery
-      .select(sql`SUM(${sql.raw(field as string)}) as sum `)
-      .executeTakeFirst()
-
-    return result.sum
-  }
-
-  async sum(field: keyof LoyaltyPointModel): Promise<number> {
-    const result = this.selectFromQuery
-      .select(sql`SUM(${sql.raw(field as string)}) as sum `)
-      .executeTakeFirst()
-
-    return result.sum
-  }
-
-  async applyGet(): Promise<LoyaltyPointModel[]> {
-    let models
-
-    if (this.hasSelect) {
-      models = await this.selectFromQuery.execute()
-    }
-    else {
-      models = await this.selectFromQuery.selectAll().execute()
-    }
-
-    this.mapCustomGetters(models)
-    await this.loadRelations(models)
-
-    const data = await Promise.all(models.map(async (model: LoyaltyPointJsonResponse) => {
-      return new LoyaltyPointModel(model)
-    }))
-
-    return data
-  }
-
-  async get(): Promise<LoyaltyPointModel[]> {
-    return await this.applyGet()
+    return instance.applyCount()
   }
 
   static async get(): Promise<LoyaltyPointModel[]> {
     const instance = new LoyaltyPointModel(undefined)
 
-    return await instance.applyGet()
+    const results = await instance.applyGet()
+
+    return results.map((item: LoyaltyPointJsonResponse) => instance.createInstance(item))
   }
 
-  has(relation: string): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.where(({ exists, selectFrom }: any) =>
-      exists(
-        selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.loyaltyPoint_id`, '=', 'loyalty_points.id'),
-      ),
-    )
-
-    return this
-  }
-
-  static has(relation: string): LoyaltyPointModel {
+  static async pluck<K extends keyof LoyaltyPointModel>(field: K): Promise<LoyaltyPointModel[K][]> {
     const instance = new LoyaltyPointModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
-      exists(
-        selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.loyaltyPoint_id`, '=', 'loyalty_points.id'),
-      ),
-    )
-
-    return instance
+    return await instance.applyPluck(field)
   }
 
-  static whereExists(callback: (qb: any) => any): LoyaltyPointModel {
+  static async chunk(size: number, callback: (models: LoyaltyPointModel[]) => Promise<void>): Promise<void> {
     const instance = new LoyaltyPointModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.where(({ exists, selectFrom }: any) =>
-      exists(callback({ exists, selectFrom })),
-    )
-
-    return instance
-  }
-
-  applyWhereHas(
-    relation: string,
-    callback: (query: SubqueryBuilder<keyof LoyaltyPointModel>) => void,
-  ): LoyaltyPointModel {
-    const subqueryBuilder = new SubqueryBuilder()
-
-    callback(subqueryBuilder)
-    const conditions = subqueryBuilder.getConditions()
-
-    this.selectFromQuery = this.selectFromQuery
-      .where(({ exists, selectFrom }: any) => {
-        let subquery = selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.loyaltyPoint_id`, '=', 'loyalty_points.id')
-
-        conditions.forEach((condition) => {
-          switch (condition.method) {
-            case 'where':
-              if (condition.type === 'and') {
-                subquery = subquery.where(condition.column, condition.operator!, condition.value)
-              }
-              else {
-                subquery = subquery.orWhere(condition.column, condition.operator!, condition.value)
-              }
-              break
-
-            case 'whereIn':
-              if (condition.operator === 'is not') {
-                subquery = subquery.whereNotIn(condition.column, condition.values)
-              }
-              else {
-                subquery = subquery.whereIn(condition.column, condition.values)
-              }
-
-              break
-
-            case 'whereNull':
-              subquery = subquery.whereNull(condition.column)
-              break
-
-            case 'whereNotNull':
-              subquery = subquery.whereNotNull(condition.column)
-              break
-
-            case 'whereBetween':
-              subquery = subquery.whereBetween(condition.column, condition.values)
-              break
-
-            case 'whereExists': {
-              const nestedBuilder = new SubqueryBuilder()
-              condition.callback!(nestedBuilder)
-              break
-            }
-          }
-        })
-
-        return exists(subquery)
-      })
-
-    return this
-  }
-
-  whereHas(
-    relation: string,
-    callback: (query: SubqueryBuilder<keyof LoyaltyPointModel>) => void,
-  ): LoyaltyPointModel {
-    return this.applyWhereHas(relation, callback)
-  }
-
-  static whereHas(
-    relation: string,
-    callback: (query: SubqueryBuilder<keyof LoyaltyPointModel>) => void,
-  ): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    return instance.applyWhereHas(relation, callback)
-  }
-
-  applyDoesntHave(relation: string): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.where(({ not, exists, selectFrom }: any) =>
-      not(
-        exists(
-          selectFrom(relation)
-            .select('1')
-            .whereRef(`${relation}.loyaltyPoint_id`, '=', 'loyalty_points.id'),
-        ),
-      ),
-    )
-
-    return this
-  }
-
-  doesntHave(relation: string): LoyaltyPointModel {
-    return this.applyDoesntHave(relation)
-  }
-
-  static doesntHave(relation: string): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    return instance.applyDoesntHave(relation)
-  }
-
-  applyWhereDoesntHave(relation: string, callback: (query: SubqueryBuilder<LoyaltyPointsTable>) => void): LoyaltyPointModel {
-    const subqueryBuilder = new SubqueryBuilder()
-
-    callback(subqueryBuilder)
-    const conditions = subqueryBuilder.getConditions()
-
-    this.selectFromQuery = this.selectFromQuery
-      .where(({ exists, selectFrom, not }: any) => {
-        const subquery = selectFrom(relation)
-          .select('1')
-          .whereRef(`${relation}.loyaltyPoint_id`, '=', 'loyalty_points.id')
-
-        return not(exists(subquery))
-      })
-
-    conditions.forEach((condition) => {
-      switch (condition.method) {
-        case 'where':
-          if (condition.type === 'and') {
-            this.where(condition.column, condition.operator!, condition.value || [])
-          }
-          break
-
-        case 'whereIn':
-          if (condition.operator === 'is not') {
-            this.whereNotIn(condition.column, condition.values || [])
-          }
-          else {
-            this.whereIn(condition.column, condition.values || [])
-          }
-
-          break
-
-        case 'whereNull':
-          this.whereNull(condition.column)
-          break
-
-        case 'whereNotNull':
-          this.whereNotNull(condition.column)
-          break
-
-        case 'whereBetween':
-          this.whereBetween(condition.column, condition.range || [0, 0])
-          break
-
-        case 'whereExists': {
-          const nestedBuilder = new SubqueryBuilder()
-          condition.callback!(nestedBuilder)
-          break
-        }
-      }
+    await instance.applyChunk(size, async (models) => {
+      const modelInstances = models.map((item: LoyaltyPointJsonResponse) => instance.createInstance(item))
+      await callback(modelInstances)
     })
-
-    return this
   }
 
-  whereDoesntHave(relation: string, callback: (query: SubqueryBuilder<LoyaltyPointsTable>) => void): LoyaltyPointModel {
-    return this.applyWhereDoesntHave(relation, callback)
-  }
-
-  static whereDoesntHave(
-    relation: string,
-    callback: (query: SubqueryBuilder<LoyaltyPointsTable>) => void,
-  ): LoyaltyPointModel {
+  static async paginate(options: { limit?: number, offset?: number, page?: number } = { limit: 10, offset: 0, page: 1 }): Promise<{
+    data: LoyaltyPointModel[]
+    paging: {
+      total_records: number
+      page: number
+      total_pages: number
+    }
+    next_cursor: number | null
+  }> {
     const instance = new LoyaltyPointModel(undefined)
 
-    return instance.applyWhereDoesntHave(relation, callback)
-  }
-
-  async applyPaginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<LoyaltyPointResponse> {
-    const totalRecordsResult = await DB.instance.selectFrom('loyalty_points')
-      .select(DB.instance.fn.count('id').as('total')) // Use 'id' or another actual column name
-      .executeTakeFirst()
-
-    const totalRecords = Number(totalRecordsResult?.total) || 0
-    const totalPages = Math.ceil(totalRecords / (options.limit ?? 10))
-
-    const loyalty_pointsWithExtra = await DB.instance.selectFrom('loyalty_points')
-      .selectAll()
-      .orderBy('id', 'asc') // Assuming 'id' is used for cursor-based pagination
-      .limit((options.limit ?? 10) + 1) // Fetch one extra record
-      .offset(((options.page ?? 1) - 1) * (options.limit ?? 10)) // Ensure options.page is not undefined
-      .execute()
-
-    let nextCursor = null
-    if (loyalty_pointsWithExtra.length > (options.limit ?? 10))
-      nextCursor = loyalty_pointsWithExtra.pop()?.id ?? null
+    const result = await instance.applyPaginate(options)
 
     return {
-      data: loyalty_pointsWithExtra,
-      paging: {
-        total_records: totalRecords,
-        page: options.page || 1,
-        total_pages: totalPages,
-      },
-      next_cursor: nextCursor,
+      data: result.data.map((item: LoyaltyPointJsonResponse) => instance.createInstance(item)),
+      paging: result.paging,
+      next_cursor: result.next_cursor,
     }
   }
 
-  async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<LoyaltyPointResponse> {
-    return await this.applyPaginate(options)
-  }
-
-  // Method to get all loyalty_points
-  static async paginate(options: QueryOptions = { limit: 10, offset: 0, page: 1 }): Promise<LoyaltyPointResponse> {
-    const instance = new LoyaltyPointModel(undefined)
-
-    return await instance.applyPaginate(options)
+  // Instance method for creating model instances
+  createInstance(data: LoyaltyPointJsonResponse): LoyaltyPointModel {
+    return new LoyaltyPointModel(data)
   }
 
   async applyCreate(newLoyaltyPoint: NewLoyaltyPoint): Promise<LoyaltyPointModel> {
@@ -894,12 +554,18 @@ export class LoyaltyPointModel {
       .values(filteredValues)
       .executeTakeFirst()
 
-    const model = await this.find(Number(result.numInsertedOrUpdatedRows)) as LoyaltyPointModel
+    const model = await DB.instance.selectFrom('loyalty_points')
+      .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
+      .selectAll()
+      .executeTakeFirst()
+
+    if (!model) {
+      throw new HttpError(500, 'Failed to retrieve created LoyaltyPoint')
+    }
 
     if (model)
       dispatch('loyaltyPoint:created', model)
-
-    return model
+    return this.createInstance(model)
   }
 
   async create(newLoyaltyPoint: NewLoyaltyPoint): Promise<LoyaltyPointModel> {
@@ -908,8 +574,167 @@ export class LoyaltyPointModel {
 
   static async create(newLoyaltyPoint: NewLoyaltyPoint): Promise<LoyaltyPointModel> {
     const instance = new LoyaltyPointModel(undefined)
-
     return await instance.applyCreate(newLoyaltyPoint)
+  }
+
+  static async firstOrCreate(search: Partial<LoyaltyPointsTable>, values: NewLoyaltyPoint = {} as NewLoyaltyPoint): Promise<LoyaltyPointModel> {
+    // First try to find a record matching the search criteria
+    const instance = new LoyaltyPointModel(undefined)
+
+    // Apply all search conditions
+    for (const [key, value] of Object.entries(search)) {
+      instance.selectFromQuery = instance.selectFromQuery.where(key, '=', value)
+    }
+
+    // Try to find the record
+    const existingRecord = await instance.applyFirst()
+
+    if (existingRecord) {
+      return instance.createInstance(existingRecord)
+    }
+
+    // If no record exists, create a new one with combined search criteria and values
+    const createData = { ...search, ...values } as NewLoyaltyPoint
+    return await LoyaltyPointModel.create(createData)
+  }
+
+  static async updateOrCreate(search: Partial<LoyaltyPointsTable>, values: NewLoyaltyPoint = {} as NewLoyaltyPoint): Promise<LoyaltyPointModel> {
+    // First try to find a record matching the search criteria
+    const instance = new LoyaltyPointModel(undefined)
+
+    // Apply all search conditions
+    for (const [key, value] of Object.entries(search)) {
+      instance.selectFromQuery = instance.selectFromQuery.where(key, '=', value)
+    }
+
+    // Try to find the record
+    const existingRecord = await instance.applyFirst()
+
+    if (existingRecord) {
+      // If record exists, update it with the new values
+      const model = instance.createInstance(existingRecord)
+      const updatedModel = await model.update(values as LoyaltyPointUpdate)
+
+      // Return the updated model instance
+      if (updatedModel) {
+        return updatedModel
+      }
+
+      // If update didn't return a model, fetch it again to ensure we have latest data
+      const refreshedModel = await instance.applyFirst()
+      return instance.createInstance(refreshedModel!)
+    }
+
+    // If no record exists, create a new one with combined search criteria and values
+    const createData = { ...search, ...values } as NewLoyaltyPoint
+    return await LoyaltyPointModel.create(createData)
+  }
+
+  async update(newLoyaltyPoint: LoyaltyPointUpdate): Promise<LoyaltyPointModel | undefined> {
+    const filteredValues = Object.fromEntries(
+      Object.entries(newLoyaltyPoint).filter(([key]) =>
+        !this.guarded.includes(key) && this.fillable.includes(key),
+      ),
+    ) as LoyaltyPointUpdate
+
+    await this.mapCustomSetters(filteredValues)
+
+    filteredValues.updated_at = new Date().toISOString()
+
+    await DB.instance.updateTable('loyalty_points')
+      .set(filteredValues)
+      .where('id', '=', this.id)
+      .executeTakeFirst()
+
+    if (this.id) {
+      // Get the updated data
+      const model = await DB.instance.selectFrom('loyalty_points')
+        .where('id', '=', this.id)
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve updated LoyaltyPoint')
+      }
+
+      if (model)
+        dispatch('loyaltyPoint:updated', model)
+      return this.createInstance(model)
+    }
+
+    this.hasSaved = true
+
+    return undefined
+  }
+
+  async forceUpdate(newLoyaltyPoint: LoyaltyPointUpdate): Promise<LoyaltyPointModel | undefined> {
+    await DB.instance.updateTable('loyalty_points')
+      .set(newLoyaltyPoint)
+      .where('id', '=', this.id)
+      .executeTakeFirst()
+
+    if (this.id) {
+      // Get the updated data
+      const model = await DB.instance.selectFrom('loyalty_points')
+        .where('id', '=', this.id)
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve updated LoyaltyPoint')
+      }
+
+      if (this)
+        dispatch('loyaltyPoint:updated', model)
+      return this.createInstance(model)
+    }
+
+    return undefined
+  }
+
+  async save(): Promise<LoyaltyPointModel> {
+    // If the model has an ID, update it; otherwise, create a new record
+    if (this.id) {
+      // Update existing record
+      await DB.instance.updateTable('loyalty_points')
+        .set(this.attributes as LoyaltyPointUpdate)
+        .where('id', '=', this.id)
+        .executeTakeFirst()
+
+      // Get the updated data
+      const model = await DB.instance.selectFrom('loyalty_points')
+        .where('id', '=', this.id)
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve updated LoyaltyPoint')
+      }
+
+      if (this)
+        dispatch('loyaltyPoint:updated', model)
+      return this.createInstance(model)
+    }
+    else {
+      // Create new record
+      const result = await DB.instance.insertInto('loyalty_points')
+        .values(this.attributes as NewLoyaltyPoint)
+        .executeTakeFirst()
+
+      // Get the created data
+      const model = await DB.instance.selectFrom('loyalty_points')
+        .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
+        .selectAll()
+        .executeTakeFirst()
+
+      if (!model) {
+        throw new HttpError(500, 'Failed to retrieve created LoyaltyPoint')
+      }
+
+      if (this)
+        dispatch('loyaltyPoint:created', model)
+      return this.createInstance(model)
+    }
   }
 
   static async createMany(newLoyaltyPoint: NewLoyaltyPoint[]): Promise<void> {
@@ -937,15 +762,38 @@ export class LoyaltyPointModel {
       .values(newLoyaltyPoint)
       .executeTakeFirst()
 
-    const model = await find(Number(result.numInsertedOrUpdatedRows)) as LoyaltyPointModel
+    const instance = new LoyaltyPointModel(undefined)
+    const model = await DB.instance.selectFrom('loyalty_points')
+      .where('id', '=', Number(result.insertId || result.numInsertedOrUpdatedRows))
+      .selectAll()
+      .executeTakeFirst()
+
+    if (!model) {
+      throw new HttpError(500, 'Failed to retrieve created LoyaltyPoint')
+    }
 
     if (model)
       dispatch('loyaltyPoint:created', model)
 
-    return model
+    return instance.createInstance(model)
   }
 
   // Method to remove a LoyaltyPoint
+  async delete(): Promise<number> {
+    if (this.id === undefined)
+      this.deleteFromQuery.execute()
+    const model = await this.find(Number(this.id))
+
+    if (model)
+      dispatch('loyaltyPoint:deleted', model)
+
+    const deleted = await DB.instance.deleteFrom('loyalty_points')
+      .where('id', '=', this.id)
+      .execute()
+
+    return deleted.numDeletedRows
+  }
+
   static async remove(id: number): Promise<any> {
     const instance = new LoyaltyPointModel(undefined)
 
@@ -957,201 +805,6 @@ export class LoyaltyPointModel {
     return await DB.instance.deleteFrom('loyalty_points')
       .where('id', '=', id)
       .execute()
-  }
-
-  applyWhere<V>(column: keyof LoyaltyPointsTable, ...args: [V] | [Operator, V]): LoyaltyPointModel {
-    if (args.length === 1) {
-      const [value] = args
-      this.selectFromQuery = this.selectFromQuery.where(column, '=', value)
-      this.updateFromQuery = this.updateFromQuery.where(column, '=', value)
-      this.deleteFromQuery = this.deleteFromQuery.where(column, '=', value)
-    }
-    else {
-      const [operator, value] = args as [Operator, V]
-      this.selectFromQuery = this.selectFromQuery.where(column, operator, value)
-      this.updateFromQuery = this.updateFromQuery.where(column, operator, value)
-      this.deleteFromQuery = this.deleteFromQuery.where(column, operator, value)
-    }
-
-    return this
-  }
-
-  where<V = string>(column: keyof LoyaltyPointsTable, ...args: [V] | [Operator, V]): LoyaltyPointModel {
-    return this.applyWhere<V>(column, ...args)
-  }
-
-  static where<V = string>(column: keyof LoyaltyPointsTable, ...args: [V] | [Operator, V]): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    return instance.applyWhere<V>(column, ...args)
-  }
-
-  whereColumn(first: keyof LoyaltyPointsTable, operator: Operator, second: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.whereRef(first, operator, second)
-
-    return this
-  }
-
-  static whereColumn(first: keyof LoyaltyPointsTable, operator: Operator, second: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.whereRef(first, operator, second)
-
-    return instance
-  }
-
-  applyWhereRef(column: keyof LoyaltyPointsTable, ...args: string[]): LoyaltyPointModel {
-    const [operatorOrValue, value] = args
-    const operator = value === undefined ? '=' : operatorOrValue
-    const actualValue = value === undefined ? operatorOrValue : value
-
-    const instance = new LoyaltyPointModel(undefined)
-    instance.selectFromQuery = instance.selectFromQuery.whereRef(column, operator, actualValue)
-
-    return instance
-  }
-
-  whereRef(column: keyof LoyaltyPointsTable, ...args: string[]): LoyaltyPointModel {
-    return this.applyWhereRef(column, ...args)
-  }
-
-  static whereRef(column: keyof LoyaltyPointsTable, ...args: string[]): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    return instance.applyWhereRef(column, ...args)
-  }
-
-  whereRaw(sqlStatement: string): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.where(sql`${sqlStatement}`)
-
-    return this
-  }
-
-  static whereRaw(sqlStatement: string): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.where(sql`${sqlStatement}`)
-
-    return instance
-  }
-
-  applyOrWhere(...conditions: [string, any][]): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.where((eb: any) => {
-      return eb.or(
-        conditions.map(([column, value]) => eb(column, '=', value)),
-      )
-    })
-
-    this.updateFromQuery = this.updateFromQuery.where((eb: any) => {
-      return eb.or(
-        conditions.map(([column, value]) => eb(column, '=', value)),
-      )
-    })
-
-    this.deleteFromQuery = this.deleteFromQuery.where((eb: any) => {
-      return eb.or(
-        conditions.map(([column, value]) => eb(column, '=', value)),
-      )
-    })
-
-    return this
-  }
-
-  orWhere(...conditions: [string, any][]): LoyaltyPointModel {
-    return this.applyOrWhere(...conditions)
-  }
-
-  static orWhere(...conditions: [string, any][]): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    return instance.applyOrWhere(...conditions)
-  }
-
-  when(
-    condition: boolean,
-    callback: (query: LoyaltyPointModel) => LoyaltyPointModel,
-  ): LoyaltyPointModel {
-    return LoyaltyPointModel.when(condition, callback)
-  }
-
-  static when(
-    condition: boolean,
-    callback: (query: LoyaltyPointModel) => LoyaltyPointModel,
-  ): LoyaltyPointModel {
-    let instance = new LoyaltyPointModel(undefined)
-
-    if (condition)
-      instance = callback(instance)
-
-    return instance
-  }
-
-  whereNotNull(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    this.updateFromQuery = this.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    this.deleteFromQuery = this.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    return this
-  }
-
-  static whereNotNull(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    instance.updateFromQuery = instance.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    instance.deleteFromQuery = instance.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is not', null),
-    )
-
-    return instance
-  }
-
-  whereNull(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    this.updateFromQuery = this.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    this.deleteFromQuery = this.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    return this
-  }
-
-  static whereNull(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    instance.updateFromQuery = instance.updateFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    instance.deleteFromQuery = instance.deleteFromQuery.where((eb: any) =>
-      eb(column, '=', '').or(column, 'is', null),
-    )
-
-    return instance
   }
 
   static whereWalletId(value: string): LoyaltyPointModel {
@@ -1210,486 +863,10 @@ export class LoyaltyPointModel {
     return instance
   }
 
-  applyWhereIn<V>(column: keyof LoyaltyPointsTable, values: V[]) {
-    this.selectFromQuery = this.selectFromQuery.where(column, 'in', values)
-
-    this.updateFromQuery = this.updateFromQuery.where(column, 'in', values)
-
-    this.deleteFromQuery = this.deleteFromQuery.where(column, 'in', values)
-
-    return this
-  }
-
-  whereIn<V = number>(column: keyof LoyaltyPointsTable, values: V[]): LoyaltyPointModel {
-    return this.applyWhereIn<V>(column, values)
-  }
-
   static whereIn<V = number>(column: keyof LoyaltyPointsTable, values: V[]): LoyaltyPointModel {
     const instance = new LoyaltyPointModel(undefined)
 
     return instance.applyWhereIn<V>(column, values)
-  }
-
-  applyWhereBetween<V>(column: keyof LoyaltyPointsTable, range: [V, V]): LoyaltyPointModel {
-    if (range.length !== 2) {
-      throw new HttpError(500, 'Range must have exactly two values: [min, max]')
-    }
-
-    const query = sql` ${sql.raw(column as string)} between ${range[0]} and ${range[1]} `
-
-    this.selectFromQuery = this.selectFromQuery.where(query)
-    this.updateFromQuery = this.updateFromQuery.where(query)
-    this.deleteFromQuery = this.deleteFromQuery.where(query)
-
-    return this
-  }
-
-  whereBetween<V = number>(column: keyof LoyaltyPointsTable, range: [V, V]): LoyaltyPointModel {
-    return this.applyWhereBetween<V>(column, range)
-  }
-
-  static whereBetween<V = number>(column: keyof LoyaltyPointsTable, range: [V, V]): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    return instance.applyWhereBetween<V>(column, range)
-  }
-
-  applyWhereLike(column: keyof LoyaltyPointsTable, value: string): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.where(sql` ${sql.raw(column as string)} LIKE ${value}`)
-
-    this.updateFromQuery = this.updateFromQuery.where(sql` ${sql.raw(column as string)} LIKE ${value}`)
-
-    this.deleteFromQuery = this.deleteFromQuery.where(sql` ${sql.raw(column as string)} LIKE ${value}`)
-
-    return this
-  }
-
-  whereLike(column: keyof LoyaltyPointsTable, value: string): LoyaltyPointModel {
-    return this.applyWhereLike(column, value)
-  }
-
-  static whereLike(column: keyof LoyaltyPointsTable, value: string): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    return instance.applyWhereLike(column, value)
-  }
-
-  applyWhereNotIn<V>(column: keyof LoyaltyPointsTable, values: V[]): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.where(column, 'not in', values)
-
-    this.updateFromQuery = this.updateFromQuery.where(column, 'not in', values)
-
-    this.deleteFromQuery = this.deleteFromQuery.where(column, 'not in', values)
-
-    return this
-  }
-
-  whereNotIn<V>(column: keyof LoyaltyPointsTable, values: V[]): LoyaltyPointModel {
-    return this.applyWhereNotIn<V>(column, values)
-  }
-
-  static whereNotIn<V = number>(column: keyof LoyaltyPointsTable, values: V[]): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    return instance.applyWhereNotIn<V>(column, values)
-  }
-
-  async exists(): Promise<boolean> {
-    let model
-
-    if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
-    }
-    else {
-      model = await this.selectFromQuery.selectAll().executeTakeFirst()
-    }
-
-    return model !== null && model !== undefined
-  }
-
-  static async latest(): Promise<LoyaltyPointModel | undefined> {
-    const instance = new LoyaltyPointModel(undefined)
-
-    const model = await DB.instance.selectFrom('loyalty_points')
-      .selectAll()
-      .orderBy('id', 'desc')
-      .executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    instance.mapCustomGetters(model)
-
-    const data = new LoyaltyPointModel(model)
-
-    return data
-  }
-
-  static async oldest(): Promise<LoyaltyPointModel | undefined> {
-    const instance = new LoyaltyPointModel(undefined)
-
-    const model = await DB.instance.selectFrom('loyalty_points')
-      .selectAll()
-      .orderBy('id', 'asc')
-      .executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    instance.mapCustomGetters(model)
-
-    const data = new LoyaltyPointModel(model)
-
-    return data
-  }
-
-  static async firstOrCreate(
-    condition: Partial<LoyaltyPointJsonResponse>,
-    newLoyaltyPoint: NewLoyaltyPoint,
-  ): Promise<LoyaltyPointModel> {
-    const instance = new LoyaltyPointModel(undefined)
-
-    const key = Object.keys(condition)[0] as keyof LoyaltyPointJsonResponse
-
-    if (!key) {
-      throw new HttpError(500, 'Condition must contain at least one key-value pair')
-    }
-
-    const value = condition[key]
-
-    // Attempt to find the first record matching the condition
-    const existingLoyaltyPoint = await DB.instance.selectFrom('loyalty_points')
-      .selectAll()
-      .where(key, '=', value)
-      .executeTakeFirst()
-
-    if (existingLoyaltyPoint) {
-      instance.mapCustomGetters(existingLoyaltyPoint)
-      await instance.loadRelations(existingLoyaltyPoint)
-
-      return new LoyaltyPointModel(existingLoyaltyPoint as LoyaltyPointJsonResponse)
-    }
-    else {
-      return await instance.create(newLoyaltyPoint)
-    }
-  }
-
-  static async updateOrCreate(
-    condition: Partial<LoyaltyPointJsonResponse>,
-    newLoyaltyPoint: NewLoyaltyPoint,
-  ): Promise<LoyaltyPointModel> {
-    const instance = new LoyaltyPointModel(undefined)
-
-    const key = Object.keys(condition)[0] as keyof LoyaltyPointJsonResponse
-
-    if (!key) {
-      throw new HttpError(500, 'Condition must contain at least one key-value pair')
-    }
-
-    const value = condition[key]
-
-    // Attempt to find the first record matching the condition
-    const existingLoyaltyPoint = await DB.instance.selectFrom('loyalty_points')
-      .selectAll()
-      .where(key, '=', value)
-      .executeTakeFirst()
-
-    if (existingLoyaltyPoint) {
-      // If found, update the existing record
-      await DB.instance.updateTable('loyalty_points')
-        .set(newLoyaltyPoint)
-        .where(key, '=', value)
-        .executeTakeFirstOrThrow()
-
-      // Fetch and return the updated record
-      const updatedLoyaltyPoint = await DB.instance.selectFrom('loyalty_points')
-        .selectAll()
-        .where(key, '=', value)
-        .executeTakeFirst()
-
-      if (!updatedLoyaltyPoint) {
-        throw new HttpError(500, 'Failed to fetch updated record')
-      }
-
-      instance.hasSaved = true
-
-      return new LoyaltyPointModel(updatedLoyaltyPoint as LoyaltyPointJsonResponse)
-    }
-    else {
-      // If not found, create a new record
-      return await instance.create(newLoyaltyPoint)
-    }
-  }
-
-  async loadRelations(models: LoyaltyPointJsonResponse | LoyaltyPointJsonResponse[]): Promise<void> {
-    // Handle both single model and array of models
-    const modelArray = Array.isArray(models) ? models : [models]
-    if (!modelArray.length)
-      return
-
-    const modelIds = modelArray.map(model => model.id)
-
-    for (const relation of this.withRelations) {
-      const relatedRecords = await DB.instance
-        .selectFrom(relation)
-        .where('loyaltyPoint_id', 'in', modelIds)
-        .selectAll()
-        .execute()
-
-      if (Array.isArray(models)) {
-        models.map((model: LoyaltyPointJsonResponse) => {
-          const records = relatedRecords.filter((record: { loyaltyPoint_id: number }) => {
-            return record.loyaltyPoint_id === model.id
-          })
-
-          model[relation] = records.length === 1 ? records[0] : records
-          return model
-        })
-      }
-      else {
-        const records = relatedRecords.filter((record: { loyaltyPoint_id: number }) => {
-          return record.loyaltyPoint_id === models.id
-        })
-
-        models[relation] = records.length === 1 ? records[0] : records
-      }
-    }
-  }
-
-  with(relations: string[]): LoyaltyPointModel {
-    this.withRelations = relations
-
-    return this
-  }
-
-  static with(relations: string[]): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    instance.withRelations = relations
-
-    return instance
-  }
-
-  async last(): Promise<LoyaltyPointModel | undefined> {
-    let model: LoyaltyPointJsonResponse | undefined
-
-    if (this.hasSelect) {
-      model = await this.selectFromQuery.executeTakeFirst()
-    }
-    else {
-      model = await this.selectFromQuery.selectAll().orderBy('id', 'desc').executeTakeFirst()
-    }
-
-    if (model) {
-      this.mapCustomGetters(model)
-      await this.loadRelations(model)
-    }
-
-    const data = new LoyaltyPointModel(model)
-
-    return data
-  }
-
-  static async last(): Promise<LoyaltyPointModel | undefined> {
-    const model = await DB.instance.selectFrom('loyalty_points').selectAll().orderBy('id', 'desc').executeTakeFirst()
-
-    if (!model)
-      return undefined
-
-    const data = new LoyaltyPointModel(model)
-
-    return data
-  }
-
-  orderBy(column: keyof LoyaltyPointsTable, order: 'asc' | 'desc'): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(column, order)
-
-    return this
-  }
-
-  static orderBy(column: keyof LoyaltyPointsTable, order: 'asc' | 'desc'): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(column, order)
-
-    return instance
-  }
-
-  groupBy(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.groupBy(column)
-
-    return this
-  }
-
-  static groupBy(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.groupBy(column)
-
-    return instance
-  }
-
-  having<V = string>(column: keyof LoyaltyPointsTable, operator: Operator, value: V): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.having(column, operator, value)
-
-    return this
-  }
-
-  static having<V = string>(column: keyof LoyaltyPointsTable, operator: Operator, value: V): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.having(column, operator, value)
-
-    return instance
-  }
-
-  inRandomOrder(): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(sql` ${sql.raw('RANDOM()')} `)
-
-    return this
-  }
-
-  static inRandomOrder(): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(sql` ${sql.raw('RANDOM()')} `)
-
-    return instance
-  }
-
-  orderByDesc(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(column, 'desc')
-
-    return this
-  }
-
-  static orderByDesc(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'desc')
-
-    return instance
-  }
-
-  orderByAsc(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.orderBy(column, 'asc')
-
-    return this
-  }
-
-  static orderByAsc(column: keyof LoyaltyPointsTable): LoyaltyPointModel {
-    const instance = new LoyaltyPointModel(undefined)
-
-    instance.selectFromQuery = instance.selectFromQuery.orderBy(column, 'asc')
-
-    return instance
-  }
-
-  async update(newLoyaltyPoint: LoyaltyPointUpdate): Promise<LoyaltyPointModel | undefined> {
-    const filteredValues = Object.fromEntries(
-      Object.entries(newLoyaltyPoint).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
-      ),
-    ) as NewLoyaltyPoint
-
-    await this.mapCustomSetters(filteredValues)
-
-    await DB.instance.updateTable('loyalty_points')
-      .set(filteredValues)
-      .where('id', '=', this.id)
-      .executeTakeFirst()
-
-    if (this.id) {
-      const model = await this.find(this.id)
-
-      if (model)
-        dispatch('loyaltyPoint:updated', model)
-
-      return model
-    }
-
-    this.hasSaved = true
-
-    return undefined
-  }
-
-  async forceUpdate(loyaltyPoint: LoyaltyPointUpdate): Promise<LoyaltyPointModel | undefined> {
-    if (this.id === undefined) {
-      this.updateFromQuery.set(loyaltyPoint).execute()
-    }
-
-    await this.mapCustomSetters(loyaltyPoint)
-
-    await DB.instance.updateTable('loyalty_points')
-      .set(loyaltyPoint)
-      .where('id', '=', this.id)
-      .executeTakeFirst()
-
-    if (this.id) {
-      const model = await this.find(this.id)
-
-      if (model)
-        dispatch('loyaltyPoint:updated', model)
-
-      this.hasSaved = true
-
-      return model
-    }
-
-    return undefined
-  }
-
-  async save(): Promise<void> {
-    if (!this)
-      throw new HttpError(500, 'LoyaltyPoint data is undefined')
-
-    await this.mapCustomSetters(this.attributes)
-
-    if (this.id === undefined) {
-      await this.create(this.attributes)
-    }
-    else {
-      await this.update(this.attributes)
-    }
-
-    this.hasSaved = true
-  }
-
-  fill(data: Partial<LoyaltyPointJsonResponse>): LoyaltyPointModel {
-    const filteredValues = Object.fromEntries(
-      Object.entries(data).filter(([key]) =>
-        !this.guarded.includes(key) && this.fillable.includes(key),
-      ),
-    ) as NewLoyaltyPoint
-
-    this.attributes = {
-      ...this.attributes,
-      ...filteredValues,
-    }
-
-    return this
-  }
-
-  forceFill(data: Partial<LoyaltyPointJsonResponse>): LoyaltyPointModel {
-    this.attributes = {
-      ...this.attributes,
-      ...data,
-    }
-
-    return this
-  }
-
-  // Method to delete (soft delete) the loyaltyPoint instance
-  async delete(): Promise<LoyaltyPointsTable> {
-    if (this.id === undefined)
-      this.deleteFromQuery.execute()
-    const model = await this.find(Number(this.id))
-    if (model)
-      dispatch('loyaltyPoint:deleted', model)
-
-    return await DB.instance.deleteFrom('loyalty_points')
-      .where('id', '=', this.id)
-      .execute()
   }
 
   toSearchableObject(): Partial<LoyaltyPointJsonResponse> {
@@ -1704,36 +881,16 @@ export class LoyaltyPointModel {
     }
   }
 
-  distinct(column: keyof LoyaltyPointJsonResponse): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.select(column).distinct()
-
-    this.hasSelect = true
-
-    return this
-  }
-
   static distinct(column: keyof LoyaltyPointJsonResponse): LoyaltyPointModel {
     const instance = new LoyaltyPointModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.select(column).distinct()
-
-    instance.hasSelect = true
-
-    return instance
-  }
-
-  join(table: string, firstCol: string, secondCol: string): LoyaltyPointModel {
-    this.selectFromQuery = this.selectFromQuery.innerJoin(table, firstCol, secondCol)
-
-    return this
+    return instance.applyDistinct(column)
   }
 
   static join(table: string, firstCol: string, secondCol: string): LoyaltyPointModel {
     const instance = new LoyaltyPointModel(undefined)
 
-    instance.selectFromQuery = instance.selectFromQuery.innerJoin(table, firstCol, secondCol)
-
-    return instance
+    return instance.applyJoin(table, firstCol, secondCol)
   }
 
   toJSON(): LoyaltyPointJsonResponse {
@@ -1767,9 +924,27 @@ export class LoyaltyPointModel {
 
     return model
   }
+
+  // Add a protected applyFind implementation
+  protected async applyFind(id: number): Promise<LoyaltyPointModel | undefined> {
+    const model = await DB.instance.selectFrom(this.tableName)
+      .where('id', '=', id)
+      .selectAll()
+      .executeTakeFirst()
+
+    if (!model)
+      return undefined
+
+    this.mapCustomGetters(model)
+
+    await this.loadRelations(model)
+
+    // Return a proper instance using the factory method
+    return this.createInstance(model)
+  }
 }
 
-async function find(id: number): Promise<LoyaltyPointModel | undefined> {
+export async function find(id: number): Promise<LoyaltyPointModel | undefined> {
   const query = DB.instance.selectFrom('loyalty_points').where('id', '=', id).selectAll()
 
   const model = await query.executeTakeFirst()
@@ -1777,7 +952,8 @@ async function find(id: number): Promise<LoyaltyPointModel | undefined> {
   if (!model)
     return undefined
 
-  return new LoyaltyPointModel(model)
+  const instance = new LoyaltyPointModel(undefined)
+  return instance.createInstance(model)
 }
 
 export async function count(): Promise<number> {
@@ -1787,11 +963,8 @@ export async function count(): Promise<number> {
 }
 
 export async function create(newLoyaltyPoint: NewLoyaltyPoint): Promise<LoyaltyPointModel> {
-  const result = await DB.instance.insertInto('loyalty_points')
-    .values(newLoyaltyPoint)
-    .executeTakeFirstOrThrow()
-
-  return await find(Number(result.numInsertedOrUpdatedRows)) as LoyaltyPointModel
+  const instance = new LoyaltyPointModel(undefined)
+  return await instance.applyCreate(newLoyaltyPoint)
 }
 
 export async function rawQuery(rawQuery: string): Promise<any> {

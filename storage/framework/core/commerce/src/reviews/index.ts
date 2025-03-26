@@ -10,8 +10,7 @@ export {
   fetchByProductId,
   fetchByUserId,
   fetchMostHelpfulByProductId,
-  fetchPaginated,
-  fetchProductReviewStats,
+  fetchReviewStats,
 } from './fetch'
 
 // Functions from store.ts

@@ -1,7 +1,7 @@
 {
   "name": "@stacksjs/image",
   "type": "module",
-  "version": "0.69.5",
+  "version": "0.70.10",
   "description": "Opinionated image components for Stacks.",
   "author": "Chris Breuer",
   "contributors": ["Chris Breuer <chris@stacksjs.org>"],
@@ -35,7 +35,7 @@
     "highlight.js": "^11.11.1"
   },
   "devDependencies": {
-    "@microsoft/api-extractor": "^7.52.1",
+    "@microsoft/api-extractor": "^7.52.2",
     "@stacksjs/alias": "workspace:*",
     "@stacksjs/development": "workspace:*",
     "@vue/tsconfig": "^0.7.0",

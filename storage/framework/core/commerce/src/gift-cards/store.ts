@@ -1,7 +1,6 @@
-import type { GiftCardRequestType } from '@stacksjs/orm'
-import type { GiftCardJsonResponse, NewGiftCard } from '../../../../orm/src/models/GiftCard'
+import type { GiftCardJsonResponse, GiftCardRequestType, NewGiftCard } from '@stacksjs/orm'
+import { randomUUIDv7 } from 'bun'
 import { db } from '@stacksjs/database'
-
 /**
  * Create a new gift card
  *
@@ -12,22 +11,24 @@ export async function store(request: GiftCardRequestType): Promise<GiftCardJsonR
   await request.validate()
 
   const giftCardData: NewGiftCard = {
-    code: request.get<string>('code'),
+    code: request.get('code'),
     initial_balance: request.get<number>('initial_balance'),
     current_balance: request.get<number>('initial_balance'), // Initially set to same as initial balance
-    currency: request.get<string>('currency'),
-    status: request.get<string>('status') || 'ACTIVE',
-    user_id: request.get<number>('user_id'),
-    purchaser_id: request.get<string>('purchaser_id'),
-    recipient_email: request.get<string>('recipient_email'),
-    recipient_name: request.get<string>('recipient_name'),
-    personal_message: request.get<string>('personal_message'),
+    currency: request.get('currency'),
+    status: request.get('status') || 'ACTIVE',
+    customer_id: request.get<number>('customer_id'),
+    purchaser_id: request.get('purchaser_id'),
+    recipient_email: request.get('recipient_email'),
+    recipient_name: request.get('recipient_name'),
+    personal_message: request.get('personal_message'),
     is_digital: request.get<boolean>('is_digital'),
     is_reloadable: request.get<boolean>('is_reloadable'),
     is_active: request.get<boolean>('is_active') ?? true,
-    expiry_date: request.get<string>('expiry_date'),
-    template_id: request.get<string>('template_id'),
+    expiry_date: request.get('expiry_date'),
+    template_id: request.get('template_id'),
   }
+
+  giftCardData.uuid = randomUUIDv7()
 
   try {
     // Insert the gift card record
@@ -36,11 +37,13 @@ export async function store(request: GiftCardRequestType): Promise<GiftCardJsonR
       .values(giftCardData)
       .executeTakeFirst()
 
+    const insertId = Number(createdGiftCard.insertId) || Number(createdGiftCard.numInsertedOrUpdatedRows)
+
     // If insert was successful, retrieve the newly created gift card
-    if (createdGiftCard.insertId) {
+    if (insertId) {
       const giftCard = await db
         .selectFrom('gift_cards')
-        .where('id', '=', Number(createdGiftCard.insertId))
+        .where('id', '=', insertId)
         .selectAll()
         .executeTakeFirst()
 

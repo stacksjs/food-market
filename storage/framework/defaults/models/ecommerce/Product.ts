@@ -5,7 +5,7 @@ export default {
   name: 'Product',
   table: 'products',
   primaryKey: 'id',
-  autoIncrement: false, // Using UUID instead of auto-increment
+  autoIncrement: true,
 
   traits: {
     useUuid: true,
@@ -29,7 +29,9 @@ export default {
     observe: true,
   },
 
-  belongsTo: ['ProductCategory', 'Manufacturer'],
+  belongsTo: ['Category', 'Manufacturer'],
+
+  hasMany: ['Review', 'ProductUnit', 'ProductVariant', 'LicenseKey', 'WaitlistProduct'],
 
   attributes: {
     name: {
@@ -102,19 +104,6 @@ export default {
         },
       },
       factory: faker => faker.number.int({ min: 0, max: 100 }),
-    },
-
-    category_id: {
-      required: true,
-      order: 7,
-      fillable: true,
-      validation: {
-        rule: schema.string().uuid(),
-        message: {
-          uuid: 'Category ID must be a valid UUID',
-        },
-      },
-      factory: faker => faker.string.uuid(),
     },
 
     preparation_time: {

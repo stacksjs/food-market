@@ -1,9 +1,7 @@
 import type { StacksOptions } from '@stacksjs/types'
 import { commandsPath, userDatabasePath } from '@stacksjs/path'
 
-// import { userConfig as overrides } from './overrides'
-
-const config: StacksOptions = {
+export const defaults: StacksOptions = {
   ai: {
     deploy: false,
     models: [
@@ -78,48 +76,53 @@ const config: StacksOptions = {
   },
 
   cloud: {
-    type: 'serverless',
+    infrastructure: {
+      type: 'serverless',
+      driver: 'aws',
+      environments: ['production', 'staging', 'development'],
 
-    driver: 'aws',
-
-    storage: {},
-
-    environments: ['production', 'staging', 'development'],
-
-    firewall: {
-      enabled: true,
-      countryCodes: [],
-      ipAddresses: [],
-      queryString: [],
-      httpHeaders: [],
-      // ipSets: [],
-      rateLimitPerMinute: 1000,
-      useIpReputationLists: true,
-      useKnownBadInputsRuleSet: true,
-    },
-
-    cdn: {
-      allowedMethods: 'GET_HEAD',
-      cachedMethods: 'GET_HEAD',
-      minTtl: 0,
-      defaultTtl: 86400,
-      maxTtl: 31536000,
-      compress: true,
-      priceClass: 'PriceClass_All',
-      originShieldRegion: 'us-east-1',
-      cookieBehavior: 'none',
-      allowList: {
-        cookies: [],
-        headers: [],
-        queryStrings: [],
-      },
-      realtimeLogs: {
+      firewall: {
         enabled: true,
-        samplingRate: 2,
+        countryCodes: [],
+        ipAddresses: [],
+        queryString: [],
+        httpHeaders: [],
+        // ipSets: [],
+        rateLimitPerMinute: 1000,
+        useIpReputationLists: true,
+        useKnownBadInputsRuleSet: true,
       },
+
+      cdn: {
+        allowedMethods: 'GET_HEAD',
+        cachedMethods: 'GET_HEAD',
+        minTtl: 0,
+        defaultTtl: 86400,
+        maxTtl: 31536000,
+        compress: true,
+        priceClass: 'PriceClass_All',
+        originShieldRegion: 'us-east-1',
+        cookieBehavior: 'none',
+        allowList: {
+          cookies: [],
+          headers: [],
+          queryStrings: [],
+        },
+        realtimeLogs: {
+          enabled: true,
+          samplingRate: 2,
+        },
+      },
+
+      fileSystem: false,
+      storage: {},
     },
 
-    fileSystem: false,
+    // Default site configuration
+    sites: {
+      root: '',
+      path: '',
+    },
   },
 
   database: {
@@ -324,7 +327,7 @@ const config: StacksOptions = {
     ],
 
     messages: {
-      type: 'Select the type of change that you’re committing:',
+      type: 'Select the type of change that you\'re committing:',
       scope: 'Select the SCOPE of this change (optional):',
       customScope: 'Select the SCOPE of this change:',
       subject: 'Write a SHORT, IMPERATIVE tense description of the change:\n',
@@ -380,7 +383,7 @@ const config: StacksOptions = {
       },
       {
         value: 'chore',
-        name: 'chore:    🔨  Other changes that don’t modify src or test files',
+        name: 'chore:    🔨  Other changes that don\'t modify src or test files',
         emoji: ':hammer:',
       },
       {
@@ -687,4 +690,4 @@ const config: StacksOptions = {
   },
 }
 
-export default config
+export default defaults

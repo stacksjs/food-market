@@ -1,7 +1,7 @@
 {
   "name": "@stacksjs/combobox",
   "type": "module",
-  "version": "0.69.5",
+  "version": "0.70.10",
   "description": "A modern combobox component.",
   "author": "Chris Breuer",
   "contributors": [
@@ -51,7 +51,7 @@
   },
   "devDependencies": {
     "@iconify-json/hugeicons": "^1.2.4",
-    "@microsoft/api-extractor": "^7.52.1",
+    "@microsoft/api-extractor": "^7.52.2",
     "@stacksjs/alias": "workspace:*",
     "@stacksjs/development": "workspace:*",
     "@vue/tsconfig": "^0.7.0",
