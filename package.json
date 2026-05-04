@@ -80,8 +80,5 @@
     "bun-plugin-yml": "^0.3.1",
     "consola": "^3.4.2",
     "typescript": "5.7.3"
-  },
-  "overrides": {
-    "unconfig": "0.3.10"
   }
 }
