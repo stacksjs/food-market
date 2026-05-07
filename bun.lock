@@ -776,7 +776,6 @@
         "@stacksjs/utils": "workspace:*",
         "@types/tar": "^6.1.13",
         "debug": "^4.4.0",
-        "kysely-bun-worker": "^0.7.0",
         "mkdirp": "^3.0.1",
         "tar": "^7.4.3",
       },
@@ -924,7 +923,7 @@
       "name": "@stacksjs/faker",
       "version": "0.70.10",
       "devDependencies": {
-        "@faker-js/faker": "^9.5.1",
+        "@faker-js/faker": "^10.4.0",
         "@stacksjs/cli": "workspace:*",
         "@stacksjs/config": "workspace:*",
         "@stacksjs/development": "workspace:*",
@@ -1064,8 +1063,6 @@
         "@stacksjs/development": "workspace:*",
         "@stacksjs/types": "workspace:*",
         "@types/pg": "^8.11.11",
-        "kysely": "^0.27.6",
-        "kysely-bun-worker": "^0.7.0",
         "mysql2": "^3.14.0",
         "pg": "^8.14.1",
       },
@@ -2138,7 +2135,7 @@
 
     "@exodus/bytes": ["@exodus/bytes@1.15.0", "", { "peerDependencies": { "@noble/hashes": "^1.8.0 || ^2.0.0" }, "optionalPeers": ["@noble/hashes"] }, "sha512-UY0nlA+feH81UGSHv92sLEPLCeZFjXOuHhrIo0HQydScuQc8s0A7kL/UdgwgDq8g8ilksmuoF35YVTNphV2aBQ=="],
 
-    "@faker-js/faker": ["@faker-js/faker@9.9.0", "", {}, "sha512-OEl393iCOoo/z8bMezRlJu+GlRGlsKbUAN7jKB6LhnKoqKve5DXRpalbItIIcwnCjs1k/FOPjFzcA6Qn+H+YbA=="],
+    "@faker-js/faker": ["@faker-js/faker@10.4.0", "", {}, "sha512-sDBWI3yLy8EcDzgobvJTWq1MJYzAkQdpjXuPukga9wXonhpMRvd1Izuo2Qgwey2OiEoRIBr35RMU9HJRoOHzpw=="],
 
     "@floating-ui/core": ["@floating-ui/core@1.7.5", "", { "dependencies": { "@floating-ui/utils": "^0.2.11" } }, "sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ=="],
 
@@ -4241,8 +4238,6 @@
     "kolorist": ["kolorist@1.8.0", "", {}, "sha512-Y+60/zizpJ3HRH8DCss+q95yr6145JXZo46OTpFvDZWLfRCE4qChOyk1b26nMaNpfHHgxagk9dXT5OP0Tfe+dQ=="],
 
     "kysely": ["kysely@0.27.6", "", {}, "sha512-FIyV/64EkKhJmjgC0g2hygpBv5RNWVPyNCqSAD7eTCv6eFWNIi4PN1UvdSJGicN/o35bnevgis4Y0UDC0qi8jQ=="],
-
-    "kysely-bun-worker": ["kysely-bun-worker@0.7.0", "", { "peerDependencies": { "bun-types": ">=1.1.14", "kysely": ">=0.26" } }, "sha512-/omnIHmYcUCgkMK2dH+bwJ+JXqhQLYiONdk68mWAsPnUDfR2Fjl40rssB9aYVrCUIL6hKpc3+QIjne/BWTgrXA=="],
 
     "lazystream": ["lazystream@1.0.1", "", { "dependencies": { "readable-stream": "^2.0.5" } }, "sha512-b94GiNHQNy6JNTrt5w6zNyffMrNkXZb3KTkCZJb2V1xaEGCk093vkZ2jk3tpaeP33/OiXC+WvK9AxUebnf5nbw=="],
 
