@@ -1,52 +1,32 @@
-// Import dependencies
-import type { OrderJsonResponse, OrderRequestType } from '@stacksjs/orm'
 import { db } from '@stacksjs/database'
+// Import dependencies
+import { formatDate } from '@stacksjs/orm'
+type OrderJsonResponse = ModelRow<typeof Order>
+type OrderUpdate = UpdateModelData<typeof Order>
 import { fetchById } from './fetch'
 
 /**
  * Update an order by ID
  *
  * @param id The ID of the order to update
- * @param request The updated order data
+ * @param data The updated order data
  * @returns The updated order record
  */
-export async function update(id: number, request: OrderRequestType): Promise<OrderJsonResponse | undefined> {
-  // Validate the request data
-  await request.validate()
-
+export async function update(id: number, data: Omit<OrderUpdate, 'id'>): Promise<OrderJsonResponse | undefined> {
   // Check if order exists
   const existingOrder = await fetchById(id)
   if (!existingOrder) {
     throw new Error(`Order with ID ${id} not found`)
   }
 
-  // Create update data object using request fields
-  const updateData = {
-    customer_id: request.get<number>('customer_id'),
-    coupon_id: request.get<number>('coupon_id'),
-    status: request.get('status'),
-    total_amount: request.get<number>('total_amount'),
-    tax_amount: request.get<number>('tax_amount'),
-    discount_amount: request.get<number>('discount_amount'),
-    delivery_fee: request.get<number>('delivery_fee'),
-    tip_amount: request.get<number>('tip_amount'),
-    order_type: request.get('order_type'),
-    delivery_address: request.get('delivery_address'),
-    special_instructions: request.get('special_instructions'),
-    estimated_delivery_time: request.get('estimated_delivery_time'),
-    applied_coupon_id: request.get('applied_coupon_id'),
-  }
-
-  // If no fields to update, just return the existing order
-  if (Object.keys(updateData).length === 0) {
-    return existingOrder
-  }
-
   try {
     // Update the order
     await db
       .updateTable('orders')
-      .set(updateData)
+      .set({
+        ...data,
+        updated_at: formatDate(new Date()),
+      })
       .where('id', '=', id)
       .execute()
 
@@ -86,7 +66,7 @@ export async function updateStatus(
       .updateTable('orders')
       .set({
         status,
-        updated_at: new Date().toISOString(),
+        updated_at: formatDate(new Date()),
       })
       .where('id', '=', id)
       .execute()
@@ -125,7 +105,7 @@ export async function updateDeliveryInfo(
 
   // Create update data with only provided fields
   const updateData: Record<string, any> = {
-    updated_at: new Date().toISOString(),
+    updated_at: formatDate(new Date()),
   }
 
   if (delivery_address !== undefined) {

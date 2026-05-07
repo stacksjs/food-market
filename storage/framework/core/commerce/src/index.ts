@@ -1,92 +1,78 @@
-// Main ecommerce module index file
+// Main commerce module index file
 import * as coupons from './coupons'
 import * as customers from './customers'
-import * as digital from './digital'
-import * as drivers from './drivers'
+import * as devices from './devices'
+import * as errors from './errors'
 import * as giftCards from './gift-cards'
-import * as licenses from './license'
-import * as manufacturer from './manufacturer'
 import * as orders from './orders'
 import * as payments from './payments'
-import * as rates from './rates'
-import * as reviews from './reviews'
-import * as shipping from './shipping'
+import * as products from './products'
+import * as receipts from './receipts'
+import * as shippings from './shippings'
 import * as tax from './tax'
-import * as unit from './unit'
-import * as variants from './variants'
-import * as zones from './zones'
+import * as waitlists from './waitlists'
+import * as restaurant from './waitlists/restaurant'
 
 type CouponsModule = typeof coupons
 type CustomersModule = typeof customers
+type ErrorsModule = typeof errors
+type ShippingsModule = typeof shippings
 type GiftCardsModule = typeof giftCards
-type ManufacturerModule = typeof manufacturer
 type OrdersModule = typeof orders
 type PaymentsModule = typeof payments
-type ReviewsModule = typeof reviews
-type UnitModule = typeof unit
-type ShippingModule = typeof shipping
-type RatesModule = typeof rates
-type ZonesModule = typeof zones
-type VariantsModule = typeof variants
-type DriversModule = typeof drivers
-type LicensesModule = typeof licenses
-type DigitalModule = typeof digital
+type ProductsModule = typeof products
+type RestaurantModule = typeof restaurant
 type TaxModule = typeof tax
-export interface EcommerceNamespace {
+type WaitlistsModule = typeof waitlists
+type DevicesModule = typeof devices
+type ReceiptsModule = typeof receipts
+
+export interface CommerceNamespace {
   coupons: CouponsModule
   customers: CustomersModule
+  errors: ErrorsModule
   giftCards: GiftCardsModule
-  manufacturer: ManufacturerModule
   orders: OrdersModule
-  drivers: DriversModule
   payments: PaymentsModule
-  reviews: ReviewsModule
-  shipping: ShippingModule
-  rates: RatesModule
-  zones: ZonesModule
-  variants: VariantsModule
-  unit: UnitModule
-  licenses: LicensesModule
-  digital: DigitalModule
+  products: ProductsModule
+  restaurant: RestaurantModule
+  shippings: ShippingsModule
   tax: TaxModule
+  waitlists: WaitlistsModule
+  devices: DevicesModule
+  receipts: ReceiptsModule
 }
 
-export const ecommerce: EcommerceNamespace = {
+export const commerce: CommerceNamespace = {
   coupons,
   customers,
+  devices,
+  errors,
   giftCards,
-  manufacturer,
-  drivers,
   orders,
   payments,
-  reviews,
-  shipping,
-  rates,
-  zones,
-  variants,
-  licenses,
-  unit,
-  digital,
+  products,
+  receipts,
+  restaurant,
+  shippings,
   tax,
+  waitlists,
 }
 
-export default ecommerce
+export default commerce
 
 export {
   coupons,
   customers,
-  digital,
-  drivers,
+  devices,
+  errors,
   giftCards,
-  licenses,
-  manufacturer,
   orders,
   payments,
-  rates,
-  reviews,
-  shipping,
+  products,
+  receipts,
+  restaurant,
+  shippings,
   tax,
-  unit,
-  variants,
-  zones,
+  waitlists,
 }

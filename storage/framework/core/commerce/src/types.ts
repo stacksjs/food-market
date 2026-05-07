@@ -1,6 +1,12 @@
 // Import the CustomerTable type from the ORM
 
-import type { CouponJsonResponse, CustomerJsonResponse, GiftCardJsonResponse, ManufacturerJsonResponse, OrderItemJsonResponse, OrderJsonResponse, ReviewJsonResponse } from '@stacksjs/orm'
+type CouponJsonResponse = ModelRow<typeof Coupon>
+type CustomerJsonResponse = ModelRow<typeof Customer>
+type GiftCardJsonResponse = ModelRow<typeof GiftCard>
+type ManufacturerJsonResponse = ModelRow<typeof Manufacturer>
+type OrderJsonResponse = ModelRow<typeof Order>
+type OrderItemJsonResponse = ModelRow<typeof OrderItem>
+type ReviewJsonResponse = ModelRow<typeof Review>
 
 // Define the input for creating a customer
 export interface CreateCustomerInput {
@@ -194,7 +200,7 @@ export interface ReviewResponse extends BaseResponse {
   data: ReviewJsonResponse[]
 }
 
-export interface ProductManufacturerResponse extends BaseResponse {
+export interface ManufacturerResponse extends BaseResponse {
   data: ManufacturerJsonResponse[]
 }
 export interface ReviewStats {
@@ -243,26 +249,9 @@ export interface CategoryStats {
 /**
  * Options for fetching product manufacturers
  */
-export interface FetchProductManufacturersOptions {
-  /** Page number for pagination */
-  page?: number
-
-  /** Number of items per page */
-  limit?: number
-
-  /** Field to sort by */
-  sortBy?: 'manufacturer' | 'country' | 'created_at' | 'updated_at'
-
-  /** Sort direction */
-  sortDirection?: 'asc' | 'desc'
-
-  /** Filter by country */
+export interface FetchManufacturersOptions {
   country?: string
-
-  /** Filter by featured status */
   featured?: boolean
-
-  /** Search term to filter results */
   search?: string
 }
 
