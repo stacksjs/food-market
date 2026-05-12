@@ -28,3 +28,4 @@ custom-cli
 ./test.ts
 resources/assets/fonts/*.woff
 resources/assets/fonts/*.woff2
+pantry
